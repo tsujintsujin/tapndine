@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * A modal panel on a native <dialog>: focus stays inside, Esc closes it, and
  * the page behind stops scrolling. `from` picks which edge it enters from.
- * On tablets a bottom sheet becomes a centred panel instead.
+ * A bottom sheet fills the phone screen; on tablets it is a centred panel.
+ *
+ * Closing plays the exit motion before the dialog actually closes, and keeps
+ * showing the last content meanwhile (the parent has usually dropped it).
+ * Reopening mid-exit just reverses the CSS transition from where it is.
  */
 export default function Sheet({
   open,
@@ -21,27 +25,51 @@ export default function Sheet({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [shown, setShown] = useState(open);
+  if (open && !shown) setShown(true);
+  const last = useRef(children);
+  if (open) last.current = children;
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) {
-      d.showModal();
-      document.documentElement.classList.add("sheet-open");
-    } else if (!open && d.open) {
-      d.close();
-    }
-    if (!open) {
-      // Only unlock when no other sheet is still showing.
-      if (!document.querySelector("dialog.sheet[open]")) {
-        document.documentElement.classList.remove("sheet-open");
+    if (open) {
+      d.removeAttribute("data-closing");
+      // Paint it off-screen first, then slide. Starting the transition in the
+      // same frame as mounting the content loses its first half to that
+      // frame's work, and the panel jumps in from halfway.
+      if (!d.open) {
+        d.setAttribute("data-entering", "");
+        d.showModal();
       }
+      let id = requestAnimationFrame(() => {
+        id = requestAnimationFrame(() => d.removeAttribute("data-entering"));
+      });
+      return () => cancelAnimationFrame(id);
     }
+    if (!d.open) return;
+    d.removeAttribute("data-entering");
+    d.setAttribute("data-closing", "");
+    const panel = d.firstElementChild as HTMLElement;
+    let cancelled = false;
+    // No running transition (reduced motion) means this resolves at once.
+    Promise.all(panel.getAnimations().map((a) => a.finished)).then(
+      () => {
+        if (cancelled) return;
+        d.close();
+        d.removeAttribute("data-closing");
+        setShown(false);
+      },
+      () => {} // reversed by a reopen
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const panel =
     from === "bottom"
-      ? "absolute inset-x-0 bottom-0 max-h-[92dvh] rounded-t-[20px] sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(560px,calc(100%-48px))] sm:max-h-[88dvh] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[20px]"
+      ? "absolute inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px]"
       : from === "left"
         ? "absolute inset-y-0 left-0 w-[min(320px,86vw)]"
         : "absolute inset-y-0 right-0 w-[min(400px,92vw)]";
@@ -65,7 +93,7 @@ export default function Sheet({
         className={`sheet-panel flex flex-col overflow-hidden bg-white ${panel}`}
         data-from={from}
       >
-        {open ? children : null}
+        {shown ? last.current : null}
       </div>
     </dialog>
   );
