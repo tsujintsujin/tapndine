@@ -240,11 +240,13 @@ export default function MenuApp({ visitId, menu }: { visitId: string; menu: Menu
       />
 
       <main className={itemCount > 0 ? "pb-28" : "pb-16"}>
-        {category ? (
-          <CategoryView category={category} menu={menu} order={order} onDish={openDish} onAdd={addOne} onBack={() => closeParam("c")} />
-        ) : (
-          <HomeView menu={menu} order={order} onDish={openDish} onAdd={addOne} onCategory={openCategory} />
-        )}
+        <div key={category?.id ?? "home"} className="view-in">
+          {category ? (
+            <CategoryView category={category} menu={menu} order={order} onDish={openDish} onAdd={addOne} onBack={() => closeParam("c")} />
+          ) : (
+            <HomeView menu={menu} order={order} onDish={openDish} onAdd={addOne} onCategory={openCategory} />
+          )}
+        </div>
       </main>
 
       <AddedToast toast={toast} lifted={itemCount > 0} onDone={() => setToast(null)} />
@@ -737,14 +739,14 @@ function DishDetails({
 }) {
   return (
     <>
-      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-3">
+      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3">
         <h2 className="pt-1.5 font-display text-[26px] font-bold leading-tight">{dish.name}</h2>
         <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
           <CloseIcon width={20} height={20} />
         </button>
       </div>
 
-      <div className="overflow-y-auto overscroll-contain pb-[calc(24px+env(safe-area-inset-bottom))]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(24px+env(safe-area-inset-bottom))]">
         <DishImage dish={dish} eager className="mx-4 aspect-[4/3] rounded-2xl" />
 
         <div className="px-4">
