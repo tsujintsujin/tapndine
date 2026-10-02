@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #1f5c3f;
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  /* Horizontal rows still scroll by touch; the bar itself is clutter. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* <dialog> sheets fill the screen; the panel inside is what you see. */
+dialog.sheet {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+dialog.sheet::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+/* Opening motion answers the tap: sheets rise, the drawer slides in. */
+dialog.sheet[open] .sheet-panel {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@starting-style {
+  dialog.sheet[open] .sheet-panel[data-from="bottom"] {
+    transform: translateY(100%);
+  }
+  dialog.sheet[open] .sheet-panel[data-from="left"] {
+    transform: translateX(-100%);
+  }
+  dialog.sheet[open] .sheet-panel[data-from="right"] {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet[open] .sheet-panel {
+    transition: none;
+  }
+}
+
+/* The page behind an open sheet must not scroll (iOS ignores the dialog). */
+html.sheet-open,
+html.sheet-open body {
+  overflow: hidden;
+}
+
+/* The banig strip: a woven-mat diamond band, the one decorative device.
+   It marks where the dark stage ends and the menu begins. */
+.banig {
+  height: 14px;
+  background-color: #1f5c3f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F2B233'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%2310342A'/%3E%3C/svg%3E");
+  background-size: 14px 14px;
+  background-repeat: repeat-x;
+}
+
+/* The "Added to order" notice rises into place each time it is shown. */
+.toast:popover-open > div {
+  animation: toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast:popover-open > div {
+    animation: none;
+  }
+}
