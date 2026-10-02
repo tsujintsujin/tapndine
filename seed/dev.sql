@@ -7,7 +7,7 @@
 --   http://127.0.0.1:3300/t/h3nd6vya   -> not placed at a table yet
 
 INSERT INTO businesses (id, slug, name, created_at) VALUES
-  ('biz_hikay', 'hikay', 'Hikay', 1759104000000);
+  ('biz_hikay', 'hikay', 'Menu', 1759104000000);
 
 INSERT INTO tables (id, business_id, label, sort) VALUES
   ('tbl_hikay_1', 'biz_hikay', 'Table 1', 1),
