@@ -21,6 +21,16 @@ const config: Config = {
         leaf: { DEFAULT: "#1F5C3F", dark: "#174630", tint: "#E3EEE7" },
         mango: { DEFAULT: "#F2B233", soft: "#FCEFCB" },
         chili: "#C8331E",
+        // The homepage (app/page.tsx) has its own warm palette.
+        home: {
+          mist: "#DDE2E6",
+          cream: "#F4EACE",
+          shell: "#FFF9E7",
+          butter: "#FAD68A",
+          orange: "#F19A33",
+          sage: "#85A55E",
+          cocoa: "#3B2E25",
+        },
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
