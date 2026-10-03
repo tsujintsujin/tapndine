@@ -334,7 +334,11 @@ export default function MenuApp({
         )}
       </Header>
 
-      <main className="pb-[calc(112px+env(safe-area-inset-bottom))]">
+      {/* Room for the fixed bottom bar. On phones the page is laid out for the
+          screen without the address bar (100lvh) while the bar sits above the
+          address bar, so a short page ends that much under the bar and can't
+          scroll further: add the difference (0 on desktop). */}
+      <main className="pb-[calc(112px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)]">
         <div key={view} className="view-in">
           {view === "menu" ? (
             <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={addOne} />
