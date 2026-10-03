@@ -1,7 +1,8 @@
 import { db } from "./cf";
+import { randomId } from "./ids";
 
-/** A visit dies this long after its last activity. */
-export const VISIT_IDLE_MS = 30 * 60 * 1000;
+/** A visit link dies this long after it was opened. Activity does not extend it. */
+export const VISIT_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Testing switch: with TAPNDINE_VISITS_NEVER_EXPIRE=1 (set in
@@ -15,26 +16,38 @@ export type Visit = {
   tag_id: string;
   business_id: string;
   table_id: string | null;
+  /** NULL for a tag not placed at a table: that menu cannot send orders. */
+  sitting_id: string | null;
+  phone_id: string | null;
   expires_at: number;
 };
-
-/** 128 random bits, URL-safe: the random part of /m/<id>. Not guessable. */
-function newVisitId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
 
 /** Tag ids are what is written on the physical tag. Reject anything else early. */
 export const isTagId = (id: string) => /^[a-z0-9]{4,32}$/.test(id);
 export const isVisitId = (id: string) => /^[A-Za-z0-9_-]{22}$/.test(id);
+/** Phone ids come from our own cookie, which has the same shape as a visit id. */
+export const isPhoneId = isVisitId;
+
+/** The table's open sitting, opening one if the table has none. */
+async function openSitting(businessId: string, tableId: string, now: number): Promise<string> {
+  const d = db();
+  // The unique index on open sittings makes a second, simultaneous insert a no-op.
+  const [, found] = await d.batch([
+    d
+      .prepare("INSERT OR IGNORE INTO sittings (id, business_id, table_id, opened_at) VALUES (?, ?, ?, ?)")
+      .bind(randomId(), businessId, tableId, now),
+    d.prepare("SELECT id FROM sittings WHERE table_id = ? AND closed_at IS NULL").bind(tableId),
+  ]);
+  return (found.results as { id: string }[])[0].id;
+}
 
 /**
- * One tap: look the tag up and open a fresh visit for it.
+ * One tap: look the tag up and return the visit to send the phone to.
+ * The same phone tapping again at the same sitting gets its live link back,
+ * so it stays the same guest with the same orders. Otherwise a fresh link.
  * Returns null when the tag is not registered.
  */
-export async function startVisit(tagId: string): Promise<string | null> {
+export async function startVisit(tagId: string, phoneId: string): Promise<string | null> {
   if (!isTagId(tagId)) return null;
   const tag = await db()
     .prepare("SELECT id, business_id, table_id FROM tags WHERE id = ?")
@@ -43,31 +56,47 @@ export async function startVisit(tagId: string): Promise<string | null> {
   if (!tag) return null;
 
   const now = Date.now();
-  const id = newVisitId();
+  const sittingId = tag.table_id ? await openSitting(tag.business_id, tag.table_id, now) : null;
+
+  if (sittingId) {
+    const live = await db()
+      .prepare(
+        `SELECT id FROM visits
+         WHERE phone_id = ?1 AND sitting_id = ?2 AND (expires_at > ?3 OR ?4 = 1)
+         ORDER BY created_at DESC LIMIT 1`
+      )
+      .bind(phoneId, sittingId, now, neverExpire() ? 1 : 0)
+      .first<{ id: string }>();
+    if (live) return live.id;
+  }
+
+  const id = randomId();
   await db()
     .prepare(
-      `INSERT INTO visits (id, tag_id, business_id, table_id, created_at, last_seen_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO visits (id, tag_id, business_id, table_id, sitting_id, phone_id, created_at, last_seen_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(id, tag.id, tag.business_id, tag.table_id, now, now, now + VISIT_IDLE_MS)
+    .bind(id, tag.id, tag.business_id, tag.table_id, sittingId, phoneId, now, now, now + VISIT_MS)
     .run();
   return id;
 }
 
 /**
- * Activity on a visit: if it is still alive, push its expiry 30 minutes out
- * and return it. A dead or unknown visit returns null and stays dead - the
- * only way back in is another tap.
+ * The visit, if its link is still alive: not expired, and its table not
+ * cleared since. A dead or unknown visit returns null
+ * and stays dead: the only way back in is another tap.
  */
-export async function touchVisit(visitId: string): Promise<Visit | null> {
+export async function liveVisit(visitId: string): Promise<Visit | null> {
   if (!isVisitId(visitId)) return null;
   const now = Date.now();
   return db()
     .prepare(
-      `UPDATE visits SET last_seen_at = ?1, expires_at = ?2
-       WHERE id = ?3 AND (expires_at > ?1 OR ?4 = 1)
-       RETURNING id, tag_id, business_id, table_id, expires_at`
+      `UPDATE visits SET last_seen_at = ?1
+       WHERE id = ?2 AND (expires_at > ?1 OR ?3 = 1)
+         -- A cleared table ends its links, even with the testing switch on.
+         AND (sitting_id IS NULL OR sitting_id IN (SELECT id FROM sittings WHERE closed_at IS NULL))
+       RETURNING id, tag_id, business_id, table_id, sitting_id, phone_id, expires_at`
     )
-    .bind(now, now + VISIT_IDLE_MS, visitId, neverExpire() ? 1 : 0)
+    .bind(now, visitId, neverExpire() ? 1 : 0)
     .first<Visit>();
 }
