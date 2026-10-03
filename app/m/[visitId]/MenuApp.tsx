@@ -11,6 +11,7 @@ import Expired from "@/app/components/Expired";
 import {
   BagIcon,
   CheckIcon,
+  ClocheIcon,
   CloseIcon,
   HomeIcon,
   INGREDIENT_ICONS,
@@ -350,7 +351,14 @@ export default function MenuApp({
 
       <AddedToast toast={toast} onDone={() => setToast(null)} />
 
-      <BottomNav home={view === "home"} count={itemCount} total={orderTotal} onHome={goHome} onOrder={openOrder} />
+      <BottomNav
+        view={view}
+        count={itemCount}
+        total={orderTotal}
+        onHome={goHome}
+        onMenu={view === "menu" ? () => window.scrollTo({ top: 0, behavior: "smooth" }) : openMenu}
+        onOrder={openOrder}
+      />
 
       <Sheet open={!!dish} onClose={() => closeParam("d")} from="bottom" label={dish?.name ?? "Dish"}>
         {dish && (
@@ -1243,39 +1251,52 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Home on the left, the order on the right. It sits on a strip of the page
+ * Home on the left, the whole menu in the middle, the order on the right. It sits on a strip of the page
  * colour that fades in above it, so dishes scrolling past slip under the
  * fade instead of showing in pieces around the bar.
  * Once anything is in the order the right side grows into the running
  * total, so the customer always knows what they will pay.
  */
 function BottomNav({
-  home,
+  view,
   count,
   total,
   onHome,
+  onMenu,
   onOrder,
 }: {
-  home: boolean;
+  view: "home" | "menu";
   count: number;
   total: number;
   onHome: () => void;
+  onMenu: () => void;
   onOrder: () => void;
 }) {
+  const tab = (on: boolean) =>
+    `grid h-12 w-12 shrink-0 place-items-center rounded-full ${on ? "bg-white text-leaf" : "active:bg-white/15"}`;
   return (
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6"
     >
-      <div className="mx-auto flex h-[60px] max-w-md items-center justify-between gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
+      <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
         <button
           type="button"
           onClick={onHome}
           aria-label="Home"
-          aria-current={home ? "page" : undefined}
-          className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${home ? "bg-white text-leaf" : "active:bg-white/15"}`}
+          aria-current={view === "home" ? "page" : undefined}
+          className={tab(view === "home")}
         >
           <HomeIcon width={24} height={24} />
+        </button>
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="All menu"
+          aria-current={view === "menu" ? "page" : undefined}
+          className={tab(view === "menu")}
+        >
+          <ClocheIcon width={24} height={24} />
         </button>
         <button
           type="button"
@@ -1283,8 +1304,8 @@ function BottomNav({
           aria-label={count ? `My order, ${count} items, ${formatPrice(total)}` : "My order"}
           className={
             count
-              ? "flex h-12 min-w-0 items-center gap-2.5 rounded-full bg-white pl-1.5 pr-4 text-leaf active:bg-white/90"
-              : "grid h-12 w-12 place-items-center rounded-full active:bg-white/15"
+              ? "flex h-12 min-w-0 items-center gap-2.5 justify-self-end rounded-full bg-white pl-1.5 pr-4 text-leaf active:bg-white/90"
+              : "grid h-12 w-12 place-items-center justify-self-end rounded-full active:bg-white/15"
           }
         >
           {count ? (
