@@ -3,7 +3,7 @@ import { ChiliIcon, NoChiliIcon, PlateIcon } from "@/app/components/Icons";
 
 /**
  * A dish photo at a fixed aspect ratio, so the layout never jumps while it
- * loads. No photo yet shows a plain plate. Sold-out dishes are greyed with a
+ * loads. No photo yet shows a plain plate. Unavailable dishes are greyed with a
  * label, but stay tappable so the customer can still read about them.
  */
 export function DishImage({
@@ -39,7 +39,7 @@ export function DishImage({
       )}
       {!dish.available && (
         <span className="absolute left-2 top-2 rounded-full bg-ink/85 px-2.5 py-1 text-xs font-medium text-white">
-          Sold out
+          Not Available Today
         </span>
       )}
     </div>

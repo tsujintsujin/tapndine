@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Expired from "@/app/components/Expired";
 import { loadMenu } from "@/lib/menu";
 import { liveVisit } from "@/lib/visits";
@@ -6,6 +6,8 @@ import MenuApp from "./MenuApp";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
+// The menu's header is light, so the phone's status bar is too.
+export const viewport: Viewport = { themeColor: "#F5F6F2" };
 
 export default async function MenuPage({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = await params;
