@@ -18,6 +18,8 @@ export type Dish = {
   available: boolean;
   featured: boolean;
   bestSeller: boolean;
+  /** Shown under "New on the menu" on the menu home. */
+  isNew: boolean;
   ingredients: Ingredient[];
 };
 
@@ -46,6 +48,7 @@ type DishRow = {
   available: number;
   featured: number;
   best_seller: number;
+  is_new: number;
 };
 
 /** Everything the menu screens need, for the business the visit belongs to. */
@@ -60,7 +63,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url,
-                spice_level, serves_min, serves_max, available, featured, best_seller
+                spice_level, serves_min, serves_max, available, featured, best_seller, is_new
          FROM dishes WHERE business_id = ? ORDER BY sort, name`
       )
       .bind(visit.business_id),
@@ -100,6 +103,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       available: r.available === 1,
       featured: r.featured === 1,
       bestSeller: r.best_seller === 1,
+      isNew: r.is_new === 1,
       ingredients: [],
     };
     dishOrder.push(r.id);

@@ -230,6 +230,9 @@ UPDATE dishes SET serves_min = 2, serves_max = 2 WHERE id IN ('d_adobongpusit', 
 UPDATE dishes SET serves_min = 1, serves_max = 2 WHERE id IN ('d_chickenadobo', 'd_tilapia');
 -- Chicken Inasal and every drink keep the default: 1 person.
 
+-- "New on the menu" on the menu home.
+UPDATE dishes SET is_new = 1 WHERE id IN ('d_crispypata', 'd_ginataanghipon', 'd_mangoshake');
+
 -- Staff logins for local testing only (test passwords, not used anywhere real).
 -- Log in at http://127.0.0.1:3300/tapndine/staff/login
 --   manager  /  menu-manager-1   (sees Tables and Staff)

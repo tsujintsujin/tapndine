@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
-import type { Category, Dish, Menu } from "@/lib/menu";
+import type { Dish, Menu } from "@/lib/menu";
 import type { GuestOrders } from "@/lib/orders";
 import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
@@ -11,8 +11,6 @@ import Expired from "@/app/components/Expired";
 import {
   BagIcon,
   CheckIcon,
-  ChevronLeft,
-  ChevronRight,
   CloseIcon,
   HomeIcon,
   INGREDIENT_ICONS,
@@ -21,14 +19,15 @@ import {
   MinusIcon,
   PeopleIcon,
   PlusIcon,
+  SearchIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
 import { DishImage, SpiceMeter } from "./parts";
 
 // ---------------------------------------------------------------------------
-// Where the customer is lives in the URL (?c= category, ?d= dish, ?o= order,
-// ?nav= menu list), pushed with history.pushState so the phone's Back button
-// closes a sheet or leaves a category instead of leaving the menu.
+// Where the customer is lives in the URL (?v=menu the whole menu, ?d= dish,
+// ?o= order), pushed with history.pushState so the phone's Back button
+// closes a sheet or goes back home instead of leaving the menu.
 // `pushed` counts the entries this page added, so a close button knows
 // whether Back is safe or would leave the page.
 let pushed = 0;
@@ -197,16 +196,17 @@ export default function MenuApp({
   canSend: boolean;
 }) {
   const params = useSearchParams();
-  const categoryId = params.get("c");
+  const view = params.get("v") === "menu" ? "menu" : "home";
   const dishId = params.get("d");
   const orderOpen = params.get("o") === "1";
-  const navOpen = params.get("nav") === "1";
 
   const { expired, expire } = useVisitAlive(visitId, expiresAt);
   const { order, setQty, clear } = useOrder(visitId);
   const { sent, setSent, load: loadSent } = useSent(visitId, expire);
   const { nick, save: saveNick } = useNickname();
   const [nickOpen, setNickOpen] = useState(false);
+  // The category tag picked on the whole menu; null is All.
+  const [categoryId, setCategoryId] = useState<string | null>(null);
 
   // First menu on this phone: ask what to call them. Only where there is a
   // waiter to send to.
@@ -227,20 +227,19 @@ export default function MenuApp({
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const category = categoryId ? menu.categories.find((c) => c.id === categoryId) : undefined;
   const dish = dishId ? menu.dishes[dishId] : undefined;
 
   // Leaving home remembers where you were; coming back puts you there again.
-  // Recorded while home is on screen, because by the time a category renders
+  // Recorded while home is on screen, because by the time the menu renders
   // the page has already been re-laid out and scrollY no longer means home.
   const homeScroll = useRef(0);
   const lastView = useRef<string | null>(null);
-  const currentView = useRef<string | null>(null);
-  currentView.current = category?.id ?? null;
+  const currentView = useRef<string>(view);
+  currentView.current = view;
   useEffect(() => {
     const onScroll = () => {
       // Both must say home: mid-switch, the scroll events are the new view's.
-      if (currentView.current === null && lastView.current === null) {
+      if (currentView.current === "home" && lastView.current === "home") {
         homeScroll.current = window.scrollY;
       }
     };
@@ -248,11 +247,10 @@ export default function MenuApp({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   useLayoutEffect(() => {
-    const view = category?.id ?? null;
     if (view === lastView.current) return;
-    window.scrollTo(0, view === null ? homeScroll.current : 0);
+    window.scrollTo(0, view === "home" ? homeScroll.current : 0);
     lastView.current = view;
-  }, [category?.id]);
+  }, [view]);
 
   const [toast, setToast] = useState<Toast | null>(null);
   const addOne = (id: string) => {
@@ -296,10 +294,19 @@ export default function MenuApp({
     }
   };
   const openDish = (id: string) => setParams((p) => p.set("d", id), "push");
-  const openCategory = (id: string) => setParams((p) => p.set("c", id), "push");
+  const openOrder = () => setParams((p) => p.set("o", "1"), "push");
+  const openMenu = () => {
+    setCategoryId(null);
+    setParams((p) => p.set("v", "menu"), "push");
+  };
   const goHome = () => {
-    if (category) closeParam("c");
+    if (view === "menu") closeParam("v");
     else window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const pickCategory = (id: string | null) => {
+    setCategoryId(id);
+    // The tags stay put at the top; the dishes start again from the first.
+    window.scrollTo(0, 0);
   };
 
   const itemCount = Object.values(order).reduce((a, b) => a + b, 0);
@@ -313,45 +320,33 @@ export default function MenuApp({
   return (
     <>
       <Header
-        businessName={menu.businessName}
-        tableLabel={menu.tableLabel}
+        nickname={nick || ""}
+        place={menu.tableLabel ?? menu.businessName}
         itemCount={itemCount}
-        onMenu={() => setParams((p) => p.set("nav", "1"), "push")}
-        onHome={goHome}
-        onOrder={() => setParams((p) => p.set("o", "1"), "push")}
-      />
+        onNickname={canSend ? () => setNickOpen(true) : undefined}
+        onOrder={openOrder}
+      >
+        {view === "menu" && (
+          <>
+            <DishSearch menu={menu} onDish={openDish} />
+            <CategoryTags menu={menu} current={categoryId} onPick={pickCategory} />
+          </>
+        )}
+      </Header>
 
-      <main className={itemCount > 0 ? "pb-28" : "pb-16"}>
-        <div key={category?.id ?? "home"} className="view-in">
-          {category ? (
-            <CategoryView category={category} menu={menu} order={order} onDish={openDish} onAdd={addOne} onBack={() => closeParam("c")} />
+      <main className="pb-[calc(104px+env(safe-area-inset-bottom))]">
+        <div key={view} className="view-in">
+          {view === "menu" ? (
+            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={addOne} />
           ) : (
-            <HomeView menu={menu} order={order} onDish={openDish} onAdd={addOne} onCategory={openCategory} />
+            <HomeView menu={menu} onDish={openDish} onAdd={addOne} onMenu={openMenu} />
           )}
         </div>
       </main>
 
-      <AddedToast toast={toast} lifted={itemCount > 0} onDone={() => setToast(null)} />
+      <AddedToast toast={toast} onDone={() => setToast(null)} />
 
-      {itemCount > 0 && (
-        <OrderBar count={itemCount} total={orderTotal} onOpen={() => setParams((p) => p.set("o", "1"), "push")} />
-      )}
-
-      <Sheet open={navOpen} onClose={() => closeParam("nav")} from="left" label="Menu">
-        <MenuList
-          menu={menu}
-          current={category?.id ?? null}
-          onClose={() => closeParam("nav")}
-          onPick={(id) =>
-            // Swap the menu list for the choice, so Back skips the list.
-            setParams((p) => {
-              p.delete("nav");
-              if (id) p.set("c", id);
-              else p.delete("c");
-            }, "replace")
-          }
-        />
-      </Sheet>
+      <BottomNav home={view === "home"} count={itemCount} total={orderTotal} onHome={goHome} onOrder={openOrder} />
 
       <Sheet open={!!dish} onClose={() => closeParam("d")} from="bottom" label={dish?.name ?? "Dish"}>
         {dish && (
@@ -466,209 +461,270 @@ function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: str
 
 // ---------------------------------------------------------------------------
 
+/**
+ * "Hi Jecery!" and where they are sitting, with the order button opposite.
+ * Stays at the top while the page scrolls; on the whole menu it also holds
+ * the search and the category tags (`children`).
+ */
 function Header({
-  businessName,
-  tableLabel,
+  nickname,
+  place,
   itemCount,
-  onMenu,
-  onHome,
+  onNickname,
   onOrder,
+  children,
 }: {
-  businessName: string;
-  tableLabel: string | null;
+  nickname: string;
+  place: string;
   itemCount: number;
-  onMenu: () => void;
-  onHome: () => void;
+  /** Missing where there is no waiter, so no name to set. */
+  onNickname?: () => void;
   onOrder: () => void;
+  children?: React.ReactNode;
 }) {
+  const hello = (
+    <>
+      <span className="block truncate font-display text-[26px] font-bold leading-tight">Hi {nickname || "there"}!</span>
+      <span className="block truncate text-[14px] leading-tight text-muted">{place}</span>
+    </>
+  );
   return (
-    <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
-      <div className="mx-auto grid h-14 max-w-3xl grid-cols-[1fr_auto_1fr] items-center px-2">
-        <button
-          type="button"
-          onClick={onMenu}
-          className="flex h-11 items-center gap-1.5 justify-self-start rounded-lg px-2 text-[15px] font-medium active:bg-white/10"
-        >
-          <MenuIcon width={22} height={22} />
-          Menu
-        </button>
-
-        <button
-          type="button"
-          onClick={onHome}
-          className="flex min-w-0 max-w-[40vw] flex-col items-center rounded-lg px-1 py-1 active:bg-white/10"
-        >
-          <span className="truncate font-display text-lg font-bold leading-tight">{businessName}</span>
-          {tableLabel && <span className="text-xs leading-tight text-white/60">{tableLabel}</span>}
-        </button>
-
-        <button
-          type="button"
-          onClick={onOrder}
-          aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-          className="flex h-11 items-center gap-3 justify-self-end rounded-lg px-2 text-[15px] font-medium active:bg-white/10"
-        >
-          <span className="relative">
+    <header className="sticky top-0 z-20 bg-paper/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto max-w-3xl px-4">
+        <div className="flex h-[72px] items-center justify-between gap-3">
+          {onNickname ? (
+            <button type="button" onClick={onNickname} className="-mx-2 min-w-0 rounded-xl px-2 py-1 text-left active:bg-wash">
+              {hello}
+              <span className="sr-only">Change your nickname</span>
+            </button>
+          ) : (
+            <div className="min-w-0">{hello}</div>
+          )}
+          <button
+            type="button"
+            onClick={onOrder}
+            aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
+            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(31_92_63/0.3)] active:bg-leaf-dark"
+          >
             <BagIcon width={22} height={22} />
-            {itemCount > 0 && (
-              <span className="absolute -right-2 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-mango px-1 text-[11px] font-bold leading-none text-forest">
-                {itemCount}
-              </span>
-            )}
-          </span>
-          <span className="hidden xs:inline">My order</span>
-        </button>
+            {itemCount > 0 && <CountBadge count={itemCount} />}
+          </button>
+        </div>
+        {children && <div className="pb-3">{children}</div>}
       </div>
-      <div className="banig" aria-hidden="true" />
     </header>
+  );
+}
+
+function CountBadge({ count }: { count: number }) {
+  return (
+    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold leading-none text-forest ring-2 ring-paper">
+      {count}
+    </span>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-function HomeView({
-  menu,
-  order,
-  onDish,
-  onAdd,
-  onCategory,
-}: {
-  menu: Menu;
-  order: Order;
-  onDish: (id: string) => void;
-  onAdd: (id: string) => void;
-  onCategory: (id: string) => void;
-}) {
-  const all = menu.dishOrder.map((id) => menu.dishes[id]);
-  const featured = all.find((d) => d.featured) ?? all[0];
-  const best = all.filter((d) => d.bestSeller && d.id !== featured?.id).slice(0, 3);
+/** Accents and case don't matter: "sinigang" finds "Sinigang", "creme" finds "crème". */
+const fold = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+
+/**
+ * Type and the matching dishes drop down under the box; picking one opens it.
+ * Names that start with what was typed come first, then names that contain
+ * it, then dishes whose one-line description does.
+ */
+function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const needle = fold(q.trim());
+  const matches = needle
+    ? menu.dishOrder
+        .map((id) => menu.dishes[id])
+        .map((d) => {
+          const name = fold(d.name);
+          const rank = name.startsWith(needle) ? 0 : name.includes(needle) ? 1 : fold(d.shortDescription).includes(needle) ? 2 : 3;
+          return { d, rank };
+        })
+        .filter((m) => m.rank < 3)
+        .sort((a, b) => a.rank - b.rank)
+        .slice(0, 6)
+        .map((m) => m.d)
+    : [];
+  const show = open && needle !== "";
+
+  const pick = (d: Dish) => {
+    // Blur first: the dish sheet hands focus back on close, and a focused box
+    // would bring the keyboard and the list straight back up.
+    inputRef.current?.blur();
+    setOpen(false);
+    onDish(d.id);
+  };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {featured && (
-        <section className="px-4 pt-5" aria-label="Featured dish">
-          <DishCard
-            dish={featured}
-            size="hero"
-            pick={`${menu.businessName}'s pick`}
-            inOrder={order[featured.id] ?? 0}
-            onOpen={() => onDish(featured.id)}
-            onAdd={() => onAdd(featured.id)}
-          />
-        </section>
+    <div className="relative">
+      <SearchIcon width={20} height={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        ref={inputRef}
+        type="search"
+        role="combobox"
+        aria-label="Search the menu"
+        aria-expanded={show}
+        aria-controls="dish-suggest"
+        aria-autocomplete="list"
+        aria-activedescendant={show && matches[active] ? `sug-${matches[active].id}` : undefined}
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => Math.min(a + 1, matches.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => Math.max(a - 1, 0));
+          } else if (e.key === "Enter" && show && matches[active]) {
+            e.preventDefault();
+            pick(matches[active]);
+          } else if (e.key === "Escape") {
+            if (q) setQ("");
+            else inputRef.current?.blur();
+          }
+        }}
+        placeholder="Search dishes"
+        enterKeyHint="search"
+        autoComplete="off"
+        className="h-12 w-full rounded-full border border-line bg-white pl-11 pr-11 text-[16px] outline-none placeholder:text-muted/80 focus:border-leaf focus:ring-2 focus:ring-leaf/20 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {q && (
+        <button
+          type="button"
+          aria-label="Clear search"
+          // Keep the box focused, so clearing doesn't close the keyboard.
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setQ("");
+            inputRef.current?.focus();
+          }}
+          className="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full text-muted active:bg-wash"
+        >
+          <CloseIcon width={18} height={18} />
+        </button>
       )}
-
-      {best.length > 0 && (
-        <CardRow
-          title="Best sellers"
-          rowId="best"
-          ids={best.map((d) => d.id)}
-          menu={menu}
-          order={order}
-          onDish={onDish}
-          onAdd={onAdd}
-        />
+      {show && (
+        // preventDefault keeps focus in the box, so its blur doesn't close
+        // the list before the tap on a suggestion lands.
+        <div
+          onPointerDown={(e) => e.preventDefault()}
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-[60dvh] overflow-y-auto rounded-2xl bg-white p-1.5 shadow-[0_14px_36px_rgb(16_52_42/0.2)] ring-1 ring-line"
+        >
+          {matches.length === 0 ? (
+            <p className="px-3 py-3 text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;.</p>
+          ) : (
+            <ul id="dish-suggest" role="listbox" aria-label="Matching dishes">
+              {matches.map((d, i) => (
+                <li
+                  key={d.id}
+                  id={`sug-${d.id}`}
+                  role="option"
+                  aria-selected={i === active}
+                  onClick={() => pick(d)}
+                  onPointerMove={() => setActive(i)}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl p-2 ${i === active ? "bg-leaf-tint" : ""}`}
+                >
+                  <span className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-wash">
+                    {d.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={d.imageUrl} alt="" className={`h-full w-full object-cover ${d.available ? "" : "grayscale"}`} />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate text-[15px] font-semibold">{d.name}</span>
+                    <span className="block truncate text-[13px] text-muted">
+                      {d.available ? d.shortDescription : "Not Available Today"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[15px] font-semibold text-leaf">{formatPrice(d.priceCents)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
-
-      {menu.categories.map((c) => (
-        <CardRow
-          key={c.id}
-          title={c.name}
-          rowId={c.id}
-          ids={c.dishIds}
-          menu={menu}
-          order={order}
-          onDish={onDish}
-          onAdd={onAdd}
-          onSeeAll={() => onCategory(c.id)}
-        />
-      ))}
     </div>
   );
 }
 
-/**
- * A titled sideways row of dish cards. Phones swipe it; a mouse has no
- * sideways wheel and the scrollbar is hidden, so mouse users get arrows.
- */
-function CardRow({
-  title,
-  rowId,
-  ids,
+/** All, then each category. Picking one swaps the dishes below in place. */
+function CategoryTags({
   menu,
-  order,
+  current,
+  onPick,
+}: {
+  menu: Menu;
+  current: string | null;
+  onPick: (id: string | null) => void;
+}) {
+  const tags = [{ id: null, name: "All" }, ...menu.categories];
+  return (
+    <div role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-3 flex gap-1 overflow-x-auto px-4">
+      {tags.map((t) => {
+        const on = t.id === current;
+        return (
+          <button
+            key={t.id ?? "all"}
+            type="button"
+            aria-pressed={on}
+            onClick={(e) => {
+              onPick(t.id);
+              e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+            }}
+            className={`h-10 shrink-0 rounded-xl px-4 text-[15px] font-semibold ${
+              on ? "bg-leaf text-white" : "text-muted active:bg-wash"
+            }`}
+          >
+            {t.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** Every dish, or one category's, two to a row. */
+function WholeMenu({
+  menu,
+  categoryId,
   onDish,
   onAdd,
-  onSeeAll,
 }: {
-  title: string;
-  rowId: string;
-  ids: string[];
   menu: Menu;
-  order: Order;
+  categoryId: string | null;
   onDish: (id: string) => void;
   onAdd: (id: string) => void;
-  onSeeAll?: () => void;
 }) {
-  const titleId = `row-${rowId}`;
-  const listRef = useRef<HTMLUListElement>(null);
-  const [edges, setEdges] = useState({ start: true, end: false });
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const update = () =>
-      setEdges({
-        start: el.scrollLeft <= 4,
-        end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4,
-      });
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
-  const nudge = (dir: 1 | -1) => {
-    const el = listRef.current;
-    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
-  };
-  const arrow =
-    "hidden h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink disabled:opacity-30 [@media(hover:hover)_and_(pointer:fine)]:grid enabled:hover:border-ink";
-
+  const category = categoryId ? menu.categories.find((c) => c.id === categoryId) : undefined;
+  const ids = category ? category.dishIds : menu.dishOrder;
   return (
-    <section className="mt-9" aria-labelledby={titleId}>
-      <div className="flex items-center justify-between gap-2 px-4">
-        <h2 id={titleId} className="font-display text-2xl font-bold">
-          {title}
-        </h2>
-        <div className="flex items-center gap-1.5">
-          {onSeeAll && (
-            <button type="button" onClick={onSeeAll} className="rounded-lg px-2 py-2 text-[15px] font-semibold text-leaf active:bg-leaf-tint">
-              See all {ids.length}
-            </button>
-          )}
-          <button type="button" className={arrow} onClick={() => nudge(-1)} disabled={edges.start} aria-label={`Scroll ${title} left`}>
-            <ChevronLeft width={18} height={18} />
-          </button>
-          <button type="button" className={arrow} onClick={() => nudge(1)} disabled={edges.end} aria-label={`Scroll ${title} right`}>
-            <ChevronRight width={18} height={18} />
-          </button>
-        </div>
-      </div>
-      {/* py leaves room for the card shadow, which overflow would clip. */}
-      <ul ref={listRef} className="no-scrollbar flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto scroll-px-4 px-4 pb-6 pt-3">
+    <section className="mx-auto max-w-3xl px-4 pt-2" aria-label={category?.name ?? "All dishes"}>
+      <ul key={categoryId ?? "all"} className="view-in grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3">
         {ids.map((id) => (
-          <li key={id} className="w-[76%] min-w-[236px] max-w-[300px] shrink-0 snap-start">
-            <DishCard
-              dish={menu.dishes[id]}
-              size="row"
-              inOrder={order[id] ?? 0}
-              onOpen={() => onDish(id)}
-              onAdd={() => onAdd(id)}
-            />
+          <li key={id}>
+            <GridCard dish={menu.dishes[id]} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
           </li>
         ))}
       </ul>
@@ -676,161 +732,217 @@ function CardRow({
   );
 }
 
-// ---------------------------------------------------------------------------
-
-const CARD = {
-  hero: {
-    radius: "rounded-[28px]",
-    pad: "px-5",
-    name: "text-[32px] xs:text-[36px] leading-[1.05]",
-    desc: "text-[15px] line-clamp-3",
-    badge: "h-9 px-3.5 text-sm",
-    button: "h-12 text-[16px]",
-    bottom: "px-5 pb-5",
-  },
-  row: {
-    radius: "rounded-[24px]",
-    pad: "px-4",
-    name: "text-[22px] leading-tight",
-    desc: "text-[14px] line-clamp-3",
-    badge: "h-8 px-3 text-[13px]",
-    button: "h-11 text-[15px]",
-    bottom: "px-4 pb-4",
-  },
-  grid: {
-    radius: "rounded-[20px]",
-    pad: "px-3",
-    name: "text-[17px] leading-tight",
-    desc: "text-[13px] line-clamp-2",
-    badge: "h-7 px-2.5 text-[12px]",
-    button: "h-10 text-[14px]",
-    bottom: "px-3 pb-3",
-  },
-} as const;
-
 /**
- * Every dish on the menu is one of these: the photo, then the same photo
- * blurred and darkened underneath so the card takes that dish's colours, with
- * the name, description, serving badge and Add to order on it.
- * Tapping the photo or name opens the full details; the button adds directly.
+ * The photo on a pale tile with the add button on its corner, then the name,
+ * price and how many it feeds. The photo and name open the details.
  */
-function DishCard({
-  dish,
-  size,
-  inOrder,
-  pick,
-  onOpen,
-  onAdd,
-}: {
-  dish: Dish;
-  size: keyof typeof CARD;
-  inOrder: number;
-  /** The featured dish's extra badge. */
-  pick?: string;
-  onOpen: () => void;
-  onAdd: () => void;
-}) {
-  const s = CARD[size];
-
+function GridCard({ dish, onOpen, onAdd }: { dish: Dish; onOpen: () => void; onAdd: () => void }) {
   return (
-    <article
-      className={`relative isolate flex h-full flex-col overflow-hidden bg-[#2a2f26] text-white shadow-[0_10px_28px_rgb(20_28_22/0.22)] ${s.radius}`}
-    >
-      {/* The blurred continuation of the photo. object-bottom so the colours
-          nearest the text are the ones at the bottom edge of the photo.
-          ponytail: a live CSS blur per card; if cheap phones stutter, swap in
-          a tiny pre-shrunk copy of each photo, which blurs for free. */}
-      {dish.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={dish.imageUrl}
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-          className={`absolute inset-0 -z-20 h-full w-full scale-125 object-cover object-bottom blur-2xl saturate-150 ${dish.available ? "" : "grayscale"}`}
-        />
-      )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/0 via-black/40 to-black/75" aria-hidden="true" />
-
-      <button type="button" onClick={onOpen} className="block text-left">
-        <DishImage
-          dish={dish}
-          eager={size === "hero"}
-          className={`${size === "hero" ? "aspect-[4/3] sm:aspect-[16/9]" : "aspect-[4/3]"} [-webkit-mask-image:linear-gradient(to_bottom,black_62%,transparent)] [mask-image:linear-gradient(to_bottom,black_62%,transparent)]`}
-        />
-        <div className={`relative -mt-6 ${s.pad}`}>
-          <h3 className={`font-display font-bold ${s.name}`}>{dish.name}</h3>
-          <p className={`mt-1.5 text-white/80 ${s.desc}`}>{dish.description}</p>
-        </div>
-      </button>
-
-      <div className={`mt-auto pt-3 ${s.bottom}`}>
-        <div className="flex flex-wrap gap-1.5">
-          {pick && (
-            <span className={`inline-flex items-center rounded-full bg-mango font-bold text-forest ${s.badge}`}>{pick}</span>
-          )}
-          <span className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 font-medium backdrop-blur ${s.badge}`}>
-            <PeopleIcon width={16} height={16} />
-            {servesLabel(dish.servesMin, dish.servesMax)}
-          </span>
-        </div>
-        <button
-          type="button"
-          disabled={!dish.available}
-          onClick={onAdd}
-          className={`mt-3 flex w-full items-center justify-center rounded-full bg-white font-semibold text-ink active:bg-white/85 disabled:bg-white/20 disabled:text-white/70 ${s.button}`}
-        >
-          {dish.available ? "Add to order" : "Sold out"}
+    <article className="flex h-full flex-col">
+      <div className="relative">
+        <button type="button" onClick={onOpen} aria-label={dish.name} className="block w-full rounded-[22px] bg-leaf-tint p-2">
+          <DishImage dish={dish} className="aspect-square rounded-2xl" />
         </button>
+        {dish.isNew && dish.available && (
+          <span className="pointer-events-none absolute left-3.5 top-3.5 rounded-full bg-mango px-2.5 py-1 text-[12px] font-bold leading-none text-forest">
+            New
+          </span>
+        )}
+        {dish.available && (
+          <button
+            type="button"
+            onClick={onAdd}
+            aria-label={`Add ${dish.name} to order`}
+            className="absolute -bottom-3 right-2 grid h-11 w-11 place-items-center rounded-full bg-leaf text-white ring-4 ring-paper active:bg-leaf-dark"
+          >
+            <PlusIcon width={22} height={22} strokeWidth={2.4} />
+          </button>
+        )}
       </div>
+      <button type="button" onClick={onOpen} tabIndex={-1} className="mt-4 block flex-1 text-left">
+        <h3 className="font-display text-[17px] font-bold leading-tight">{dish.name}</h3>
+      </button>
+      <p className="mt-1 flex items-baseline justify-between gap-2">
+        <span className="text-[16px] font-semibold text-leaf">{formatPrice(dish.priceCents)}</span>
+        <span className="flex items-center gap-1 text-[13px] text-muted">
+          <PeopleIcon width={15} height={15} />
+          {servesLabel(dish.servesMin, dish.servesMax).replace(/ (people|person)$/, "")}
+        </span>
+      </p>
     </article>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-function CategoryView({
-  category,
+/**
+ * The landing page: the featured dish big, then three featured dishes, three
+ * new ones, and the way into the whole menu.
+ */
+function HomeView({
   menu,
-  order,
   onDish,
   onAdd,
-  onBack,
+  onMenu,
 }: {
-  category: Category;
   menu: Menu;
-  order: Order;
   onDish: (id: string) => void;
   onAdd: (id: string) => void;
-  onBack: () => void;
+  onMenu: () => void;
 }) {
+  const all = menu.dishOrder.map((id) => menu.dishes[id]);
+  const hero = all.find((d) => d.featured) ?? all[0];
+  const featured = all.filter((d) => d.bestSeller && d.id !== hero?.id).slice(0, 3);
+  const fresh = all.filter((d) => d.isNew && d.id !== hero?.id).slice(0, 3);
+
   return (
-    <section className="mx-auto max-w-3xl px-4 pt-2" aria-labelledby="cat-title">
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ml-2 flex h-11 items-center gap-0.5 rounded-lg pl-1 pr-3 text-[15px] font-semibold text-leaf active:bg-leaf-tint"
-      >
-        <ChevronLeft width={20} height={20} />
-        Home
+    <div className="mx-auto max-w-3xl">
+      {hero && <Hero dish={hero} onOpen={() => onDish(hero.id)} onAdd={() => onAdd(hero.id)} onMenu={onMenu} />}
+
+      {featured.length > 0 && (
+        <MiniRow title="Featured dishes" rowId="featured" dishes={featured} onDish={onDish} onAdd={onAdd} />
+      )}
+      {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
+
+      <div className="mt-10 px-4">
+        <button
+          type="button"
+          onClick={onMenu}
+          className="flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-forest text-white active:bg-forest-soft"
+        >
+          <MenuIcon width={22} height={22} />
+          <span className="font-display text-[19px] font-bold">View whole menu</span>
+          <span className="text-[14px] text-white/60">{all.length} dishes</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The dish name over two lines, the second in green: "Kare-" / "Kare". */
+function splitName(name: string): [string, string] {
+  const m = name.match(/^(\S+?-|\S+\s)(.+)$/);
+  return m ? [m[1].trim(), m[2]] : [name, ""];
+}
+
+function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void; onAdd: () => void; onMenu: () => void }) {
+  const [first, rest] = splitName(dish.name);
+  return (
+    <section className="px-4 pt-3" aria-labelledby="hero-name">
+      <div className="relative pr-[100px]">
+        <p className="text-[15px] font-semibold text-leaf">Today&apos;s pick</p>
+        <h1 id="hero-name" className="mt-1 font-display text-[clamp(38px,12vw,56px)] font-bold leading-[0.92] tracking-[-0.02em] [overflow-wrap:anywhere]">
+          <span className="block">{first}</span>
+          {rest && <span className="block text-leaf">{rest}</span>}
+        </h1>
+        <p className="mt-3 text-[16px] text-muted">{dish.shortDescription}</p>
+
+        {/* The price stamp, tilted like a sticker on the menu board. */}
+        <div className="absolute right-0 top-1 grid h-[88px] w-[88px] -rotate-[8deg] place-items-center rounded-full bg-forest text-white shadow-[0_8px_20px_rgb(16_52_42/0.3)]">
+          <div className="grid h-[76px] w-[76px] place-content-center rounded-full border-[1.5px] border-dashed border-mango/80 text-center">
+            <span className="text-[12px] leading-none text-white/70">Price</span>
+            <span className="mt-0.5 font-display text-[20px] font-bold leading-tight">{formatPrice(dish.priceCents)}</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="relative mt-5 block w-full">
+        <DishImage dish={dish} eager className="aspect-[4/3] rounded-[28px] shadow-[0_16px_36px_rgb(20_28_22/0.22)]" />
+        <span className="absolute bottom-3 left-3 flex h-9 items-center gap-1.5 rounded-full bg-white/90 px-3 text-[14px] font-medium text-ink backdrop-blur">
+          <PeopleIcon width={18} height={18} />
+          {servesLabel(dish.servesMin, dish.servesMax)}
+        </span>
       </button>
-      <h1 id="cat-title" className="mt-1 font-display text-[40px] font-bold leading-none">
-        {category.name}
-      </h1>
-      <p className="mt-2 text-[15px] text-muted">
-        {category.dishIds.length} {category.dishIds.length === 1 ? "item" : "items"}
-      </p>
-      <ul className="mt-5 grid grid-cols-2 items-stretch gap-3">
-        {category.dishIds.map((id) => (
-          <li key={id}>
-            <DishCard
-              dish={menu.dishes[id]}
-              size="grid"
-              inOrder={order[id] ?? 0}
-              onOpen={() => onDish(id)}
-              onAdd={() => onAdd(id)}
-            />
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          disabled={!dish.available}
+          onClick={onAdd}
+          className="flex h-[52px] items-center justify-center gap-2 rounded-full bg-leaf text-[16px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-[14px] disabled:text-muted"
+        >
+          {dish.available ? (
+            <>
+              <PlusIcon width={20} height={20} strokeWidth={2.2} />
+              Add to order
+            </>
+          ) : (
+            "Not Available Today"
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onMenu}
+          className="flex h-[52px] items-center justify-center gap-2 rounded-full border-2 border-leaf text-[16px] font-semibold text-leaf active:bg-leaf-tint"
+        >
+          <MenuIcon width={20} height={20} />
+          Menu
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** The heading between two mango diamonds, the banig's motif. */
+function SectionTitle({ id, children }: { id: string; children: React.ReactNode }) {
+  const diamond = <span aria-hidden="true" className="h-2 w-2 shrink-0 rotate-45 bg-mango" />;
+  return (
+    <h2 id={id} className="flex items-center justify-center gap-3 font-display text-[24px] font-bold">
+      {diamond}
+      {children}
+      {diamond}
+    </h2>
+  );
+}
+
+const MINI_TINTS = ["bg-leaf-tint", "bg-mango-soft", "bg-leaf-tint"];
+
+/** Three dishes side by side on tinted tiles, each with its price stamp. */
+function MiniRow({
+  title,
+  rowId,
+  dishes,
+  onDish,
+  onAdd,
+}: {
+  title: string;
+  rowId: string;
+  dishes: Dish[];
+  onDish: (id: string) => void;
+  onAdd: (id: string) => void;
+}) {
+  const titleId = `row-${rowId}`;
+  return (
+    <section className="mt-10 px-4" aria-labelledby={titleId}>
+      <SectionTitle id={titleId}>{title}</SectionTitle>
+      <ul className="mt-4 grid grid-cols-3 gap-2.5">
+        {dishes.map((d, i) => (
+          <li key={d.id} className={`flex flex-col rounded-[20px] p-1.5 pb-2 ${MINI_TINTS[i % MINI_TINTS.length]}`}>
+            <button type="button" onClick={() => onDish(d.id)} className="relative block text-center">
+              <DishImage dish={d} className="aspect-square rounded-[14px]" />
+              <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(16_52_42/0.18)]">
+                {formatPrice(d.priceCents)}
+              </span>
+              <span className="mt-2 line-clamp-2 block min-h-[2.5em] px-0.5 font-display text-[14px] font-bold leading-[1.25]">
+                {d.name}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={!d.available}
+              onClick={() => onAdd(d.id)}
+              aria-label={d.available ? `Add ${d.name} to order` : undefined}
+              className="mt-2 flex min-h-10 items-center justify-center gap-1 rounded-full bg-leaf px-1 text-[14px] font-semibold text-white active:bg-leaf-dark disabled:bg-white/70 disabled:text-[11px] disabled:leading-tight disabled:text-muted"
+            >
+              {d.available ? (
+                <>
+                  <PlusIcon width={16} height={16} strokeWidth={2.4} />
+                  Add
+                </>
+              ) : (
+                "Not Available Today"
+              )}
+            </button>
           </li>
         ))}
       </ul>
@@ -840,7 +952,7 @@ function CategoryView({
 
 // ---------------------------------------------------------------------------
 
-/** Title bar shared by the Menu list and My order: forest, like the header. */
+/** My order's title bar, forest with the banig strip under it. */
 function PanelTitle({ title, onClose, closeLabel }: { title: string; onClose: () => void; closeLabel: string }) {
   return (
     <div className="shrink-0 bg-forest pt-[env(safe-area-inset-top)] text-white">
@@ -851,50 +963,6 @@ function PanelTitle({ title, onClose, closeLabel }: { title: string; onClose: ()
         </button>
       </div>
     </div>
-  );
-}
-
-function MenuList({
-  menu,
-  current,
-  onPick,
-  onClose,
-}: {
-  menu: Menu;
-  current: string | null;
-  onPick: (categoryId: string | null) => void;
-  onClose: () => void;
-}) {
-  const row = (active: boolean) =>
-    `flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-[17px] ${
-      active ? "bg-leaf-tint font-semibold text-leaf" : "active:bg-wash"
-    }`;
-  return (
-    <>
-      <PanelTitle title="Menu" onClose={onClose} closeLabel="Close menu" />
-      <div className="banig" aria-hidden="true" />
-      <nav className="flex-1 overflow-y-auto p-2" aria-label="Categories">
-        <button type="button" className={row(current === null)} onClick={() => onPick(null)} aria-current={current === null ? "page" : undefined}>
-          <span className="flex items-center gap-3">
-            <HomeIcon width={20} height={20} />
-            Home
-          </span>
-        </button>
-        <div className="my-2 border-t border-line" />
-        {menu.categories.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={row(current === c.id)}
-            onClick={() => onPick(c.id)}
-            aria-current={current === c.id ? "page" : undefined}
-          >
-            {c.name}
-            <span className="text-sm font-normal text-muted">{c.dishIds.length}</span>
-          </button>
-        ))}
-      </nav>
-    </>
   );
 }
 
@@ -946,7 +1014,7 @@ function DishDetails({
             className="mt-5 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
           >
             {!dish.available ? (
-              "Sold out"
+              "Not Available Today"
             ) : (
               <>
                 <PlusIcon width={20} height={20} />
@@ -1153,24 +1221,59 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Once anything is in the order, the running total stays in view at the
- * bottom of the menu, so the customer always knows what they will pay.
+ * Home on the left, the order on the right. Once anything is in the order the
+ * right side grows into the running total, so the customer always knows what
+ * they will pay.
  */
-function OrderBar({ count, total, onOpen }: { count: number; total: number; onOpen: () => void }) {
+function BottomNav({
+  home,
+  count,
+  total,
+  onHome,
+  onOrder,
+}: {
+  home: boolean;
+  count: number;
+  total: number;
+  onHome: () => void;
+  onOrder: () => void;
+}) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-10 px-3 pb-[calc(12px+env(safe-area-inset-bottom))] pt-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 rounded-2xl bg-leaf pl-4 pr-5 text-white shadow-[0_8px_24px_rgb(16_52_42/0.35)] ring-1 ring-white/25 active:bg-leaf-dark"
-      >
-        <span className="flex items-center gap-3">
-          <span className="grid h-7 min-w-7 place-items-center rounded-full bg-mango px-1.5 text-sm font-bold text-forest">{count}</span>
-          <span className="text-[16px] font-semibold">View my order</span>
-        </span>
-        <span className="font-display text-xl font-bold">{formatPrice(total)}</span>
-      </button>
-    </div>
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-2">
+      <div className="mx-auto flex h-16 max-w-md items-center justify-between gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
+        <button
+          type="button"
+          onClick={onHome}
+          aria-label="Home"
+          aria-current={home ? "page" : undefined}
+          className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${home ? "bg-white text-leaf" : "active:bg-white/15"}`}
+        >
+          <HomeIcon width={24} height={24} />
+        </button>
+        <button
+          type="button"
+          onClick={onOrder}
+          aria-label={count ? `My order, ${count} items, ${formatPrice(total)}` : "My order"}
+          className={
+            count
+              ? "flex h-12 min-w-0 items-center gap-2.5 rounded-full bg-white pl-1.5 pr-4 text-leaf active:bg-white/90"
+              : "grid h-12 w-12 place-items-center rounded-full active:bg-white/15"
+          }
+        >
+          {count ? (
+            <>
+              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-leaf-tint">
+                <BagIcon width={20} height={20} />
+                <CountBadge count={count} />
+              </span>
+              <span className="font-display text-[18px] font-bold">{formatPrice(total)}</span>
+            </>
+          ) : (
+            <BagIcon width={24} height={24} />
+          )}
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -1179,17 +1282,15 @@ function OrderBar({ count, total, onOpen }: { count: number; total: number; onOp
 /**
  * "Added to order" notice after every add, and "Sent to your waiter". It lives in the browser's top
  * layer (popover), so it still shows above an open dish sheet, which is
- * itself a top-layer <dialog>. Sits above the order bar when that is showing.
+ * itself a top-layer <dialog>. Sits just above the bottom bar.
  */
 type Toast = { key: number; title: string; detail: string };
 
 function AddedToast({
   toast,
-  lifted,
   onDone,
 }: {
   toast: Toast | null;
-  lifted: boolean;
   onDone: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -1224,9 +1325,7 @@ function AddedToast({
       popover="manual"
       role="status"
       aria-live="polite"
-      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 ${
-        lifted ? "bottom-[calc(84px+env(safe-area-inset-bottom))]" : "bottom-[calc(20px+env(safe-area-inset-bottom))]"
-      }`}
+      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 bottom-[calc(92px+env(safe-area-inset-bottom))]`}
     >
       {toast && (
         <div key={toast.key} className="flex items-center gap-3 rounded-2xl bg-forest py-2.5 pl-2.5 pr-5 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">

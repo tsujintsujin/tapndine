@@ -37,6 +37,13 @@ export const BagIcon = (p: P) => (
   </Svg>
 );
 
+export const SearchIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="M16 16l4 4" />
+  </Svg>
+);
+
 export const CloseIcon = (p: P) => (
   <Svg {...p}>
     <path d="M6 6l12 12M18 6L6 18" />
