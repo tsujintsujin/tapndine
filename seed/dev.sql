@@ -229,3 +229,13 @@ UPDATE dishes SET serves_min = 3, serves_max = 4 WHERE id = 'd_crispypata';
 UPDATE dishes SET serves_min = 2, serves_max = 2 WHERE id IN ('d_adobongpusit', 'd_bicolexpress', 'd_ginataanghipon', 'd_laing', 'd_pinakbet');
 UPDATE dishes SET serves_min = 1, serves_max = 2 WHERE id IN ('d_chickenadobo', 'd_tilapia');
 -- Chicken Inasal and every drink keep the default: 1 person.
+
+-- Staff logins for local testing only (test passwords, not used anywhere real).
+-- Log in at http://127.0.0.1:3300/tapndine/staff/login
+--   manager  /  menu-manager-1   (sees Tables and Staff)
+--   ana      /  menu-waiter-1    (waiter)
+--   ben      /  menu-waiter-2    (waiter)
+INSERT INTO staff (id, business_id, username, name, role, password_hash, created_at) VALUES
+  ('stf_manager', 'biz_hikay', 'manager', 'Maria', 'manager', 'pbkdf2$100000$UHlgEdRVU3kBmrkb3e2kqg==$K87FEMgEY6BA24McQLEH6mnP6DBeF+cu3KBK31oyGZc=', 1759104000000),
+  ('stf_ana',     'biz_hikay', 'ana',     'Ana',   'waiter',  'pbkdf2$100000$lXqb0TwglEIW9tdJaCsTMQ==$gOngCTX4ON30TOLCKxdG4aOzWowJIHx4hqZg9lFX5Ks=',  1759104000000),
+  ('stf_ben',     'biz_hikay', 'ben',     'Ben',   'waiter',  'pbkdf2$100000$a3HOzJVIAUpr4uAYYgVb5A==$j53PVo4LAarwQr8Yp/14Mu1gI2yXnBQ3V1fq1ZP/c5Q=',  1759104000000);

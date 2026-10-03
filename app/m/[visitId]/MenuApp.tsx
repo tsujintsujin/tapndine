@@ -4,7 +4,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Category, Dish, Menu } from "@/lib/menu";
-import { formatPrice, servesLabel } from "@/lib/format";
+import type { GuestOrders } from "@/lib/orders";
+import { formatPrice, formatTime, servesLabel } from "@/lib/format";
+import { randomId } from "@/lib/ids";
 import Expired from "@/app/components/Expired";
 import {
   BagIcon,
@@ -22,11 +24,6 @@ import {
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
 import { DishImage, SpiceMeter } from "./parts";
-
-/** Must match VISIT_IDLE_MS on the server. */
-const IDLE_MS = 30 * 60 * 1000;
-/** Activity is reported to the server at most this often. */
-const TOUCH_EVERY_MS = 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Where the customer is lives in the URL (?c= category, ?d= dish, ?o= order,
@@ -56,7 +53,8 @@ function closeParam(key: string) {
 }
 
 // ---------------------------------------------------------------------------
-// The order list lives on this phone only. Nothing is sent anywhere.
+// The list being built lives on this phone until Send to waiter; then it is a
+// batch on the server and the list starts empty again.
 
 type Order = Record<string, number>;
 
@@ -97,20 +95,66 @@ function useOrder(visitId: string) {
     [update]
   );
 
-  return { order, setQty };
+  const clear = useCallback(() => update(() => ({})), [update]);
+
+  return { order, setQty, clear };
+}
+
+/** What this phone has already sent, from the server. */
+function useSent(visitId: string, onDead: () => void) {
+  const [sent, setSent] = useState<GuestOrders | null>(null);
+  const deadRef = useRef(onDead);
+  deadRef.current = onDead;
+
+  const load = useCallback(() => {
+    fetch(`${BASE_PATH}/api/visits/${visitId}/order`, { cache: "no-store" })
+      .then(async (r) => {
+        if (r.status === 410) return deadRef.current();
+        if (r.ok) setSent(((await r.json()) as { sent: GuestOrders | null }).sent);
+      })
+      .catch(() => {
+        // Offline for a moment: keep what we last had.
+      });
+  }, [visitId]);
+
+  useEffect(load, [load]);
+  return { sent, setSent, load };
+}
+
+/**
+ * The name this phone orders under, so the waiter sees "Jecery", not
+ * "Guest 2". Asked once per phone and kept on it.
+ * undefined: not read yet. null: never asked here. "": skipped.
+ */
+const NICK_KEY = "tapndine:nickname";
+
+function useNickname() {
+  const [nick, setNick] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    try {
+      setNick(localStorage.getItem(NICK_KEY));
+    } catch {
+      // Blocked storage: don't ask on every visit with no way to remember.
+      setNick("");
+    }
+  }, []);
+  const save = useCallback((v: string) => {
+    setNick(v);
+    try {
+      localStorage.setItem(NICK_KEY, v);
+    } catch {}
+  }, []);
+  return { nick, save };
 }
 
 // ---------------------------------------------------------------------------
-// Keeps the visit alive while the customer is using it, and shows the expired
-// screen once it has been idle for 30 minutes.
+// A menu link lives 1 h 30 min from the first tap (or until a waiter clears
+// the table). Shows the expired screen once the server says it is dead.
 
-function useVisitAlive(visitId: string) {
+function useVisitAlive(visitId: string, expiresAt: number) {
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
-    let lastSent = Date.now(); // the page load itself was a touch
-    let idleTimer: ReturnType<typeof setTimeout>;
-
     const check = () =>
       fetch(`${BASE_PATH}/api/visits/${visitId}/touch`, { method: "POST" })
         .then((r) => r.json() as Promise<{ alive: boolean }>)
@@ -118,59 +162,62 @@ function useVisitAlive(visitId: string) {
           if (!j.alive) setExpired(true);
         })
         .catch(() => {
-          // Offline for a moment: leave the menu up and try on the next tap.
+          // Offline for a moment: leave the menu up and try again later.
         });
 
-    const armIdle = () => {
-      clearTimeout(idleTimer);
-      // Ask the server rather than trusting the clock: it has the real expiry.
-      idleTimer = setTimeout(check, IDLE_MS + 1000);
-    };
-
-    const onActivity = () => {
-      armIdle();
-      if (Date.now() - lastSent < TOUCH_EVERY_MS) return;
-      lastSent = Date.now();
-      check();
-    };
-
+    // Ask the server rather than trusting the clock: it has the real expiry,
+    // and a cleared table ends the link early.
+    const timer = setTimeout(check, Math.min(Math.max(0, expiresAt - Date.now()) + 1000, 2 ** 31 - 1));
     const onVisible = () => {
       // Phone unlocked after a while: find out straight away.
-      if (document.visibilityState === "visible") {
-        lastSent = Date.now();
-        check();
-        armIdle();
-      }
+      if (document.visibilityState === "visible") check();
     };
-
-    armIdle();
-    window.addEventListener("pointerdown", onActivity, { passive: true });
-    window.addEventListener("scroll", onActivity, { passive: true });
-    window.addEventListener("keydown", onActivity);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      clearTimeout(idleTimer);
-      window.removeEventListener("pointerdown", onActivity);
-      window.removeEventListener("scroll", onActivity);
-      window.removeEventListener("keydown", onActivity);
+      clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [visitId]);
+  }, [visitId, expiresAt]);
 
-  return expired;
+  return { expired, expire: () => setExpired(true) };
 }
 
 // ---------------------------------------------------------------------------
 
-export default function MenuApp({ visitId, menu }: { visitId: string; menu: Menu }) {
+export default function MenuApp({
+  visitId,
+  menu,
+  expiresAt,
+  canSend,
+}: {
+  visitId: string;
+  menu: Menu;
+  expiresAt: number;
+  /** False for a tag not placed at a table: there is no waiter to send to. */
+  canSend: boolean;
+}) {
   const params = useSearchParams();
   const categoryId = params.get("c");
   const dishId = params.get("d");
   const orderOpen = params.get("o") === "1";
   const navOpen = params.get("nav") === "1";
 
-  const expired = useVisitAlive(visitId);
-  const { order, setQty } = useOrder(visitId);
+  const { expired, expire } = useVisitAlive(visitId, expiresAt);
+  const { order, setQty, clear } = useOrder(visitId);
+  const { sent, setSent, load: loadSent } = useSent(visitId, expire);
+  const { nick, save: saveNick } = useNickname();
+  const [nickOpen, setNickOpen] = useState(false);
+
+  // First menu on this phone: ask what to call them. Only where there is a
+  // waiter to send to.
+  useEffect(() => {
+    if (canSend && nick === null) setNickOpen(true);
+  }, [canSend, nick]);
+
+  // Opening My order picks up anything the waiter changed since.
+  useEffect(() => {
+    if (orderOpen) loadSent();
+  }, [orderOpen, loadSent]);
 
   useEffect(() => {
     const onPop = () => {
@@ -207,11 +254,46 @@ export default function MenuApp({ visitId, menu }: { visitId: string; menu: Menu
     lastView.current = view;
   }, [category?.id]);
 
-  const [toast, setToast] = useState<{ key: number; name: string } | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const addOne = (id: string) => {
     setQty(id, (order[id] ?? 0) + 1);
     // A fresh key each time, so adding twice in a row shows it again.
-    setToast({ key: Date.now(), name: menu.dishes[id]?.name ?? "" });
+    setToast({ key: Date.now(), title: "Added to order", detail: menu.dishes[id]?.name ?? "" });
+  };
+
+  // One key per list sent, so a double tap or a retry cannot send it twice.
+  // Changing the list makes it a different send.
+  const sendKey = useRef<string | null>(null);
+  useEffect(() => {
+    sendKey.current = null;
+  }, [order]);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const send = async () => {
+    sendKey.current ??= randomId();
+    setSending(true);
+    setSendError("");
+    try {
+      const r = await fetch(`${BASE_PATH}/api/visits/${visitId}/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: sendKey.current,
+          items: Object.entries(order).map(([dishId, qty]) => ({ dishId, qty })),
+          nickname: nick || null,
+        }),
+      });
+      if (r.status === 410) return expire();
+      const j = (await r.json().catch(() => ({}))) as { sent?: GuestOrders | null; error?: string };
+      if (!r.ok) throw new Error(j.error ?? "Could not send. Try again.");
+      setSent(j.sent ?? null);
+      clear();
+      setToast({ key: Date.now(), title: "Sent to your waiter", detail: `${itemCount} ${itemCount === 1 ? "item" : "items"}` });
+    } catch (e) {
+      setSendError(e instanceof TypeError ? "No connection. Check your signal and try again." : (e as Error).message);
+    } finally {
+      setSending(false);
+    }
   };
   const openDish = (id: string) => setParams((p) => p.set("d", id), "push");
   const openCategory = (id: string) => setParams((p) => p.set("c", id), "push");
@@ -283,9 +365,101 @@ export default function MenuApp({ visitId, menu }: { visitId: string; menu: Menu
       </Sheet>
 
       <Sheet open={orderOpen} onClose={() => closeParam("o")} from="right" label="My order">
-        <OrderList menu={menu} order={order} setQty={setQty} onClose={() => closeParam("o")} />
+        <OrderList
+          menu={menu}
+          order={order}
+          setQty={setQty}
+          sent={sent}
+          canSend={canSend}
+          sending={sending}
+          sendError={sendError}
+          onSend={send}
+          nickname={nick || ""}
+          onNickname={() => setNickOpen(true)}
+          onClose={() => closeParam("o")}
+        />
       </Sheet>
+
+      <NicknamePrompt
+        open={nickOpen}
+        initial={nick || ""}
+        onDone={(v) => {
+          saveNick(v);
+          setNickOpen(false);
+        }}
+      />
     </>
+  );
+}
+
+/**
+ * "What should we call you?" A small native dialog over the menu. Skip (or
+ * Esc) keeps whatever name the phone had, or none: the waiter then sees Guest #.
+ */
+function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: string; onDone: (v: string) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [value, setValue] = useState(initial);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      setValue(initial);
+      d.showModal();
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open, initial]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="nick-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onDone(initial);
+      }}
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(16_52_42/0.35)] backdrop:bg-forest/60"
+    >
+      <form
+        className="p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onDone(value.replace(/\s+/g, " ").trim());
+        }}
+      >
+        <h2 id="nick-title" className="font-display text-[24px] font-bold leading-tight">
+          What should we call you?
+        </h2>
+        <p className="mt-1.5 text-[15px] text-muted">Your waiter sees this name on your orders, so they know whose food is whose.</p>
+        <label className="mt-4 block text-[15px] font-medium">
+          Nickname
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            maxLength={24}
+            autoComplete="nickname"
+            enterKeyHint="done"
+            placeholder="e.g. Jecery"
+            className="mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3 text-[17px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!value.trim()}
+          className="mt-4 h-[52px] w-full rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:opacity-50"
+        >
+          Continue
+        </button>
+        <button
+          type="button"
+          onClick={() => onDone(initial)}
+          className="mt-1 h-11 w-full rounded-xl text-[15px] font-medium text-muted active:bg-wash"
+        >
+          {initial ? "Cancel" : "Skip"}
+        </button>
+      </form>
+    </dialog>
   );
 }
 
@@ -814,22 +988,38 @@ function OrderList({
   menu,
   order,
   setQty,
+  sent,
+  canSend,
+  sending,
+  sendError,
+  onSend,
+  nickname,
+  onNickname,
   onClose,
 }: {
   menu: Menu;
   order: Order;
   setQty: (id: string, qty: number) => void;
+  sent: GuestOrders | null;
+  canSend: boolean;
+  sending: boolean;
+  sendError: string;
+  onSend: () => void;
+  /** "" when the guest skipped it. */
+  nickname: string;
+  onNickname: () => void;
   onClose: () => void;
 }) {
   const lines = menu.dishOrder.filter((id) => order[id]).map((id) => ({ dish: menu.dishes[id], qty: order[id] }));
   const total = lines.reduce((sum, l) => sum + l.dish.priceCents * l.qty, 0);
+  const hasSent = !!sent && sent.batches.length > 0;
 
   return (
     <>
       <PanelTitle title="My order" onClose={onClose} closeLabel="Close my order" />
       <div className="banig" aria-hidden="true" />
 
-      {lines.length === 0 ? (
+      {lines.length === 0 && !hasSent ? (
         <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
           <BagIcon width={40} height={40} className="text-muted/60" />
           <p className="mt-3 font-display text-lg font-bold">Nothing added yet</p>
@@ -837,38 +1027,126 @@ function OrderList({
         </div>
       ) : (
         <>
-          <ul className="flex-1 divide-y divide-line overflow-y-auto overscroll-contain px-4">
-            {lines.map(({ dish, qty }) => (
-              <li key={dish.id} className="flex items-center gap-3 py-3">
-                <DishImage dish={dish} className="aspect-square w-14 shrink-0 rounded-lg" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium leading-snug">{dish.name}</p>
-                  <p className="text-sm text-muted">{formatPrice(dish.priceCents * qty)}</p>
-                </div>
-                <div className="flex shrink-0 items-center rounded-full border border-line">
-                  <button type="button" onClick={() => setQty(dish.id, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
-                    <MinusIcon width={18} height={18} />
-                  </button>
-                  <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
-                  <button type="button" onClick={() => setQty(dish.id, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
-                    <PlusIcon width={18} height={18} />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {lines.length > 0 && (
+              <section aria-label="Not sent yet">
+                {hasSent && <h3 className="px-4 pt-4 font-display text-lg font-bold">Not sent yet</h3>}
+                <ul className="divide-y divide-line px-4">
+                  {lines.map(({ dish, qty }) => (
+                    <li key={dish.id} className="flex items-center gap-3 py-3">
+                      <DishImage dish={dish} className="aspect-square w-14 shrink-0 rounded-lg" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium leading-snug">{dish.name}</p>
+                        <p className="text-sm text-muted">{formatPrice(dish.priceCents * qty)}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center rounded-full border border-line">
+                        <button type="button" onClick={() => setQty(dish.id, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                          <MinusIcon width={18} height={18} />
+                        </button>
+                        <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
+                        <button type="button" onClick={() => setQty(dish.id, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                          <PlusIcon width={18} height={18} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {hasSent && <SentOrders sent={sent!} />}
+          </div>
+
           <div className="shrink-0 border-t border-line px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[17px] font-medium">Total</span>
-              <span className="font-display text-2xl font-bold">{formatPrice(total)}</span>
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              This list stays on your phone. Show it to your waiter when you&apos;re ready to order.
-            </p>
+            {lines.length > 0 ? (
+              <>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[17px] font-medium">{hasSent ? "To send" : "Total"}</span>
+                  <span className="font-display text-2xl font-bold">{formatPrice(total)}</span>
+                </div>
+                {canSend ? (
+                  <>
+                    <p className="mt-2 flex items-center justify-between gap-2 text-sm text-muted">
+                      <span className="min-w-0 truncate">
+                        {nickname ? (
+                          <>
+                            Sending as <span className="font-semibold text-ink">{nickname}</span>
+                          </>
+                        ) : (
+                          "No nickname: your waiter sees a guest number"
+                        )}
+                      </span>
+                      <button type="button" onClick={onNickname} className="-my-2 h-10 shrink-0 rounded-lg px-2 font-semibold text-leaf active:bg-leaf-tint">
+                        {nickname ? "Change" : "Add"}
+                      </button>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onSend}
+                      disabled={sending}
+                      className="mt-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:opacity-60"
+                    >
+                      {sending ? "Sending…" : "Send to waiter"}
+                    </button>
+                    {sendError && (
+                      <p role="alert" className="mt-2 text-center text-sm text-chili">
+                        {sendError}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-muted">
+                    This list stays on your phone. Show it to your waiter when you&apos;re ready to order.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[17px] font-medium">Your total so far</span>
+                  <span className="font-display text-2xl font-bold">{formatPrice(sent!.subtotal)}</span>
+                </div>
+                <p className="mt-1 text-sm text-muted">Want more? Add dishes, then send again.</p>
+              </>
+            )}
           </div>
         </>
       )}
     </>
+  );
+}
+
+/** What this phone already sent, batch by batch. Read-only: the waiter has it. */
+function SentOrders({ sent }: { sent: GuestOrders }) {
+  return (
+    <section aria-label="Sent to waiter" className="pb-4 pt-4">
+      <div className="flex items-baseline justify-between gap-3 px-4">
+        <h3 className="font-display text-lg font-bold">Sent to waiter</h3>
+        <span className="rounded-full bg-mango-soft px-2.5 py-0.5 text-[13px] font-semibold text-forest">{sent.nickname ?? `Guest ${sent.number}`}</span>
+      </div>
+      {sent.batches.map((b, i) => (
+        <div key={b.id} className="mt-2">
+          <p className="flex justify-between bg-wash px-4 py-1.5 text-[13px] font-semibold text-muted">
+            <span>Batch {i + 1}</span>
+            <span className="font-medium">{formatTime(b.sentAt)}</span>
+          </p>
+          <ul className="px-4">
+            {b.lines.map((l) => (
+              <li key={l.id} className="flex items-baseline justify-between gap-3 py-1.5 text-[15px]">
+                <span className="min-w-0">
+                  <span className="font-semibold tabular-nums">{l.qty}×</span> {l.name}
+                </span>
+                <span className="shrink-0 text-muted">{formatPrice(l.priceCents * l.qty)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p className="mt-2 flex justify-between px-4 text-[15px] font-semibold">
+        <span>Sent so far</span>
+        <span>{formatPrice(sent.subtotal)}</span>
+      </p>
+    </section>
   );
 }
 
@@ -899,16 +1177,18 @@ function OrderBar({ count, total, onOpen }: { count: number; total: number; onOp
 // ---------------------------------------------------------------------------
 
 /**
- * "Added to order" notice after every add. It lives in the browser's top
+ * "Added to order" notice after every add, and "Sent to your waiter". It lives in the browser's top
  * layer (popover), so it still shows above an open dish sheet, which is
  * itself a top-layer <dialog>. Sits above the order bar when that is showing.
  */
+type Toast = { key: number; title: string; detail: string };
+
 function AddedToast({
   toast,
   lifted,
   onDone,
 }: {
-  toast: { key: number; name: string } | null;
+  toast: Toast | null;
   lifted: boolean;
   onDone: () => void;
 }) {
@@ -954,8 +1234,8 @@ function AddedToast({
             <CheckIcon width={18} height={18} />
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block text-[15px] font-semibold">Added to order</span>
-            <span className="block truncate text-[13px] text-white/75">{toast.name}</span>
+            <span className="block text-[15px] font-semibold">{toast.title}</span>
+            <span className="block truncate text-[13px] text-white/75">{toast.detail}</span>
           </span>
         </div>
       )}
