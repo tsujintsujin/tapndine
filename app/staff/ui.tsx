@@ -108,11 +108,36 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
   }, [open]);
 
   const links = [
-    ...(isManager ? [{ href: "/staff/stats", label: "Statistics" }] : []),
+    { href: "/staff/stats", label: "Statistics" },
     { href: "/staff", label: "Tables" },
-    ...(isManager ? [{ href: "/staff/manage", label: "Staff" }] : []),
+    { href: "/staff/manage", label: "Staff" },
   ];
   const item = "flex h-12 w-full items-center px-4 text-left text-[16px] active:bg-wash";
+  const logOut = async () => {
+    setBusy(true);
+    await api("/api/staff/logout", { method: "POST", body: {} }).catch(() => {});
+    window.location.href = `${BASE_PATH}/staff/login`;
+  };
+
+  // Waiters only ever see Tables, so they get no menu: just Log out.
+  if (!isManager) {
+    return (
+      <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
+        <nav className="mx-auto flex h-14 max-w-3xl items-center justify-between px-2">
+          <span className="px-2 text-sm font-semibold uppercase tracking-wide text-mango">Staff</span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={logOut}
+            className="h-11 rounded-lg px-3 text-[15px] font-medium active:bg-white/10 disabled:opacity-60"
+          >
+            Log out
+          </button>
+        </nav>
+        <div className="banig" aria-hidden="true" />
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
@@ -153,11 +178,7 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    await api("/api/staff/logout", { method: "POST", body: {} }).catch(() => {});
-                    window.location.href = `${BASE_PATH}/staff/login`;
-                  }}
+                  onClick={logOut}
                   className={`${item} font-medium text-chili`}
                 >
                   Log out
