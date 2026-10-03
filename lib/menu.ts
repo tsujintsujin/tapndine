@@ -1,4 +1,3 @@
-import { BASE_PATH } from "./base";
 import { db } from "./cf";
 import type { Visit } from "./visits";
 
@@ -93,8 +92,8 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       shortDescription: r.short_description,
       description: r.description,
       priceCents: r.price_cents,
-      // Seeded photos live in public/, which sits under the base path.
-      imageUrl: r.image_url?.startsWith("/") ? BASE_PATH + r.image_url : r.image_url,
+      // Full Cloudinary URLs (cloud dopunn7eb, folder tapndine/).
+      imageUrl: r.image_url,
       spiceLevel: r.spice_level,
       servesMin: r.serves_min,
       servesMax: r.serves_max,
