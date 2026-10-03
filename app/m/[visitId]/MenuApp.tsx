@@ -334,7 +334,7 @@ export default function MenuApp({
         )}
       </Header>
 
-      <main className="pb-[calc(104px+env(safe-area-inset-bottom))]">
+      <main className="pb-[calc(112px+env(safe-area-inset-bottom))]">
         <div key={view} className="view-in">
           {view === "menu" ? (
             <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={addOne} />
@@ -819,65 +819,83 @@ function HomeView({
   );
 }
 
-/** The dish name over two lines, the second in green: "Kare-" / "Kare". */
+/** The dish name over two lines, the second in mango: "Kare-" / "Kare". */
 function splitName(name: string): [string, string] {
   const m = name.match(/^(\S+?-|\S+\s)(.+)$/);
   return m ? [m[1].trim(), m[2]] : [name, ""];
 }
 
+/**
+ * The featured dish as the page's hero: its photo fills most of the first
+ * screen, with the name, price and the two actions over a dark fade at the
+ * bottom. Anywhere on the photo (text included) opens the details.
+ */
 function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void; onAdd: () => void; onMenu: () => void }) {
   const [first, rest] = splitName(dish.name);
   return (
-    <section className="px-4 pt-3" aria-labelledby="hero-name">
-      <div className="relative pr-[100px]">
-        <p className="text-[15px] font-semibold text-leaf">Today&apos;s pick</p>
-        <h1 id="hero-name" className="mt-1 font-display text-[clamp(38px,12vw,56px)] font-bold leading-[0.92] tracking-[-0.02em] [overflow-wrap:anywhere]">
-          <span className="block">{first}</span>
-          {rest && <span className="block text-leaf">{rest}</span>}
-        </h1>
-        <p className="mt-3 text-[16px] text-muted">{dish.shortDescription}</p>
+    <section
+      aria-labelledby="hero-name"
+      className="relative isolate h-[min(74svh,640px)] min-h-[460px] overflow-hidden rounded-b-[32px] bg-forest text-white sm:mx-4 sm:rounded-[32px]"
+    >
+      <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="absolute inset-0 -z-10 block">
+        <DishImage dish={dish} eager onDark className="h-full w-full" />
+      </button>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(8_28_22/0.94)_0%,rgb(8_28_22/0.6)_36%,rgb(8_28_22/0)_64%)]"
+      />
 
-        {/* The price stamp, tilted like a sticker on the menu board. */}
-        <div className="absolute right-0 top-1 grid h-[88px] w-[88px] -rotate-[8deg] place-items-center rounded-full bg-forest text-white shadow-[0_8px_20px_rgb(16_52_42/0.3)]">
-          <div className="grid h-[76px] w-[76px] place-content-center rounded-full border-[1.5px] border-dashed border-mango/80 text-center">
-            <span className="text-[12px] leading-none text-white/70">Price</span>
-            <span className="mt-0.5 font-display text-[20px] font-bold leading-tight">{formatPrice(dish.priceCents)}</span>
-          </div>
+      {/* The price stamp, tilted like a sticker on the menu board. */}
+      <div className="pointer-events-none absolute right-4 top-4 grid h-[84px] w-[84px] -rotate-[8deg] place-items-center rounded-full bg-mango text-forest shadow-[0_8px_20px_rgb(0_0_0/0.3)]">
+        <div className="grid h-[72px] w-[72px] place-content-center rounded-full border-[1.5px] border-dashed border-forest/40 text-center">
+          <span className="text-[12px] font-medium leading-none text-forest/70">Price</span>
+          <span className="mt-0.5 font-display text-[20px] font-bold leading-tight">{formatPrice(dish.priceCents)}</span>
         </div>
       </div>
 
-      <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="relative mt-5 block w-full">
-        <DishImage dish={dish} eager className="aspect-[4/3] rounded-[28px] shadow-[0_16px_36px_rgb(20_28_22/0.22)]" />
-        <span className="absolute bottom-3 left-3 flex h-9 items-center gap-1.5 rounded-full bg-white/90 px-3 text-[14px] font-medium text-ink backdrop-blur">
-          <PeopleIcon width={18} height={18} />
+      {/* Taps on the words fall through to the photo; only the buttons catch them. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-5">
+        <p className="inline-flex h-7 items-center rounded-full bg-white/15 px-3 text-[13px] font-semibold backdrop-blur">
+          Today&apos;s pick
+        </p>
+        <h1
+          id="hero-name"
+          className="mt-3 font-display text-[clamp(42px,13vw,64px)] font-bold leading-[0.9] tracking-[-0.02em] [overflow-wrap:anywhere]"
+        >
+          <span className="block">{first}</span>
+          {rest && <span className="block text-mango">{rest}</span>}
+        </h1>
+        <p className="mt-3 text-[16px] leading-snug text-white/85">{dish.shortDescription}</p>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[14px] text-white/70">
+          <PeopleIcon width={17} height={17} />
           {servesLabel(dish.servesMin, dish.servesMax)}
-        </span>
-      </button>
+        </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          disabled={!dish.available}
-          onClick={onAdd}
-          className="flex h-[52px] items-center justify-center gap-2 rounded-full bg-leaf text-[16px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-[14px] disabled:text-muted"
-        >
-          {dish.available ? (
-            <>
-              <PlusIcon width={20} height={20} strokeWidth={2.2} />
-              Add to order
-            </>
-          ) : (
-            "Not Available Today"
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onMenu}
-          className="flex h-[52px] items-center justify-center gap-2 rounded-full border-2 border-leaf text-[16px] font-semibold text-leaf active:bg-leaf-tint"
-        >
-          <MenuIcon width={20} height={20} />
-          Menu
-        </button>
+        <div className="pointer-events-auto mt-5 flex gap-3 sm:max-w-md">
+          <button
+            type="button"
+            disabled={!dish.available}
+            onClick={onAdd}
+            className="flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full bg-mango text-[16px] font-bold text-forest active:brightness-95 disabled:bg-white/20 disabled:text-white/80"
+          >
+            {dish.available ? (
+              <>
+                <PlusIcon width={20} height={20} strokeWidth={2.4} />
+                Add to order
+              </>
+            ) : (
+              "Not Available Today"
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onMenu}
+            className="flex h-[54px] items-center justify-center gap-2 rounded-full bg-white/15 px-6 text-[16px] font-semibold ring-1 ring-inset ring-white/50 backdrop-blur active:bg-white/25"
+          >
+            <MenuIcon width={20} height={20} />
+            Menu
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -1221,9 +1239,11 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Home on the left, the order on the right. Once anything is in the order the
- * right side grows into the running total, so the customer always knows what
- * they will pay.
+ * Home on the left, the order on the right. It sits on a strip of the page
+ * colour that fades in above it, so dishes scrolling past slip under the
+ * fade instead of showing in pieces around the bar.
+ * Once anything is in the order the right side grows into the running
+ * total, so the customer always knows what they will pay.
  */
 function BottomNav({
   home,
@@ -1239,8 +1259,11 @@ function BottomNav({
   onOrder: () => void;
 }) {
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-2">
-      <div className="mx-auto flex h-16 max-w-md items-center justify-between gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6"
+    >
+      <div className="mx-auto flex h-[60px] max-w-md items-center justify-between gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
         <button
           type="button"
           onClick={onHome}
