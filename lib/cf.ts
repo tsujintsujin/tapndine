@@ -11,6 +11,9 @@ export type Env = {
   CLOUDINARY_CLOUD_NAME?: string;
   CLOUDINARY_API_KEY?: string;
   CLOUDINARY_API_SECRET?: string;
+  /** Demo request emails (lib/mail.ts). Worker secrets; .dev.vars locally. */
+  BREVO_API_KEY?: string;
+  MAIL_FROM?: string;
 };
 
 export const env = () => getCloudflareContext().env as unknown as Env;

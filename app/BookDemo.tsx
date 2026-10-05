@@ -1,12 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { BASE_PATH } from "@/lib/base";
 
 // "Book a demo": the date calendar and grouped time list from the Aqua booking
 // page (Freelance/Pitch/Aqua/app/book/page.tsx), recoloured to the homepage
-// palette. Sending opens an email with the chosen slot already filled in.
-
-const CONTACT = "justin.masiga.94@gmail.com";
+// palette. Booking saves the request (app/api/demo) and emails Justin.
 
 // Demo hours: Monday to Friday, 9 AM to 5 PM, every 30 minutes.
 const OPEN_MIN = 9 * 60;
@@ -62,6 +61,9 @@ function Scheduler({ onClose }: { onClose: () => void }) {
   const [month, setMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<number | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
 
   const cells = useMemo(() => {
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -75,15 +77,52 @@ function Scheduler({ onClose }: { onClose: () => void }) {
   const slots = date ? slotsFor(date) : [];
   const atThisMonth = month.getFullYear() === today.getFullYear() && month.getMonth() === today.getMonth();
 
-  const subject = date && time !== null ? `tapndine demo: ${prettyDate(date)}, ${label12(time)}` : "";
-  const body =
-    date && time !== null
-      ? `Hi, I'd like a tapndine demo on ${prettyDate(date)} at ${label12(time)}.\n\nMy name:\nRestaurant:\nNumber of tables:\nPhone:`
-      : "";
-  const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!date || time === null || sending) return;
+    const f = new FormData(e.currentTarget);
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch(`${BASE_PATH}/api/demo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, min: time, name: f.get("name"), email: f.get("email"), message: f.get("message") }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (sent && date && time !== null) {
+    return (
+      <div className="p-7 text-center sm:p-10">
+        <h2 className="text-2xl font-extrabold tracking-tight">Demo booked</h2>
+        <p className="mt-3 text-sm font-medium text-home-cocoa/70">
+          <span className="font-bold text-home-cocoa">{prettyDate(date)}</span>, {label12(time)}. We&apos;ll email you
+          to confirm.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 rounded-full bg-home-orange px-6 py-3 font-semibold transition hover:brightness-95"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  const field =
+    "w-full rounded-xl border border-home-cream bg-home-shell px-4 py-3 text-sm text-home-cocoa placeholder:text-home-cocoa/40 focus:border-home-orange focus:outline-none";
 
   return (
-    <div className="max-h-[90dvh] overflow-y-auto p-5 pb-0 sm:p-7 sm:pb-0">
+    <form onSubmit={submit} className="max-h-[90dvh] overflow-y-auto p-5 pb-0 sm:p-7 sm:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight">Book a demo</h2>
@@ -221,10 +260,30 @@ function Scheduler({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
+      {/* Who's asking */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-home-cocoa/70">Your name</span>
+          <input name="name" required maxLength={100} autoComplete="name" className={field} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-home-cocoa/70">Email</span>
+          <input name="email" type="email" required maxLength={200} autoComplete="email" className={field} />
+        </label>
+        <label className="block sm:col-span-2">
+          <span className="mb-1.5 block text-xs font-semibold text-home-cocoa/70">
+            Message <span className="font-medium text-home-cocoa/40">(optional)</span>
+          </span>
+          <textarea name="message" rows={3} maxLength={2000} className={`${field} resize-none`} />
+        </label>
+      </div>
+
       {/* Pinned to the bottom so the button stays in reach while the modal scrolls on a phone. */}
       <div className="sticky bottom-0 -mx-5 mt-6 flex flex-col gap-3 border-t border-home-cream bg-white px-5 py-4 sm:-mx-7 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
         <p className="text-sm font-medium text-home-cocoa/70">
-          {date && time !== null ? (
+          {error ? (
+            <span className="font-semibold text-red-700">{error}</span>
+          ) : date && time !== null ? (
             <>
               <span className="font-bold text-home-cocoa">{prettyDate(date)}</span>, {label12(time)}
             </>
@@ -232,19 +291,14 @@ function Scheduler({ onClose }: { onClose: () => void }) {
             "No time picked yet"
           )}
         </p>
-        {date && time !== null ? (
-          <a
-            href={mailto}
-            className="inline-block rounded-full bg-home-orange px-6 py-3 text-center font-semibold transition hover:brightness-95"
-          >
-            Book demo
-          </a>
-        ) : (
-          <span className="inline-block cursor-not-allowed rounded-full bg-home-cream px-6 py-3 text-center font-semibold text-home-cocoa/35">
-            Book demo
-          </span>
-        )}
+        <button
+          type="submit"
+          disabled={!date || time === null || sending}
+          className="rounded-full bg-home-orange px-6 py-3 text-center font-semibold transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-home-cream disabled:text-home-cocoa/35 disabled:hover:brightness-100"
+        >
+          {sending ? "Booking..." : "Book demo"}
+        </button>
       </div>
-    </div>
+    </form>
   );
 }
