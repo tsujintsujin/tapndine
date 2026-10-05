@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
 import { CheckIcon } from "@/app/components/Icons";
+import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
 // The tapndine homepage: what it is, for restaurant owners. The product screens
@@ -143,10 +144,9 @@ export default function Home() {
           </Link>
           <nav className="flex items-center gap-6 text-sm font-semibold">
             <a href="#how" className="hidden opacity-75 hover:opacity-100 md:block">How it works</a>
-                        <Link href="/staff/login" className="hidden opacity-75 hover:opacity-100 md:block">Staff login</Link>
-            <a href="#pricing" className="rounded-full bg-home-cocoa px-5 py-2.5 text-home-shell hover:bg-black">
+            <BookDemoButton className="rounded-full bg-home-cocoa px-5 py-2.5 text-home-shell hover:bg-black">
               Get tapndine
-            </a>
+            </BookDemoButton>
           </nav>
         </header>
 
@@ -410,8 +410,7 @@ export default function Home() {
             by <span className="font-bold tracking-wide">TSUJIN IT SOLUTIONS</span>
           </p>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 font-medium opacity-80">
-            <Link href="/staff/login" className="hover:underline">Staff login</Link>
-            <a href={CONTACT} className="hover:underline">Contact</a>
+            <BookDemoButton className="hover:underline">Contact</BookDemoButton>
           </nav>
         </div>
       </footer>
