@@ -6,7 +6,7 @@ import Shell from "../../Shell";
 import DishEditor from "../DishEditor";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Dish · Tap'N'Dine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Dish · tapndine", robots: { index: false, follow: false } };
 
 /** /staff/menu/new adds a dish; /staff/menu/<id> edits one. */
 export default async function DishPage({ params }: { params: Promise<{ dishId: string }> }) {

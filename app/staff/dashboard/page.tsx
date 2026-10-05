@@ -11,7 +11,7 @@ import { Bars, Heatmap, type Cell } from "./Charts";
 import TablePicker from "./TablePicker";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Dashboard · Tap'N'Dine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Dashboard · tapndine", robots: { index: false, follow: false } };
 
 const RANGE_LABELS: Record<Range, string> = { today: "Today", "7d": "7 days", "30d": "30 days" };
 const COMPARE: Record<Range, string> = {
