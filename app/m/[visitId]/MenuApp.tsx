@@ -426,7 +426,7 @@ function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: str
         e.preventDefault();
         onDone(initial);
       }}
-      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(16_52_42/0.35)] backdrop:bg-forest/60"
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
     >
       <form
         className="p-5"
@@ -516,7 +516,7 @@ function Header({
             type="button"
             onClick={onOrder}
             aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(31_92_63/0.3)] active:bg-leaf-dark"
+            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
           >
             <BagIcon width={22} height={22} />
             {itemCount > 0 && <CountBadge count={itemCount} />}
@@ -640,7 +640,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
         // the list before the tap on a suggestion lands.
         <div
           onPointerDown={(e) => e.preventDefault()}
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-[60dvh] overflow-y-auto rounded-2xl bg-white p-1.5 shadow-[0_14px_36px_rgb(16_52_42/0.2)] ring-1 ring-line"
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-[60dvh] overflow-y-auto rounded-2xl bg-white p-1.5 shadow-[0_14px_36px_rgb(59_46_37/0.2)] ring-1 ring-line"
         >
           {matches.length === 0 ? (
             <p className="px-3 py-3 text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;.</p>
@@ -854,7 +854,7 @@ function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void;
       </button>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(8_28_22/0.94)_0%,rgb(8_28_22/0.6)_36%,rgb(8_28_22/0)_64%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(33_24_18/0.94)_0%,rgb(33_24_18/0.6)_36%,rgb(33_24_18/0)_64%)]"
       />
 
       {/* The price stamp, tilted like a sticker on the menu board. */}
@@ -950,7 +950,7 @@ function MiniRow({
           <li key={d.id} className={`flex flex-col rounded-[20px] p-1.5 pb-2 ${MINI_TINTS[i % MINI_TINTS.length]}`}>
             <button type="button" onClick={() => onDish(d.id)} className="relative block text-center">
               <DishImage dish={d} className="aspect-square rounded-[14px]" />
-              <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(16_52_42/0.18)]">
+              <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(59_46_37/0.18)]">
                 {formatPrice(d.priceCents)}
               </span>
               <span className="mt-2 line-clamp-2 block min-h-[2.5em] px-0.5 font-display text-[14px] font-bold leading-[1.25]">
@@ -1279,7 +1279,7 @@ function BottomNav({
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6"
     >
-      <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
+      <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">
         <button
           type="button"
           onClick={onHome}
@@ -1376,7 +1376,7 @@ function AddedToast({
       className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 bottom-[calc(92px+env(safe-area-inset-bottom))]`}
     >
       {toast && (
-        <div key={toast.key} className="flex items-center gap-3 rounded-2xl bg-forest py-2.5 pl-2.5 pr-5 text-white shadow-[0_10px_28px_rgb(16_52_42/0.35)]">
+        <div key={toast.key} className="flex items-center gap-3 rounded-2xl bg-forest py-2.5 pl-2.5 pr-5 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-mango text-forest">
             <CheckIcon width={18} height={18} />
           </span>

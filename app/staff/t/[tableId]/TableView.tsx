@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Additional, GuestOrders, Line, TableOrders } from "@/lib/orders";
 import { formatPrice, formatTime } from "@/lib/format";
 import { MinusIcon, PlusIcon } from "@/app/components/Icons";
+import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { api, OfflineNote, StaffHeader, useConfirm, usePoll } from "../../ui";
 
 type DishOption = { id: string; name: string; priceCents: number };
@@ -83,6 +84,7 @@ export default function TableView({
 
   return (
     <>
+      <WarmBackdrop />
       <StaffHeader
         title={table.label}
         back={{ href: "/staff", label: "Tables" }}
