@@ -285,6 +285,31 @@ export async function deleteCategory(businessId: string, id: string): Promise<bo
   return true;
 }
 
+/**
+ * Puts exactly these dishes in the category. They keep their menu order, so
+ * the order of `dishIds` doesn't matter.
+ */
+export async function setCategoryDishes(businessId: string, id: string, dishIds: string[]): Promise<boolean> {
+  const d = db();
+  const own = await d.prepare("SELECT 1 FROM categories WHERE id = ? AND business_id = ?").bind(id, businessId).first();
+  if (!own) return false;
+  // Only this restaurant's dishes still on the menu.
+  const dishes = await d
+    .prepare(
+      `SELECT id, sort FROM dishes
+       WHERE business_id = ? AND removed_at IS NULL AND id IN (SELECT value FROM json_each(?))`
+    )
+    .bind(businessId, JSON.stringify(dishIds))
+    .all<{ id: string; sort: number }>();
+  await d.batch([
+    d.prepare("DELETE FROM dish_categories WHERE category_id = ?").bind(id),
+    ...dishes.results.map((x) =>
+      d.prepare("INSERT INTO dish_categories (dish_id, category_id, sort) VALUES (?, ?, ?)").bind(x.id, id, x.sort)
+    ),
+  ]);
+  return true;
+}
+
 export async function reorderCategories(businessId: string, ids: string[]): Promise<boolean> {
   const d = db();
   const all = await d.prepare("SELECT id FROM categories WHERE business_id = ?").bind(businessId).all<{ id: string }>();
