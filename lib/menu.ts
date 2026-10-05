@@ -64,7 +64,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url,
                 spice_level, serves_min, serves_max, available, featured, best_seller, is_new
-         FROM dishes WHERE business_id = ? ORDER BY sort, name`
+         FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(visit.business_id),
     d

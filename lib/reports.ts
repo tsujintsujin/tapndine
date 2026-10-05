@@ -86,7 +86,7 @@ export async function report(businessId: string, range: Range, tableId: string |
     d
       .prepare(
         `SELECT i.dish_id AS id, dd.name, SUM(i.qty) AS qty, SUM(i.price_cents * i.qty) AS total,
-                dd.featured, dd.best_seller AS bestSeller
+                dd.featured, dd.best_seller AS bestSeller, dd.image_url AS imageUrl
          FROM batches b JOIN batch_items i ON i.batch_id = b.id JOIN sittings s ON s.id = b.sitting_id
          JOIN dishes dd ON dd.id = i.dish_id
          WHERE s.business_id = ?1 AND b.sent_at >= ?2 AND b.sent_at < ?3 AND (?4 IS NULL OR s.table_id = ?4)
@@ -94,11 +94,11 @@ export async function report(businessId: string, range: Range, tableId: string |
          ORDER BY qty DESC, total DESC`
       )
       .bind(businessId, from, now, tableId)
-      .all<{ id: string; name: string; qty: number; total: number; featured: number; bestSeller: number }>(),
+      .all<{ id: string; name: string; qty: number; total: number; featured: number; bestSeller: number; imageUrl: string | null }>(),
     d
       .prepare(
         `SELECT id, name, featured, best_seller AS bestSeller FROM dishes
-         WHERE business_id = ?1 AND available = 1 AND id NOT IN (
+         WHERE business_id = ?1 AND available = 1 AND removed_at IS NULL AND id NOT IN (
            SELECT i.dish_id FROM batches b JOIN batch_items i ON i.batch_id = b.id JOIN sittings s ON s.id = b.sitting_id
            WHERE s.business_id = ?1 AND b.sent_at >= ?2 AND b.sent_at < ?3 AND (?4 IS NULL OR s.table_id = ?4))
          ORDER BY name`

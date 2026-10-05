@@ -45,10 +45,10 @@ export function Bars({
         <span className="text-muted">{b.label} · </span>
         <span className="font-semibold">{b.display}</span>
       </p>
-      <div className="relative mt-2">
-        <div className="absolute inset-x-0 top-0 border-t border-line" aria-hidden="true" />
-        <span className="absolute -top-2.5 right-0 bg-white pl-1 text-[12px] tabular-nums text-muted">{money ? pesoAxis(top) : top}</span>
-        <div className="flex h-36 items-end gap-[2px] border-b border-ink/30">
+      <div className="relative mt-3">
+        <span className="absolute -top-5 right-0 text-[12px] tabular-nums text-muted">top {money ? pesoAxis(top) : top}</span>
+        {/* Each column is a striped pill track; the filled pill inside is the value. */}
+        <div className={`flex h-44 items-end ${bars.length > 14 ? "gap-[3px]" : "gap-2.5"}`}>
           {bars.map((bar, i) => (
             <button
               key={bar.key}
@@ -58,15 +58,17 @@ export function Bars({
               onClick={() => setSel(i)}
               className="flex h-full min-w-0 flex-1 items-end justify-center"
             >
-              <span
-                className={`block w-full max-w-6 rounded-t ${i === sel ? "bg-forest" : "bg-leaf/70"}`}
-                style={{ height: bar.value ? `max(${(bar.value / top) * 100}%, 3px)` : 0 }}
-              />
+              <span className="track relative block h-full w-full max-w-12 overflow-hidden rounded-full">
+                <span
+                  className={`absolute inset-x-0 bottom-0 block rounded-full ${i === sel ? "bg-forest" : "bg-leaf/75"}`}
+                  style={{ height: bar.value ? `max(${(bar.value / top) * 100}%, 10px)` : 0 }}
+                />
+              </span>
             </button>
           ))}
         </div>
       </div>
-      <div className="mt-1 flex gap-[2px]" aria-hidden="true">
+      <div className={`mt-2 flex ${bars.length > 14 ? "gap-[3px]" : "gap-2.5"}`} aria-hidden="true">
         {bars.map((bar, i) => (
           <span key={bar.key} className="relative h-4 min-w-0 flex-1">
             {(bars.length - 1 - i) % tickEvery === 0 && (

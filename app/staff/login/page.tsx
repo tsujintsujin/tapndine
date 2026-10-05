@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Staff login · tapndine", robots: { index: false, follow: false } };
 
 export default async function LoginPage() {
-  if (await currentStaff()) redirect("/staff");
+  const me = await currentStaff();
+  if (me) redirect(me.role === "manager" ? "/staff/dashboard" : "/staff");
   return <LoginForm />;
 }

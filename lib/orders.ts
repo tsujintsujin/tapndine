@@ -35,7 +35,7 @@ async function price(businessId: string, items: Requested) {
   const r = await db()
     .prepare(
       `SELECT id, name, price_cents FROM dishes
-       WHERE business_id = ? AND available = 1 AND id IN (SELECT value FROM json_each(?))`
+       WHERE business_id = ? AND available = 1 AND removed_at IS NULL AND id IN (SELECT value FROM json_each(?))`
     )
     .bind(businessId, JSON.stringify(items.map((i) => i.dishId)))
     .all<{ id: string; name: string; price_cents: number }>();
@@ -347,7 +347,7 @@ export async function clearTable(businessId: string, tableId: string): Promise<b
 /** Name and price of every dish, for the waiter's add box. */
 export async function dishList(businessId: string) {
   const r = await db()
-    .prepare("SELECT id, name, price_cents FROM dishes WHERE business_id = ? AND available = 1 ORDER BY name")
+    .prepare("SELECT id, name, price_cents FROM dishes WHERE business_id = ? AND available = 1 AND removed_at IS NULL ORDER BY name")
     .bind(businessId)
     .all<{ id: string; name: string; price_cents: number }>();
   return r.results.map((x) => ({ id: x.id, name: x.name, priceCents: x.price_cents }));

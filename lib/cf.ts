@@ -7,8 +7,14 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  */
 export type Env = {
   DB: D1Database;
+  /** Dish photo uploads. Worker secrets; .dev.vars locally. */
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
 };
 
+export const env = () => getCloudflareContext().env as unknown as Env;
+
 export function db(): D1Database {
-  return (getCloudflareContext().env as unknown as Env).DB;
+  return env().DB;
 }
