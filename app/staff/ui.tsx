@@ -157,7 +157,7 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
           <>
             {/* Tapping anywhere off the menu closes it. */}
             <button type="button" aria-label="Close menu" tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-0 cursor-default" />
-            <ul id="staff-menu" className="absolute left-2 top-full z-10 mt-1 w-56 overflow-hidden rounded-xl bg-white py-1 text-ink shadow-[0_12px_32px_rgb(16_52_42/0.25)]">
+            <ul id="staff-menu" className="absolute left-2 top-full z-10 mt-1 w-56 overflow-hidden rounded-xl bg-white py-1 text-ink shadow-[0_12px_32px_rgb(59_46_37/0.25)]">
               {links.map((l) => {
                 const here = pathname === l.href;
                 return (
@@ -260,7 +260,7 @@ function ConfirmDialog({ options, onDone }: { options: ConfirmOptions | null; on
         // A tap on the backdrop lands on the dialog itself, not the card.
         if (e.target === e.currentTarget) onDone(false);
       }}
-      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(16_52_42/0.35)] backdrop:bg-forest/60"
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
     >
       {o && (
         <div className="p-5">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { TableSummary } from "@/lib/orders";
+import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { ago, formatPrice } from "@/lib/format";
 import { OfflineNote, StaffNav, usePoll } from "./ui";
 
@@ -20,6 +21,7 @@ export default function TablesBoard({
 
   return (
     <>
+      <WarmBackdrop />
       <StaffNav isManager={isManager} />
       <OfflineNote offline={offline} />
 

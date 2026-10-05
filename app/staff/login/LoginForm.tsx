@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { BASE_PATH } from "@/lib/base";
+import WarmBackdrop from "@/app/components/WarmBackdrop";
+import { Logo } from "../kit";
 import { api } from "../ui";
 
 export default function LoginForm() {
@@ -13,10 +15,12 @@ export default function LoginForm() {
 
   return (
     <main className="flex min-h-dvh flex-col">
+      <WarmBackdrop />
       <div className="bg-forest pt-[env(safe-area-inset-top)] text-white">
         <div className="mx-auto max-w-sm px-6 pb-8 pt-10">
-          <p className="text-sm font-semibold uppercase tracking-wide text-mango">Staff</p>
-          <h1 className="mt-1 font-display text-[32px] font-bold leading-tight">Log in to see your tables</h1>
+          <h1>
+            <Logo href="/staff/login" light />
+          </h1>
         </div>
         <div className="banig" aria-hidden="true" />
       </div>

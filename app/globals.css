@@ -2,13 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The palette, as "r g b" so Tailwind can add opacity. Default: the
+   homepage's warm theme (shell, cream, cocoa, orange), for guests and
+   waiters. The manager's dashboard wraps itself in .theme-green. */
+:root,
+.theme-warm {
+  --ink: 59 46 37; /* cocoa */
+  --muted: 122 106 92;
+  --line: 236 223 192;
+  --wash: 244 234 206; /* cream */
+  --paper: 255 249 231; /* shell */
+  --forest: 59 46 37; /* cocoa */
+  --forest-soft: 84 68 58;
+  --leaf: 59 46 37;
+  --leaf-dark: 42 32 25;
+  --leaf-tint: 252 233 200;
+  --mango: 241 154 51; /* orange */
+  --mango-soft: 250 214 138; /* butter */
+  --focus: #f19a33;
+}
+.theme-green {
+  --ink: 26 26 26;
+  --muted: 94 102 96;
+  --line: 225 229 223;
+  --wash: 238 241 236;
+  --paper: 245 246 242;
+  --forest: 16 52 42;
+  --forest-soft: 26 69 56;
+  --leaf: 31 92 63;
+  --leaf-dark: 23 70 48;
+  --leaf-tint: 227 238 231;
+  --mango: 242 178 51;
+  --mango-soft: 252 239 203;
+  --focus: #1f5c3f;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 
 :focus-visible {
-  outline: 2px solid #1f5c3f;
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -107,10 +142,14 @@ html:has(dialog.sheet[open]) {
    It marks where the dark stage ends and the menu begins. */
 .banig {
   height: 14px;
-  background-color: #1f5c3f;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F2B233'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%2310342A'/%3E%3C/svg%3E");
+  background-color: #54443a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F19A33'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%233B2E25'/%3E%3C/svg%3E");
   background-size: 14px 14px;
   background-repeat: repeat-x;
+}
+.theme-green .banig {
+  background-color: #1f5c3f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F2B233'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%2310342A'/%3E%3C/svg%3E");
 }
 
 /* The "Added to order" notice rises into place each time it is shown, and

@@ -68,7 +68,7 @@ export function SpiceMeter({ level }: { level: number }) {
             lit={n <= level}
             width={22}
             height={22}
-            className={n <= level ? "text-chili" : "text-[#C5CBC6]"}
+            className={n <= level ? "text-chili" : "text-muted/35"}
           />
         ))}
       </div>

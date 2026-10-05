@@ -1,25 +1,27 @@
 import type { Config } from "tailwindcss";
 
-// Prototype palette. The food photos carry most of the colour.
-//   forest  the "stage": header, hero and best sellers sit on it
+// The palette lives in CSS variables (app/globals.css) so one class swaps it:
+// guests and waiters get the homepage's warm theme, the manager's dashboard
+// keeps the original greens (.theme-green). Roles, whatever the theme:
+//   forest  the dark "stage": headers, toasts, the order bar
 //   leaf    anything you press
 //   mango   what the eye scans for: the pick tag, prices, the order count
 //   chili   lit chilies and nothing else
-//   paper   the lighter menu below the stage
+//   paper   the page; wash and line for quieter fills and rules
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       screens: { xs: "360px" },
       colors: {
-        ink: "#1A1A1A",
-        muted: "#5E6660",
-        line: "#E1E5DF",
-        wash: "#EEF1EC",
-        paper: "#F5F6F2",
-        forest: { DEFAULT: "#10342A", soft: "#1A4538" },
-        leaf: { DEFAULT: "#1F5C3F", dark: "#174630", tint: "#E3EEE7" },
-        mango: { DEFAULT: "#F2B233", soft: "#FCEFCB" },
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        line: "rgb(var(--line) / <alpha-value>)",
+        wash: "rgb(var(--wash) / <alpha-value>)",
+        paper: "rgb(var(--paper) / <alpha-value>)",
+        forest: { DEFAULT: "rgb(var(--forest) / <alpha-value>)", soft: "rgb(var(--forest-soft) / <alpha-value>)" },
+        leaf: { DEFAULT: "rgb(var(--leaf) / <alpha-value>)", dark: "rgb(var(--leaf-dark) / <alpha-value>)", tint: "rgb(var(--leaf-tint) / <alpha-value>)" },
+        mango: { DEFAULT: "rgb(var(--mango) / <alpha-value>)", soft: "rgb(var(--mango-soft) / <alpha-value>)" },
         chili: "#C8331E",
         // The homepage (app/page.tsx) has its own warm palette.
         home: {
