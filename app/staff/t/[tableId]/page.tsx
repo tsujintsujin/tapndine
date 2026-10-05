@@ -12,5 +12,12 @@ export default async function TablePage({ params }: { params: Promise<{ tableId:
   const { tableId } = await params;
   const [table, dishes] = await Promise.all([tableOrders(staff.business_id, tableId), dishList(staff.business_id)]);
   if (!table) notFound();
-  return <TableView tableId={tableId} initial={table} dishes={dishes} />;
+  return (
+    <TableView
+      tableId={tableId}
+      initial={table}
+      dishes={dishes}
+      manager={staff.role === "manager" ? staff.name : null}
+    />
+  );
 }
