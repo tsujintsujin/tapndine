@@ -97,6 +97,77 @@ export const PeopleIcon = (p: P) => (
   </Svg>
 );
 
+// --- Manager screens ---------------------------------------------------------
+
+export const GridIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="4" width="7" height="4.5" rx="1.5" />
+    <rect x="13" y="11" width="7" height="9" rx="1.5" />
+    <rect x="4" y="13.5" width="7" height="6.5" rx="1.5" />
+  </Svg>
+);
+
+/** A table seen from the side. */
+export const TableIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 9h18M5 9v10M19 9v10M7 13h10" />
+    <path d="M6 5.5h12" />
+  </Svg>
+);
+
+export const TagIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 4h7.5L20 12.5 12.5 20 4 11.5V4z" />
+    <circle cx="8.5" cy="8.5" r="1.4" />
+  </Svg>
+);
+
+export const LogoutIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M14 4H6v16h8" />
+    <path d="M11 12h9M17 8.5l3.5 3.5-3.5 3.5" />
+  </Svg>
+);
+
+export const ArrowUpRight = (p: P) => (
+  <Svg {...p}>
+    <path d="M7 17L17 7M9 7h8v8" />
+  </Svg>
+);
+
+export const PencilIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5 4 20z" />
+  </Svg>
+);
+
+export const TrashIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13M10 11v5M14 11v5" />
+  </Svg>
+);
+
+/** Six dots: drag to reorder. */
+export const GripIcon = (p: P) => (
+  <Svg {...p} fill="currentColor" stroke="none">
+    <circle cx="9" cy="6" r="1.5" />
+    <circle cx="15" cy="6" r="1.5" />
+    <circle cx="9" cy="12" r="1.5" />
+    <circle cx="15" cy="12" r="1.5" />
+    <circle cx="9" cy="18" r="1.5" />
+    <circle cx="15" cy="18" r="1.5" />
+  </Svg>
+);
+
+export const ImageIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <circle cx="9" cy="10" r="1.8" />
+    <path d="M4 17.5l5-4.5 4 3.5 3-2.5 4.5 4" />
+  </Svg>
+);
+
 export const CheckIcon = (p: P) => (
   <Svg {...p} strokeWidth={2.4}>
     <path d="M5 12.5l4.5 4.5L19 7.5" />

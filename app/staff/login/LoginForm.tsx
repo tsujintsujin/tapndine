@@ -37,7 +37,7 @@ export default function LoginForm() {
               method: "POST",
               body: { username: f.get("username"), password: f.get("password") },
             });
-            window.location.href = `${BASE_PATH}/staff`;
+            window.location.href = `${BASE_PATH}/staff/dashboard`;
           } catch (err) {
             setError((err as Error).message);
             setBusy(false);
