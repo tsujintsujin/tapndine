@@ -340,14 +340,17 @@ function SecondRounds({ r }: { r: Report }) {
       <div className="relative mx-auto mt-4 w-full max-w-[260px]">
         <svg viewBox="0 0 200 110" className="w-full" aria-hidden="true">
           <path d="M20 100a80 80 0 0 1 160 0" fill="none" stroke="#EEF1EC" strokeWidth="22" strokeLinecap="round" />
-          <path
-            d="M20 100a80 80 0 0 1 160 0"
-            fill="none"
-            stroke="#10342A"
-            strokeWidth="22"
-            strokeLinecap="round"
-            strokeDasharray={`${len * rate} ${len}`}
-          />
+          {/* Nothing at 0%: a zero-length round-capped line still draws a dot. */}
+          {rate > 0 && (
+            <path
+              d="M20 100a80 80 0 0 1 160 0"
+              fill="none"
+              stroke="#10342A"
+              strokeWidth="22"
+              strokeLinecap="round"
+              strokeDasharray={`${len * rate} ${len}`}
+            />
+          )}
         </svg>
         <p className="absolute inset-x-0 bottom-0 text-center">
           <span className="block font-display text-[36px] font-bold leading-none">{t.reorderRate != null ? pct(rate) : "–"}</span>
