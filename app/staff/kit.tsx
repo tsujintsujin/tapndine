@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClocheIcon } from "@/app/components/Icons";
+import { Wordmark } from "@/app/components/Wordmark";
 
 // Plain pieces of the manager screens, usable from server and client
 // components alike (Shell.tsx is a client module, so constants exported
@@ -7,11 +7,8 @@ import { ClocheIcon } from "@/app/components/Icons";
 
 export function Logo({ href = "/staff/dashboard", light }: { href?: string; light?: boolean }) {
   return (
-    <Link href={href} className="flex items-center gap-2.5 rounded-xl px-1 py-1">
-      <span className={`grid h-10 w-10 place-items-center rounded-full text-mango ${light ? "bg-white/10" : "bg-forest"}`}>
-        <ClocheIcon width={22} height={22} />
-      </span>
-      <span className={`font-display text-[22px] font-bold tracking-tight ${light ? "text-white" : "text-forest"}`}>Tap&apos;N&apos;Dine</span>
+    <Link href={href} className={`flex items-center rounded-xl px-1 py-2 text-[28px] leading-none ${light ? "text-white" : "text-home-cocoa"}`}>
+      <Wordmark />
     </Link>
   );
 }

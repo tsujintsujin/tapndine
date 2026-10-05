@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
 import { CheckIcon } from "@/app/components/Icons";
+import { Wordmark } from "@/app/components/Wordmark";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
@@ -139,8 +140,8 @@ export default function Home() {
         <Drink className="absolute bottom-16 left-[44%] hidden w-11 rotate-6 text-home-cocoa/25 md:block" />
 
         <header className="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-          <Link href="/" className="text-2xl font-extrabold tracking-tight">
-            tapndine<span className="text-home-orange">.</span>
+          <Link href="/" className="text-2xl">
+            <Wordmark />
           </Link>
           <nav className="flex items-center gap-6 text-sm font-semibold">
             <a href="#how" className="hidden opacity-75 hover:opacity-100 md:block">How it works</a>
@@ -404,9 +405,7 @@ export default function Home() {
       <footer className="bg-home-cocoa text-home-shell">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
-            <span className="font-extrabold">
-              tapndine<span className="text-home-orange">.</span>
-            </span>{" "}
+            <Wordmark />{" "}
             by <span className="font-bold tracking-wide">TSUJIN IT SOLUTIONS</span>
           </p>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 font-medium opacity-80">

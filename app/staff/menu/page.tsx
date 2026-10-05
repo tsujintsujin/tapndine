@@ -5,7 +5,7 @@ import Shell from "../Shell";
 import MenuBoard from "./MenuBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Menu · Tap'N'Dine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Menu · tapndine", robots: { index: false, follow: false } };
 
 export default async function MenuPage() {
   const me = await requireStaff("manager");
