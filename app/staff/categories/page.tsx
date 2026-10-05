@@ -5,7 +5,7 @@ import Shell from "../Shell";
 import CategoryBoard from "./CategoryBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Categories · Tap'N'Dine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Categories · tapndine", robots: { index: false, follow: false } };
 
 export default async function CategoriesPage() {
   const me = await requireStaff("manager");
