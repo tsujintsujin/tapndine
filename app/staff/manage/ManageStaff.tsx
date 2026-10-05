@@ -133,8 +133,8 @@ export default function ManageStaff({ me, name, staff }: { me: string; name: str
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Password
-            <input name="password" type="password" required minLength={8} autoComplete="new-password" className={field} />
-            <span className="mt-1 block text-[13px] font-normal text-muted">At least 8 characters. Give it to the waiter.</span>
+            <input name="password" type="password" required minLength={6} autoComplete="new-password" className={field} />
+            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to the waiter.</span>
           </label>
           <button type="submit" disabled={busy} className={`${btn.primary} mt-5 w-full`}>
             Add waiter
