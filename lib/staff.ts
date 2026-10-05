@@ -19,7 +19,7 @@ export type Role = "manager" | "waiter";
 export type Staff = { id: string; business_id: string; username: string; name: string; role: Role };
 
 export const isUsername = (u: string) => /^[a-z0-9._-]{3,32}$/.test(u);
-export const MIN_PASSWORD = 8;
+export const MIN_PASSWORD = 6;
 
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
