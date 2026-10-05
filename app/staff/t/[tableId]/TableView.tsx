@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Additional, GuestOrders, Line, TableOrders } from "@/lib/orders";
 import { formatPrice, formatTime } from "@/lib/format";
-import { MinusIcon, PlusIcon } from "@/app/components/Icons";
+import Link from "next/link";
+import { ChevronLeft, MinusIcon, PlusIcon } from "@/app/components/Icons";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
+import { btn, card, PageHead } from "../../kit";
+import Shell from "../../Shell";
 import { api, OfflineNote, StaffHeader, useConfirm, usePoll } from "../../ui";
 
 type DishOption = { id: string; name: string; priceCents: number };
@@ -16,15 +19,20 @@ const VIEW_KEY = "tapndine:tableView";
  * One table's orders: a card per guest phone with its batches and subtotal,
  * then the waiter's Additionals, then the table total. Or, toggled from the
  * header, the same orders summed up per dish like a receipt. Refreshes itself.
+ * Waiters get it on their phone layout; managers inside the dashboard frame,
+ * with the total, Clear table and Additionals in a column beside the guests.
  */
 export default function TableView({
   tableId,
   initial,
   dishes,
+  manager,
 }: {
   tableId: string;
   initial: TableOrders;
   dishes: DishOption[];
+  /** The manager's name: renders in the dashboard frame. Null for waiters. */
+  manager: string | null;
 }) {
   const router = useRouter();
   const {
@@ -82,6 +90,135 @@ export default function TableView({
 
   const empty = table.guests.length === 0 && table.additionals.length === 0;
 
+  const clear = async () => {
+    if (
+      !(await confirm({
+        title: `Clear ${table.label}?`,
+        body: "Do this once the bill is paid. The orders leave this screen and the guests' menu links stop working.",
+        confirmLabel: "Clear table",
+        danger: true,
+      }))
+    )
+      return;
+    act("clear", async () => {
+      await api(`/api/staff/tables/${tableId}/clear`, {
+        method: "POST",
+        body: {},
+      });
+      router.push("/staff");
+    });
+  };
+
+  // Shared by both layouts.
+  const errorNote = error && (
+    <p role="alert" className="rounded-xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
+      {error}
+    </p>
+  );
+  const emptyNote = empty && (
+    <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[15px] text-muted">
+      No orders at this table yet. They show up here as soon as a guest taps Send to waiter.
+    </p>
+  );
+  const additionals = (
+    <section className="rounded-2xl border border-line bg-white" aria-labelledby="additionals">
+      <div className="flex items-baseline justify-between gap-3 px-4 pt-4">
+        <h2 id="additionals" className="font-display text-xl font-bold">
+          Additionals
+        </h2>
+        {table.additionals.length > 0 && (
+          <span className="font-display text-lg font-bold">{formatPrice(table.additionalsSubtotal)}</span>
+        )}
+      </div>
+      <p className="px-4 text-[13px] text-muted">Added by staff</p>
+      {table.additionals.length > 0 && (
+        <ul className="mt-2 divide-y divide-line px-4">
+          {table.additionals.map((l) => (
+            <LineRow key={l.id} line={l} busy={busy === l.id} onQty={setQty} meta={additionalMeta(l)} />
+          ))}
+        </ul>
+      )}
+      <AddDish
+        dishes={dishes}
+        busy={busy === "add"}
+        onAdd={(d) =>
+          act("add", () =>
+            api(`/api/staff/tables/${tableId}/items`, {
+              method: "POST",
+              body: { dishId: d.id, qty: 1 },
+            }),
+          )
+        }
+      />
+    </section>
+  );
+
+  if (manager !== null) {
+    const guests = table.guests.length;
+    return (
+      <Shell name={manager}>
+        <OfflineNote offline={offline} />
+        <Link
+          href="/staff"
+          className="inline-flex h-9 items-center gap-1 rounded-full pr-3 text-[14px] font-semibold text-muted hover:text-ink"
+        >
+          <ChevronLeft width={18} height={18} />
+          Tables
+        </Link>
+        <PageHead title={table.label} sub={empty ? "No orders yet" : `${guests} ${guests === 1 ? "guest" : "guests"}, live`}>
+          <div role="group" aria-label="Show orders" className="flex rounded-full bg-white p-1 shadow-[0_1px_2px_rgb(16_52_42/0.06)]">
+            {(["guests", "summary"] as View[]).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => view !== v && toggleView()}
+                className={`flex h-9 items-center rounded-full px-4 text-[14px] font-semibold ${
+                  view === v ? "bg-forest text-white" : "text-muted hover:text-ink"
+                }`}
+              >
+                {v === "guests" ? "By guest" : "Summary"}
+              </button>
+            ))}
+          </div>
+        </PageHead>
+
+        <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          {/* Desktop: this is the right-hand column. Phones: it dissolves (contents)
+              so the total comes first, then the guests, then Additionals. */}
+          <div className="contents lg:sticky lg:top-6 lg:order-2 lg:block lg:space-y-4">
+            <section className={`${card} order-1`}>
+              <p className="text-[15px] font-semibold">Table total</p>
+              <p className="mt-2 font-display text-[40px] font-bold leading-none tracking-tight">{formatPrice(table.totalCents)}</p>
+              <button
+                type="button"
+                disabled={empty || busy === "clear"}
+                onClick={clear}
+                className={`${btn.secondary} mt-5 w-full disabled:border-line disabled:text-muted`}
+              >
+                Clear table (paid)
+              </button>
+            </section>
+            {view === "guests" && <div className="order-3">{additionals}</div>}
+          </div>
+          <div className="order-2 min-w-0 space-y-4 lg:order-1">
+            {errorNote}
+            {emptyNote}
+            {view === "summary" && !empty && <Summary table={table} />}
+            {view === "guests" && guests > 0 && (
+              <div className="grid items-start gap-4 xl:grid-cols-2">
+                {table.guests.map((g) => (
+                  <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {dialog}
+      </Shell>
+    );
+  }
+
   return (
     <>
       <WarmBackdrop />
@@ -102,55 +239,16 @@ export default function TableView({
       <OfflineNote offline={offline} />
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 pb-36 pt-4">
-        {error && (
-          <p role="alert" className="rounded-xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
-            {error}
-          </p>
-        )}
+        {errorNote}
 
-        {empty && (
-          <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[15px] text-muted">
-            No orders at this table yet. They show up here as soon as a guest taps Send to waiter.
-          </p>
-        )}
+        {emptyNote}
 
         {view === "summary" && !empty && <Summary table={table} />}
 
         {view === "guests" &&
           table.guests.map((g) => <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} />)}
 
-        {view === "guests" && (
-          <section className="rounded-2xl border border-line bg-white" aria-labelledby="additionals">
-            <div className="flex items-baseline justify-between gap-3 px-4 pt-4">
-              <h2 id="additionals" className="font-display text-xl font-bold">
-                Additionals
-              </h2>
-              {table.additionals.length > 0 && (
-                <span className="font-display text-lg font-bold">{formatPrice(table.additionalsSubtotal)}</span>
-              )}
-            </div>
-            <p className="px-4 text-[13px] text-muted">Added by staff</p>
-            {table.additionals.length > 0 && (
-              <ul className="mt-2 divide-y divide-line px-4">
-                {table.additionals.map((l) => (
-                  <LineRow key={l.id} line={l} busy={busy === l.id} onQty={setQty} meta={additionalMeta(l)} />
-                ))}
-              </ul>
-            )}
-            <AddDish
-              dishes={dishes}
-              busy={busy === "add"}
-              onAdd={(d) =>
-                act("add", () =>
-                  api(`/api/staff/tables/${tableId}/items`, {
-                    method: "POST",
-                    body: { dishId: d.id, qty: 1 },
-                  }),
-                )
-              }
-            />
-          </section>
-        )}
+        {view === "guests" && additionals}
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
@@ -162,24 +260,7 @@ export default function TableView({
           <button
             type="button"
             disabled={empty || busy === "clear"}
-            onClick={async () => {
-              if (
-                !(await confirm({
-                  title: `Clear ${table.label}?`,
-                  body: "Do this once the bill is paid. The orders leave this screen and the guests' menu links stop working.",
-                  confirmLabel: "Clear table",
-                  danger: true,
-                }))
-              )
-                return;
-              act("clear", async () => {
-                await api(`/api/staff/tables/${tableId}/clear`, {
-                  method: "POST",
-                  body: {},
-                });
-                router.push("/staff");
-              });
-            }}
+            onClick={clear}
             className="h-12 shrink-0 rounded-xl border border-ink px-4 text-[15px] font-semibold active:bg-wash disabled:border-line disabled:text-muted"
           >
             Clear table (paid)
