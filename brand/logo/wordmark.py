@@ -148,7 +148,7 @@ export function Wordmark({{ className = "" }}: {{ className?: string }}) {{
       role="img"
       aria-label="tapndine"
       className={{className}}
-      style={{{{ height: "{vb_h / 1000:.3f}em", width: "auto", verticalAlign: "-{(ASC + 200 - (ASC)) / 1000:.3f}em" }}}}
+      style={{{{ display: "inline-block", height: "{vb_h / 1000:.3f}em", width: "auto", verticalAlign: "-{(ASC + 200 - (ASC)) / 1000:.3f}em" }}}}
     >
       <path fill="currentColor" d="{word}" />
       <path fill="#F19A33" d="{period}" />
