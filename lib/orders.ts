@@ -218,7 +218,7 @@ export async function tablesOverview(businessId: string): Promise<TableSummary[]
               (SELECT MAX(b.sent_at) FROM batches b WHERE b.sitting_id = s.id) AS last_order_at
        FROM tables t
        LEFT JOIN sittings s ON s.table_id = t.id AND s.closed_at IS NULL
-       WHERE t.business_id = ?
+       WHERE t.business_id = ? AND t.removed_at IS NULL
        ORDER BY t.sort, t.label`
     )
     .bind(businessId)
@@ -245,7 +245,7 @@ export type TableOrders = {
 export async function tableOrders(businessId: string, tableId: string): Promise<TableOrders | null> {
   const d = db();
   const [table, sitting] = await d.batch([
-    d.prepare("SELECT label FROM tables WHERE id = ? AND business_id = ?").bind(tableId, businessId),
+    d.prepare("SELECT label FROM tables WHERE id = ? AND business_id = ? AND removed_at IS NULL").bind(tableId, businessId),
     d.prepare("SELECT id FROM sittings WHERE table_id = ? AND closed_at IS NULL").bind(tableId),
   ]);
   const label = (table.results as { label: string }[])[0]?.label;
@@ -271,7 +271,7 @@ export async function addAdditional(
   qty: number
 ): Promise<boolean> {
   const d = db();
-  const table = await d.prepare("SELECT 1 FROM tables WHERE id = ? AND business_id = ?").bind(tableId, businessId).first();
+  const table = await d.prepare("SELECT 1 FROM tables WHERE id = ? AND business_id = ? AND removed_at IS NULL").bind(tableId, businessId).first();
   if (!table) return false;
   const lines = await price(businessId, [{ dishId, qty }]);
   if (!lines) return false;

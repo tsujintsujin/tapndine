@@ -217,10 +217,10 @@ export async function report(businessId: string, range: Range, tableId: string |
   };
 }
 
-/** Every table, for the table picker. */
+/** Every table still in use, for the table picker. */
 export async function tableList(businessId: string) {
   const r = await db()
-    .prepare("SELECT id, label FROM tables WHERE business_id = ? ORDER BY sort, label")
+    .prepare("SELECT id, label FROM tables WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, label")
     .bind(businessId)
     .all<{ id: string; label: string }>();
   return r.results;
