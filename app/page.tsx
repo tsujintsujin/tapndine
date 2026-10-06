@@ -6,10 +6,13 @@ import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
+import { StatsReveal } from "./StatsReveal";
 
 // The tapndine homepage: what it is, for restaurant owners. The product screens
 // are real captures of a test run at the sample restaurant (public/landing/);
-// the round "plates" are doodles (Doodles.tsx), not photos.
+// the round "plates" are doodles (Doodles.tsx), not photos. The moving pictures
+// (hero, menu, waiter) are HyperFrames compositions: source in videos/, served
+// from public/anim/ (see Anim below).
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
@@ -61,6 +64,42 @@ function Phone({ src, alt, className = "" }: { src: string; alt: string; classNa
     <div className={`rounded-[2.2rem] bg-home-cocoa p-[7px] shadow-[0_30px_60px_-20px_rgb(59_46_37/0.5)] ${className}`}>
       <img src={src} alt={alt} width={390} height={844} className="block h-auto w-full rounded-[1.8rem]" />
     </div>
+  );
+}
+
+/**
+ * One of the homepage animations: a HyperFrames composition (videos/<name>/,
+ * copied to public/anim/ by `npm run anim`) in a see-through frame over its
+ * picture box. The canvas is bigger than the box so phones can move past its
+ * edges; `box` is where the box sits on the canvas (x, y, w, h in canvas px).
+ * It plays itself while on screen and never takes a click.
+ */
+function Anim({
+  name,
+  canvas: [cw, ch],
+  box: [bx, by, bw, bh],
+  label,
+  eager = false,
+}: {
+  name: string;
+  canvas: [number, number];
+  box: [number, number, number, number];
+  label: string;
+  eager?: boolean;
+}) {
+  return (
+    <>
+      <iframe
+        src={`${BASE_PATH}/anim/${name}/index.html?embed`}
+        title={label}
+        aria-hidden
+        tabIndex={-1}
+        loading={eager ? "eager" : "lazy"}
+        className="pointer-events-none absolute border-0 bg-transparent"
+        style={{ left: `${(-bx / bw) * 100}%`, top: `${(-by / bh) * 100}%`, width: `${(cw / bw) * 100}%`, height: `${(ch / bh) * 100}%` }}
+      />
+      <span className="sr-only">{label}</span>
+    </>
   );
 }
 
@@ -124,6 +163,21 @@ const STEPS = [
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves." },
 ];
 
+// Where the hour columns (8 AM to 11 PM) and the day bars sit in the two
+// statistics captures, in their own pixels (both are 1100 wide).
+const BUSY_HOURS: [number, number][] = [83, 144, 206, 267, 330, 393, 454, 517, 579, 641, 703, 765, 827, 890, 951, 1014].map(
+  (x) => [x - 3, x + 61],
+);
+const DAY_BARS: [number, number][] = [
+  [76, 122],
+  [226, 271],
+  [376, 422],
+  [526, 571],
+  [676, 722],
+  [827, 873],
+  [976, 1022],
+];
+
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
 const PILL = "inline-block rounded-full px-6 py-3 font-semibold transition";
 
@@ -175,27 +229,19 @@ export default function Home() {
           <div className="relative mx-auto aspect-square w-full max-w-[520px]">
             <div className="absolute -right-8 -top-6 h-[80%] w-[80%] rounded-full bg-home-orange md:hidden" aria-hidden />
             <Plate Dish={Bowl} className="absolute right-0 top-[2%] w-[64%]" />
-            <Phone src={shot("m-home")} alt="A guest's menu home on a phone" className="hero-phone absolute bottom-0 left-[12%] w-[40%]" />
+            {/* The phone and the table's tap tag: one dinner, start to finish, looping */}
+            <Anim
+              name="hero-loop"
+              canvas={[1400, 1200]}
+              box={[200, 60, 1080, 1080]}
+              eager
+              label="A guest taps the table tag, orders on their phone, and the order arrives on the waiter's phone."
+            />
             <div className="absolute bottom-[10%] right-[4%] grid h-28 w-28 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-32 sm:w-32">
               <p className="text-xs font-semibold leading-tight">
                 From
                 <span className="block text-xl font-extrabold sm:text-2xl">₱1,800</span>a year
               </p>
-            </div>
-            {/* The NFC tag on the table, with the tap rippling out of it */}
-            <div className="absolute left-0 top-[34%]" aria-hidden>
-              <span className="tap-ring absolute inset-0 rounded-full border-2 border-home-orange" />
-              <span className="tap-ring tap-ring-2 absolute inset-0 rounded-full border-2 border-home-orange" />
-              <div className="relative grid h-20 w-20 place-items-center rounded-full border-4 border-white bg-home-cocoa text-center shadow-xl sm:h-24 sm:w-24">
-                <p className="text-base font-extrabold leading-none text-home-butter sm:text-lg">
-                  tap
-                  <span className="mt-1 block text-[10px] font-semibold leading-tight text-white/80">
-                    for the
-                    <br />
-                    menu
-                  </span>
-                </p>
-              </div>
             </div>
           </div>
         </section>
@@ -216,12 +262,17 @@ export default function Home() {
 
       {/* Feature: the menu */}
       <section className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
-        <div className="relative mx-auto h-[440px] w-full max-w-[420px] sm:h-[520px]">
+        <div className="relative mx-auto aspect-[420/520] w-full max-w-[420px]">
           <Blob className="inset-0 m-auto h-full w-full scale-110 text-home-butter" />
           <Bowl className="absolute -left-2 top-2 w-14 text-home-cocoa/30" />
           <Shrimp className="absolute -right-2 bottom-4 w-14 text-home-cocoa/30" />
-          <Phone src={shot("m-menu")} alt="The whole menu with category filters and search" className="absolute left-4 top-6 w-[50%] -rotate-6" />
-          <Phone src={shot("m-home")} alt="" className="absolute right-4 top-14 w-[50%] rotate-3" />
+          {/* A thick paper menu flips through its pages and turns into one phone; plays once */}
+          <Anim
+            name="menu-booklet"
+            canvas={[1300, 1550]}
+            box={[125, 125, 1050, 1300]}
+            label="A thick paper menu folds shut and becomes a phone showing the whole menu, filtered to Seafood."
+          />
         </div>
         <div>
           <h2 className={H2}>Your whole menu, on every phone at the table.</h2>
@@ -249,15 +300,15 @@ export default function Home() {
         <Fish className="absolute right-[48%] top-12 hidden w-16 text-home-cocoa/25 md:block" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <div className="md:order-2">
-            <div className="relative mx-auto max-w-[420px]">
+            <div className="relative mx-auto aspect-[1050/1368] w-full max-w-[420px]">
               <div className="absolute -right-10 -top-6 h-64 w-64 rounded-full bg-home-butter" aria-hidden />
-              <Phone src={shot("s-table")} alt="A waiter's view of a table, with each guest's orders" className="relative ml-auto w-[62%]" />
-              <div className="absolute -bottom-6 left-0 w-[40%] rounded-3xl bg-home-cocoa p-4 text-white shadow-2xl sm:p-5">
-                <p className="text-xl font-bold">Table 1</p>
-                <p className="mt-1 text-sm text-white/75">2 guests · 7 items</p>
-                <p className="mt-3 text-2xl font-extrabold text-home-butter">₱1,795</p>
-                <p className="mt-1 text-xs text-white/60">Last order just now</p>
-              </div>
+              {/* Each guest's order flies into the waiter's phone as its own card; then the table is cleared */}
+              <Anim
+                name="waiter-orders"
+                canvas={[1350, 1620]}
+                box={[150, 100, 1050, 1368]}
+                label="Bea, Paolo and Mia each send an order; each lands on the waiter's phone as its own card and the table total adds up."
+              />
             </div>
           </div>
           <div className="md:order-1">
@@ -286,14 +337,27 @@ export default function Home() {
               <span className="h-2.5 w-2.5 rounded-full bg-home-butter" />
               <span className="h-2.5 w-2.5 rounded-full bg-white" />
             </div>
-            <img src={shot("st-busy")} alt="Busy hours: orders by weekday and hour" width={1100} height={482} className="block h-auto w-full rounded-xl" />
+            <StatsReveal
+              base={shot("st-busy-base")}
+              full={shot("st-busy")}
+              alt="Busy hours: orders by weekday and hour"
+              width={1100}
+              height={482}
+              kind="fade"
+              slices={BUSY_HOURS}
+              imgClassName="rounded-xl"
+            />
           </div>
-          <img
-            src={shot("st-chart")}
+          <StatsReveal
+            base={shot("st-chart-base")}
+            full={shot("st-chart")}
             alt="Orders sent each day for the last week"
             width={1100}
             height={385}
-            className="absolute -bottom-2 right-0 h-auto w-[72%] rounded-2xl shadow-2xl ring-1 ring-home-cream sm:-right-6"
+            kind="grow"
+            slices={DAY_BARS}
+            className="absolute -bottom-2 right-0 w-[72%] rounded-2xl shadow-2xl ring-1 ring-home-cream sm:-right-6"
+            imgClassName="rounded-2xl"
           />
         </div>
         <div>

@@ -196,39 +196,33 @@ html:has(dialog.sheet[open]) {
   box-shadow: inset 0 0 0 1px #e1e5df;
 }
 
-/* Homepage hero: the tag ripples twice as if just tapped, and the phone
-   rises into place with the second ripple. One moment, then still. */
-.tap-ring {
-  animation: tap-ring 1400ms cubic-bezier(0.2, 0.6, 0.3, 1) 300ms 2 both;
+/* Homepage statistics (StatsReveal.tsx): the real chart capture sits over an
+   empty copy of itself, cut into one slice per hour column or day bar. Once
+   the chart scrolls into view the slices come in one after another: the
+   heatmap's columns fade in hour by hour, the bars grow up from the baseline.
+   Without JS, or with reduced motion, the chart is simply there. */
+.chart-slice {
+  clip-path: inset(0 var(--r) 0 var(--l));
 }
-.tap-ring-2 {
-  animation-delay: 700ms;
+[data-reveal="wait"] .chart-slice.fade {
+  opacity: 0;
 }
-@keyframes tap-ring {
+[data-reveal="wait"] .chart-slice.grow {
+  clip-path: inset(85% var(--r) 0 var(--l));
+}
+[data-reveal="play"] .chart-slice.fade {
+  animation: chart-fade 450ms ease-out calc(var(--i) * 80ms) both;
+}
+[data-reveal="play"] .chart-slice.grow {
+  animation: chart-grow 800ms cubic-bezier(0.2, 0.7, 0.2, 1) calc(500ms + var(--i) * 110ms) both;
+}
+@keyframes chart-fade {
   from {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  to {
     opacity: 0;
-    transform: scale(1.9);
   }
 }
-.hero-phone {
-  animation: hero-phone 700ms cubic-bezier(0.32, 0.72, 0, 1) 900ms both;
-}
-@keyframes hero-phone {
+@keyframes chart-grow {
   from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tap-ring {
-    animation: none;
-    opacity: 0;
-  }
-  .hero-phone {
-    animation: none;
+    clip-path: inset(85% var(--r) 0 var(--l));
   }
 }

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3300 -H 0.0.0.0",
     "build": "next build",
+    "anim": "node videos/publish.mjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:migrate": "wrangler d1 migrations apply tapndine --local --persist-to .localdb",

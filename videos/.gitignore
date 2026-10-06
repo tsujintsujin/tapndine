@@ -1,0 +1,5 @@
+# HyperFrames working files: proof snapshots, Studio state, renders
+snapshots/
+.hyperframes/
+renders/
+.thumbnails/
