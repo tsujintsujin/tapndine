@@ -279,21 +279,28 @@ export default function Home() {
 
       {/* Feature: statistics */}
       <section className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
-        <div className="relative mx-auto w-full max-w-[520px] pb-16">
-          <div className="relative rounded-3xl bg-home-sage p-3 pt-9 shadow-2xl sm:p-4 sm:pt-10">
-            <div className="absolute left-5 top-3.5 flex gap-1.5 sm:top-4" aria-hidden>
-              <span className="h-2.5 w-2.5 rounded-full bg-home-orange" />
-              <span className="h-2.5 w-2.5 rounded-full bg-home-butter" />
-              <span className="h-2.5 w-2.5 rounded-full bg-white" />
-            </div>
-            <img src={shot("st-busy")} alt="Busy hours: orders by weekday and hour" width={1100} height={482} className="block h-auto w-full rounded-xl" />
-          </div>
+        {/* A HyperFrames loop of the manager's dashboard (videos/dashboard-stats/); its first frame stands still for reduced motion. */}
+        <div className="mx-auto w-full max-w-[520px]">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={shot("st-dashboard")}
+            width={1040}
+            height={900}
+            aria-label="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
+            className="block h-auto w-full motion-reduce:hidden"
+          >
+            <source src={`${BASE_PATH}/landing/st-dashboard.webm`} type="video/webm" />
+            <source src={`${BASE_PATH}/landing/st-dashboard.mp4`} type="video/mp4" />
+          </video>
           <img
-            src={shot("st-chart")}
-            alt="Orders sent each day for the last week"
-            width={1100}
-            height={385}
-            className="absolute -bottom-2 right-0 h-auto w-[72%] rounded-2xl shadow-2xl ring-1 ring-home-cream sm:-right-6"
+            src={shot("st-dashboard")}
+            alt="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
+            width={1040}
+            height={900}
+            className="hidden h-auto w-full motion-reduce:block"
           />
         </div>
         <div>
