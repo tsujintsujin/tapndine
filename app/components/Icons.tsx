@@ -123,6 +123,21 @@ export const TagIcon = (p: P) => (
   </Svg>
 );
 
+/** A tap: a dot sending waves out, for NFC links. */
+export const NfcIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="1.6" />
+    <path d="M10 8.5a5 5 0 0 1 0 7M13.5 5.5a9.5 9.5 0 0 1 0 13M17 3a13 13 0 0 1 0 18" />
+  </Svg>
+);
+
+export const CopyIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" />
+    <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
+  </Svg>
+);
+
 export const LogoutIcon = (p: P) => (
   <Svg {...p}>
     <path d="M14 4H6v16h8" />

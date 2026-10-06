@@ -45,12 +45,12 @@ async function openSitting(businessId: string, tableId: string, now: number): Pr
  * One tap: look the tag up and return the visit to send the phone to.
  * The same phone tapping again at the same sitting gets its live link back,
  * so it stays the same guest with the same orders. Otherwise a fresh link.
- * Returns null when the tag is not registered.
+ * Returns null when the tag is not registered, or was replaced.
  */
 export async function startVisit(tagId: string, phoneId: string): Promise<string | null> {
   if (!isTagId(tagId)) return null;
   const tag = await db()
-    .prepare("SELECT id, business_id, table_id FROM tags WHERE id = ?")
+    .prepare("SELECT id, business_id, table_id FROM tags WHERE id = ? AND removed_at IS NULL")
     .bind(tagId)
     .first<{ id: string; business_id: string; table_id: string | null }>();
   if (!tag) return null;
