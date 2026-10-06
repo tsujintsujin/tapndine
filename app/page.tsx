@@ -6,7 +6,6 @@ import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
-import { StatsReveal } from "./StatsReveal";
 
 // The tapndine homepage: what it is, for restaurant owners. The product screens
 // are real captures of a test run at the sample restaurant (public/landing/);
@@ -24,6 +23,8 @@ export const metadata: Metadata = {
 
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%20restaurant";
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
+// Bump when the stats loop is re-rendered: browsers keep cached video by URL.
+const STATS_V = "2";
 
 const PLANS = [
   { name: "Standard Cafe Plan", tables: 10, price: 1800 },
@@ -161,21 +162,6 @@ const STEPS = [
   { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today." },
   { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds." },
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves." },
-];
-
-// Where the hour columns (8 AM to 11 PM) and the day bars sit in the two
-// statistics captures, in their own pixels (both are 1100 wide).
-const BUSY_HOURS: [number, number][] = [83, 144, 206, 267, 330, 393, 454, 517, 579, 641, 703, 765, 827, 890, 951, 1014].map(
-  (x) => [x - 3, x + 61],
-);
-const DAY_BARS: [number, number][] = [
-  [76, 122],
-  [226, 271],
-  [376, 422],
-  [526, 571],
-  [676, 722],
-  [827, 873],
-  [976, 1022],
 ];
 
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
@@ -330,34 +316,28 @@ export default function Home() {
 
       {/* Feature: statistics */}
       <section className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
-        <div className="relative mx-auto w-full max-w-[520px] pb-16">
-          <div className="relative rounded-3xl bg-home-sage p-3 pt-9 shadow-2xl sm:p-4 sm:pt-10">
-            <div className="absolute left-5 top-3.5 flex gap-1.5 sm:top-4" aria-hidden>
-              <span className="h-2.5 w-2.5 rounded-full bg-home-orange" />
-              <span className="h-2.5 w-2.5 rounded-full bg-home-butter" />
-              <span className="h-2.5 w-2.5 rounded-full bg-white" />
-            </div>
-            <StatsReveal
-              base={shot("st-busy-base")}
-              full={shot("st-busy")}
-              alt="Busy hours: orders by weekday and hour"
-              width={1100}
-              height={482}
-              kind="fade"
-              slices={BUSY_HOURS}
-              imgClassName="rounded-xl"
-            />
-          </div>
-          <StatsReveal
-            base={shot("st-chart-base")}
-            full={shot("st-chart")}
-            alt="Orders sent each day for the last week"
-            width={1100}
-            height={385}
-            kind="grow"
-            slices={DAY_BARS}
-            className="absolute -bottom-2 right-0 w-[72%] rounded-2xl shadow-2xl ring-1 ring-home-cream sm:-right-6"
-            imgClassName="rounded-2xl"
+        {/* A HyperFrames loop of the manager's dashboard (videos/dashboard-stats/); its first frame stands still for reduced motion. */}
+        <div className="mx-auto w-full max-w-[520px]">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={`${shot("st-dashboard")}?v=${STATS_V}`}
+            width={1040}
+            height={900}
+            aria-label="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
+            className="block h-auto w-full motion-reduce:hidden"
+          >
+            <source src={`${BASE_PATH}/landing/st-dashboard.webm?v=${STATS_V}`} type="video/webm" />
+            <source src={`${BASE_PATH}/landing/st-dashboard.mp4?v=${STATS_V}`} type="video/mp4" />
+          </video>
+          <img
+            src={`${shot("st-dashboard")}?v=${STATS_V}`}
+            alt="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
+            width={1040}
+            height={900}
+            className="hidden h-auto w-full motion-reduce:block"
           />
         </div>
         <div>

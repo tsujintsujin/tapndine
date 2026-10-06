@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[{"id":"bg","type":"string","label":"Background (transparent for the WebM)","default":"#ffffff"}]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1040, height=900" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--
+      tapndine homepage, "See what sells, and when you're busy": the manager's
+      dashboard in the homepage's sage window, with the Top dishes card (its
+      top three, with their photos) floating over its corner. 12 s, loops seamlessly.
+
+      Canvas 1040x900 = the section's picture box (520 CSS px wide) at 2x, on
+      the section's white. assets/dashboard.png is a real capture of the
+      dashboard (7 days) with the sample restaurant's seeded history, at
+      1425 CSS px wide, 2x pixels.
+
+      The window scrolls from the top cards down to Busy hours, the busiest
+      hour gets a ring, and it scrolls back. The card bobs the whole time.
+    -->
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1040px; height: 900px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg, #fff); }
+
+      #frame {
+        position: absolute; left: 24px; top: 24px; width: 900px; height: 640px; border-radius: 44px;
+        background: #85a55e; box-shadow: 0 40px 56px -34px rgba(59, 46, 37, 0.55); /* stays inside the canvas */
+      }
+      .dot { position: absolute; top: 25px; width: 18px; height: 18px; border-radius: 50%; }
+      #vp { position: absolute; left: 22px; top: 66px; width: 856px; height: 552px; border-radius: 24px; overflow: hidden; background: #f4f4ef; }
+      /* 1425 CSS px shot, shown from x = 296 (the main column) at scale 856 / 1104 */
+      #shot { position: absolute; left: -229.5px; top: 0; width: 1104.9px; }
+      #shot img { display: block; width: 1104.9px; }
+      /* Fri, 7 PM in the heatmap (shot CSS 706, 920), in #shot's own pixels */
+      #ring {
+        position: absolute; left: 547.4px; top: 713.4px; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+        border-radius: 9px; border: 4px solid #f19a33; opacity: 0;
+      }
+
+      /* Top dishes, captured at 320 CSS px and cut below #3; scale 404 / 320.
+         The white under the image is the card's bottom padding. */
+      #card {
+        position: absolute; left: 612px; top: 540px; width: 404px; height: 312px; border-radius: 28px; overflow: hidden;
+        background: #fff;
+        box-shadow: 0 0 0 1px rgba(59, 46, 37, 0.06), 0 24px 40px -20px rgba(59, 46, 37, 0.5); /* stays inside the canvas, even mid-bob */
+      }
+      #card img { display: block; width: 404px; height: 291.6px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="12" data-width="1040" data-height="900">
+      <div id="scene" class="clip" data-start="0" data-duration="12" data-track-index="0" style="position: absolute; inset: 0">
+        <div id="frame">
+          <span class="dot" style="left: 34px; background: #f19a33"></span>
+          <span class="dot" style="left: 62px; background: #fad68a"></span>
+          <span class="dot" style="left: 90px; background: #fff"></span>
+          <div id="vp">
+            <div id="shot" data-layout-allow-overflow>
+              <img src="assets/dashboard.png" alt="" />
+              <div id="ring"></div>
+            </div>
+          </div>
+        </div>
+        <div id="card"><img src="assets/card-top-dishes.png" alt="" /></div>
+      </div>
+    </div>
+    <script>
+      const s = 856 / 1104;
+      const at = (y) => -y * s; // shot CSS y at the window's top edge
+      const tl = gsap.timeline({ paused: true });
+
+      // Scroll: the top cards, down to Busy hours, back up.
+      tl.fromTo("#shot", { y: at(20) }, { y: at(520), duration: 2.4, ease: "power2.inOut" }, 2.2);
+      tl.to("#shot", { y: at(20), duration: 2.4, ease: "power2.inOut" }, 8.2);
+
+      // The busiest hour gets two soft rings while it's in view.
+      for (const t of [5.0, 6.4]) {
+        tl.fromTo("#ring", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1.15, duration: 0.45, ease: "power2.out" }, t);
+        tl.to("#ring", { opacity: 0, scale: 1.45, duration: 0.7, ease: "power1.in" }, t + 0.45);
+      }
+
+      // The card bobs: four up-and-downs, back where it started at 12 s.
+      tl.fromTo("#card", { y: 0 }, { y: -12, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 7 }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -33,9 +33,10 @@ with the new order.
 ~5 s loop. Three guest bubbles; each guest's order flies into its own group on the waiter's
 phone, then gets ticked "served". Shows "sorted by guest".
 
-## 3. Statistics: CSS, no video
+## 3. Statistics
 
-On scroll into view, once: the busy-hours heatmap fills in hour by hour and the sales bars grow.
+Done separately: the section now shows a HyperFrames loop of the manager's
+dashboard (`videos/dashboard-stats/`, PR #22).
 
 ## 4. Your whole menu: `videos/menu-booklet/`
 

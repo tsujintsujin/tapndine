@@ -10,6 +10,7 @@ import {
   GridIcon,
   LogoutIcon,
   MenuIcon,
+  NfcIcon,
   PeopleIcon,
   TableIcon,
   TagIcon,
@@ -26,6 +27,7 @@ const GROUPS = [
     links: [
       { href: "/staff/dashboard", label: "Dashboard", Icon: GridIcon },
       { href: "/staff", label: "Tables", Icon: TableIcon },
+      { href: "/staff/links", label: "NFC links", Icon: NfcIcon },
       { href: "/staff/menu", label: "Menu", Icon: ClocheIcon },
       { href: "/staff/categories", label: "Categories", Icon: TagIcon },
     ],
