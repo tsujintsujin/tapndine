@@ -91,7 +91,7 @@ function Anim({
   return (
     <>
       <iframe
-        src={`${BASE_PATH}/anim/${name}/index.html?embed`}
+        src={`${BASE_PATH}/anim/${name}/play.html#embed`}
         title={label}
         aria-hidden
         tabIndex={-1}
