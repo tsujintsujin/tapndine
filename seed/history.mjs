@@ -42,7 +42,7 @@ const TABLES = Array.from({ length: 8 }, (_, i) => `tbl_hikay_${i + 1}`);
 const order = (batch, n, k) =>
   `INSERT INTO batch_items (id, batch_id, dish_id, name, price_cents, qty, sort)
    SELECT 'hist-${n}-' || id, '${batch}', id, name, price_cents, 1 + abs(random()) % 2, 0 FROM dishes
-   WHERE business_id = 'biz_hikay' AND available = 1
+   WHERE business_id = 'biz_hikay' AND available = 1 AND EXISTS (SELECT 1 FROM batches WHERE id = '${batch}')
    ORDER BY (abs(random()) % 1000) / (1.0 + unicode(substr(id, 3, 1)) % 6 + best_seller * 4) LIMIT ${k};`;
 
 let n = 0;
