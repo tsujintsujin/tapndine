@@ -21,6 +21,8 @@ export const metadata: Metadata = {
 
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%20restaurant";
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
+// Bump when the stats loop is re-rendered: browsers keep cached video by URL.
+const STATS_V = "2";
 
 const PLANS = [
   { name: "Standard Cafe Plan", tables: 10, price: 1800 },
@@ -286,17 +288,17 @@ export default function Home() {
             muted
             loop
             playsInline
-            poster={shot("st-dashboard")}
+            poster={`${shot("st-dashboard")}?v=${STATS_V}`}
             width={1040}
             height={900}
             aria-label="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
             className="block h-auto w-full motion-reduce:hidden"
           >
-            <source src={`${BASE_PATH}/landing/st-dashboard.webm`} type="video/webm" />
-            <source src={`${BASE_PATH}/landing/st-dashboard.mp4`} type="video/mp4" />
+            <source src={`${BASE_PATH}/landing/st-dashboard.webm?v=${STATS_V}`} type="video/webm" />
+            <source src={`${BASE_PATH}/landing/st-dashboard.mp4?v=${STATS_V}`} type="video/mp4" />
           </video>
           <img
-            src={shot("st-dashboard")}
+            src={`${shot("st-dashboard")}?v=${STATS_V}`}
             alt="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
             width={1040}
             height={900}
