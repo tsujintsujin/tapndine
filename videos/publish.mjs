@@ -11,7 +11,9 @@ const out = join(here, "..", "public", "anim");
 
 rmSync(out, { recursive: true, force: true });
 for (const name of ["hero-loop", "waiter-orders", "menu-booklet"]) {
-  cpSync(join(here, name, "index.html"), join(out, name, "index.html"));
+  // play.html, not index.html: Cloudflare would redirect .../index.html to
+  // .../name/ and Vercel strips trailing slashes, so the two would bounce.
+  cpSync(join(here, name, "index.html"), join(out, name, "play.html"));
   cpSync(join(here, name, "assets"), join(out, name, "assets"), {
     recursive: true,
     filter: (src) => !basename(src).startsWith("guide"),
