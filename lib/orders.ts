@@ -262,6 +262,73 @@ export async function tableOrders(businessId: string, tableId: string): Promise<
   };
 }
 
+/** One Send to waiter, or one waiter addition, in a past sitting. */
+export type LogEntry = { id: string; sentAt: number; by: string; lines: Line[] };
+export type PastSitting = { id: string; openedAt: number; closedAt: number; totalCents: number; items: number; guests: number; log: LogEntry[] };
+
+const HISTORY_LIMIT = 60;
+
+/** A table's cleared sittings, newest first, each with its orders in the order they came in. */
+export async function tableHistory(
+  businessId: string,
+  tableId: string
+): Promise<{ label: string; sittings: PastSitting[] } | null> {
+  const d = db();
+  const table = await d
+    .prepare("SELECT label FROM tables WHERE id = ? AND business_id = ?")
+    .bind(tableId, businessId)
+    .first<{ label: string }>();
+  if (!table) return null;
+  // ponytail: last 60 sittings only; page by closed_at if a table ever needs more.
+  const r = await d
+    .prepare(
+      `WITH past AS (
+         SELECT id, opened_at, closed_at FROM sittings
+         WHERE table_id = ?1 AND business_id = ?2 AND closed_at IS NOT NULL
+           AND EXISTS (SELECT 1 FROM batches b WHERE b.sitting_id = sittings.id)
+         ORDER BY closed_at DESC LIMIT ?3)
+       SELECT p.id AS sitting_id, p.opened_at, p.closed_at, b.id AS batch_id, b.guest_id, g.number AS guest_number,
+              g.nickname, b.sent_at, s.name AS added_by, i.id AS item_id, i.name, i.price_cents, i.qty
+       FROM past p
+       JOIN batches b ON b.sitting_id = p.id
+       JOIN batch_items i ON i.batch_id = b.id
+       LEFT JOIN guests g ON g.id = b.guest_id
+       LEFT JOIN staff s ON s.id = b.staff_id
+       ORDER BY p.closed_at DESC, b.sent_at, b.id, i.sort`
+    )
+    .bind(tableId, businessId, HISTORY_LIMIT)
+    .all<BatchRow & { sitting_id: string; opened_at: number; closed_at: number }>();
+
+  const sittings = new Map<string, PastSitting & { guestIds: Set<string> }>();
+  const entries = new Map<string, LogEntry>();
+  for (const row of r.results) {
+    let s = sittings.get(row.sitting_id);
+    if (!s) {
+      s = { id: row.sitting_id, openedAt: row.opened_at, closedAt: row.closed_at, totalCents: 0, items: 0, guests: 0, log: [], guestIds: new Set() };
+      sittings.set(row.sitting_id, s);
+    }
+    let e = entries.get(row.batch_id);
+    if (!e) {
+      const by = row.guest_id
+        ? row.nickname
+          ? `${row.nickname} (Guest ${row.guest_number})`
+          : `Guest ${row.guest_number}`
+        : `Added by ${row.added_by ?? "staff"}`;
+      e = { id: row.batch_id, sentAt: row.sent_at, by, lines: [] };
+      entries.set(row.batch_id, e);
+      s.log.push(e);
+    }
+    e.lines.push({ id: row.item_id, name: row.name, priceCents: row.price_cents, qty: row.qty });
+    s.totalCents += row.price_cents * row.qty;
+    s.items += row.qty;
+    if (row.guest_id) s.guestIds.add(row.guest_id);
+  }
+  return {
+    label: table.label,
+    sittings: [...sittings.values()].map(({ guestIds, ...s }) => ({ ...s, guests: guestIds.size })),
+  };
+}
+
 /** The waiter adds a dish to the table's Additionals. Opens a sitting if the table has none. */
 export async function addAdditional(
   businessId: string,
