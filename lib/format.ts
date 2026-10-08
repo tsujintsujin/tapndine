@@ -14,6 +14,10 @@ export const servesLabel = (min: number, max: number) =>
 export const formatTime = (ms: number) =>
   new Date(ms).toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" });
 
+/** "Wed, Oct 8", restaurant time. */
+export const formatDate = (ms: number) =>
+  new Date(ms).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric" });
+
 /** "7 PM", for an hour of the day 0–23. */
 export const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
 
