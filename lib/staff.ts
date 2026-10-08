@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { BASE_PATH } from "./base";
+import { BASE_PATH, OPEN_COOKIE } from "./base";
 import { db } from "./cf";
 import { randomId } from "./ids";
 
@@ -15,8 +15,21 @@ const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_FAILS = 5;
 const LOCK_MS = 5 * 60 * 1000;
 
-export type Role = "manager" | "waiter";
-export type Staff = { id: string; business_id: string; username: string; name: string; role: Role };
+export type Role = "developer" | "owner" | "manager" | "waiter";
+/**
+ * Someone working in one restaurant. A developer with a restaurant open shows
+ * up here as its manager, so every restaurant screen works for them as is.
+ */
+export type Staff = {
+  id: string;
+  business_id: string;
+  username: string;
+  name: string;
+  role: "manager" | "waiter";
+  developer: boolean;
+};
+/** Who is logged in. business_id: their restaurant, or the one a developer has open (null: none yet). */
+export type Login = { id: string; business_id: string | null; username: string; name: string; role: Role };
 
 export const isUsername = (u: string) => /^[a-z0-9._-]{3,32}$/.test(u);
 export const MIN_PASSWORD = 6;
@@ -58,19 +71,28 @@ const cookieOptions = (secure: boolean) => ({
   path: BASE_PATH || "/",
 });
 
-type StaffRow = Staff & { password_hash: string; failed_logins: number; locked_until: number };
+type StaffRow = {
+  id: string;
+  role: Role;
+  password_hash: string;
+  failed_logins: number;
+  locked_until: number;
+  /** Set when the login's restaurant is switched off. */
+  off: number | null;
+};
 
 /** Checks the password and, if right, sets the login cookie. */
 export async function logIn(
   username: string,
   password: string,
   secure: boolean
-): Promise<"ok" | "wrong" | "locked"> {
+): Promise<"ok" | "wrong" | "locked" | "off"> {
   const now = Date.now();
   const row = await db()
     .prepare(
-      `SELECT id, business_id, username, name, role, password_hash, failed_logins, locked_until
-       FROM staff WHERE username = ? AND disabled_at IS NULL`
+      `SELECT s.id, s.role, s.password_hash, s.failed_logins, s.locked_until, b.disabled_at AS off
+       FROM staff s LEFT JOIN businesses b ON b.id = s.business_id
+       WHERE s.username = ? AND s.disabled_at IS NULL`
     )
     .bind(username.trim().toLowerCase())
     .first<StaffRow>();
@@ -90,6 +112,9 @@ export async function logIn(
     return fails >= MAX_FAILS ? "locked" : "wrong";
   }
 
+  // Only after the right password, so it says nothing about the account to a guesser.
+  if (row.off) return "off";
+
   const token = randomId() + randomId();
   await db().batch([
     db().prepare("UPDATE staff SET failed_logins = 0, locked_until = 0 WHERE id = ?").bind(row.id),
@@ -98,7 +123,10 @@ export async function logIn(
       .prepare("INSERT INTO staff_sessions (id, staff_id, expires_at) VALUES (?, ?, ?)")
       .bind(await sha256(token), row.id, now + SESSION_MS),
   ]);
-  (await cookies()).set(COOKIE, token, { ...cookieOptions(secure), maxAge: SESSION_MS / 1000 });
+  const jar = await cookies();
+  jar.set(COOKIE, token, { ...cookieOptions(secure), maxAge: SESSION_MS / 1000 });
+  // A developer who used this browser before opened a restaurant; this login starts clean.
+  jar.delete({ name: OPEN_COOKIE, path: BASE_PATH || "/" });
   return "ok";
 }
 
@@ -107,28 +135,64 @@ export async function logOut() {
   const token = jar.get(COOKIE)?.value;
   if (token) await db().prepare("DELETE FROM staff_sessions WHERE id = ?").bind(await sha256(token)).run();
   jar.delete({ name: COOKIE, path: BASE_PATH || "/" });
+  jar.delete({ name: OPEN_COOKIE, path: BASE_PATH || "/" });
 }
 
-/** Whoever is logged in on this browser, or null. */
-export async function currentStaff(): Promise<Staff | null> {
+/** Whoever is logged in on this browser, or null. Staff of a switched-off restaurant are logged out. */
+export async function currentLogin(): Promise<Login | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
-  return db()
+  const row = await db()
     .prepare(
-      `SELECT s.id, s.business_id, s.username, s.name, s.role
+      `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off
        FROM staff_sessions x JOIN staff s ON s.id = x.staff_id
+       LEFT JOIN businesses b ON b.id = s.business_id
        WHERE x.id = ? AND x.expires_at > ? AND s.disabled_at IS NULL`
     )
     .bind(await sha256(token), Date.now())
-    .first<Staff>();
+    .first<Login & { off: number | null }>();
+  if (!row || row.off) return null;
+  const { off: _, ...login } = row;
+  return login;
 }
 
-/** For staff pages: the login screen if nobody is logged in. */
-export async function requireStaff(role?: Role): Promise<Staff> {
-  const staff = await currentStaff();
-  if (!staff) redirect("/staff/login");
+/** The login as restaurant staff: null for nobody, or a developer with no restaurant open. */
+function asStaff(login: Login | null): Staff | null {
+  if (!login?.business_id) return null;
+  const developer = login.role === "developer";
+  // ponytail: an owner works as a manager until owners get their own screens.
+  const role = login.role === "waiter" ? "waiter" : "manager";
+  return { ...login, business_id: login.business_id, role, developer };
+}
+
+/** Whoever is working in a restaurant on this browser, or null. */
+export async function currentStaff(): Promise<Staff | null> {
+  return asStaff(await currentLogin());
+}
+
+/** For staff pages: the login screen if nobody is logged in; a developer with no restaurant open goes to theirs. */
+export async function requireStaff(role?: Staff["role"]): Promise<Staff> {
+  const login = await currentLogin();
+  if (!login) redirect("/staff/login");
+  const staff = asStaff(login);
+  if (!staff) redirect("/staff/dev");
   if (role && staff.role !== role) redirect("/staff");
   return staff;
+}
+
+/** For developer pages. */
+export async function requireDeveloper(): Promise<Login> {
+  const login = await currentLogin();
+  if (!login) redirect("/staff/login");
+  if (login.role !== "developer") redirect("/staff");
+  return login;
+}
+
+/** A developer opens a restaurant: from now on this session works in it. Check it exists first. */
+export async function openRestaurant(businessId: string) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  if (!token) return;
+  await db().prepare("UPDATE staff_sessions SET business_id = ? WHERE id = ?").bind(businessId, await sha256(token)).run();
 }
 
 // --- Manager: the people who can log in --------------------------------------

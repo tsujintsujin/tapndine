@@ -4,3 +4,6 @@
  * <img src> or iframe src, so those use this. "" once it has its own domain.
  */
 export const BASE_PATH = "/tapndine";
+
+/** The restaurant a developer last opened. Not trusted for anything: it only lets an older tab notice the switch. */
+export const OPEN_COOKIE = "tnd_open";

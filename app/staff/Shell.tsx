@@ -8,6 +8,7 @@ import {
   ClocheIcon,
   CloseIcon,
   GridIcon,
+  HomeIcon,
   LogoutIcon,
   MenuIcon,
   NfcIcon,
@@ -16,7 +17,7 @@ import {
   TagIcon,
 } from "@/app/components/Icons";
 import { Logo } from "./kit";
-import { api } from "./ui";
+import { api, useStaffInfo } from "./ui";
 
 // The manager's frame, desktop first: a sidebar beside one big content
 // panel. Below lg the sidebar folds into a top bar with a drawer.
@@ -34,6 +35,8 @@ const GROUPS = [
   },
   { label: "Team", links: [{ href: "/staff/manage", label: "Staff", Icon: PeopleIcon }] },
 ];
+/** Above every restaurant, for developers only. */
+const DEVELOPER = { label: "Developer", links: [{ href: "/staff/dev", label: "All restaurants", Icon: HomeIcon }] };
 
 /** The link is "here" on its own page and the pages under it (a table, a dish). */
 const isHere = (href: string, path: string) =>
@@ -42,12 +45,18 @@ const isHere = (href: string, path: string) =>
 function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
+  const { developer, restaurant } = useStaffInfo();
+  // A developer sees their own group, plus the restaurant they have open.
+  const groups = [
+    ...(developer ? [DEVELOPER] : []),
+    ...(restaurant ? GROUPS.map((g, i) => (i === 0 ? { ...g, label: restaurant.name } : g)) : []),
+  ];
   return (
     <div className="flex h-full flex-col">
       <nav aria-label="Manager" className="mt-9 flex-1 space-y-7">
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <div key={g.label}>
-            <p className="px-4 text-[13px] text-muted">{g.label}</p>
+            <p className="truncate px-4 text-[13px] text-muted">{g.label}</p>
             <ul className="mt-1.5 space-y-0.5">
               {g.links.map(({ href, label, Icon }) => {
                 const here = isHere(href, path);
@@ -73,7 +82,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
         ))}
       </nav>
       <div className="border-t border-line pt-4">
-        <p className="px-4 text-[13px] text-muted">Signed in as</p>
+        <p className="px-4 text-[13px] text-muted">Signed in as{developer ? " developer" : ""}</p>
         <p className="truncate px-4 text-[15px] font-semibold">{name}</p>
         <button
           type="button"

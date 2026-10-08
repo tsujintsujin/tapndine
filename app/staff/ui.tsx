@@ -2,15 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BASE_PATH } from "@/lib/base";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { BASE_PATH, OPEN_COOKIE } from "@/lib/base";
 import { ChevronLeft, MenuIcon } from "@/app/components/Icons";
 
 // Pieces every staff screen shares. Staff screens are used on a phone in one
 // hand, so everything you press is at least 44px tall.
 
+/** Who is on this page: a developer or not, and the restaurant it shows (null: none open). */
+export type StaffInfo = { developer: boolean; restaurant: { id: string; name: string } | null };
+const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null });
+export const useStaffInfo = () => useContext(StaffContext);
+
+/** The restaurant this page was drawn for; api() refuses to act on another. */
+let pageRestaurant: string | null = null;
+
+export function StaffInfoProvider({ value, children }: { value: StaffInfo; children: React.ReactNode }) {
+  pageRestaurant = value.restaurant?.id ?? null;
+  return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;
+}
+
 /** fetch() under the base path, as JSON. A logged-out answer goes to the login screen. */
 export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
+  // A developer opened another restaurant in a different tab since this page
+  // loaded. The server would act on the new one, so stop here instead.
+  const open = document.cookie.match(new RegExp(`(?:^|; )${OPEN_COOKIE}=([^;]*)`))?.[1];
+  if (open && pageRestaurant && decodeURIComponent(open) !== pageRestaurant && !path.startsWith("/api/dev/")) {
+    throw new Error("You opened another restaurant in a different tab. Reload this page.");
+  }
   const res = await fetch(BASE_PATH + path, {
     method: init?.method ?? "GET",
     headers: init?.body !== undefined ? { "Content-Type": "application/json" } : undefined,
