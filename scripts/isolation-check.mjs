@@ -80,7 +80,7 @@ check(own.status === 200 && own.text.includes("tbl_kusina_1"), "Kusina's manager
 check(!own.text.includes("hikay"), "...and none of Hikay's");
 
 // Pages a manager reads: none may show anything of Hikay's.
-for (const page of ["/staff", "/staff/dashboard", "/staff/menu", "/staff/categories", "/staff/links", "/staff/manage"]) {
+for (const page of ["/admin", "/admin/dashboard", "/admin/menu", "/admin/categories", "/admin/links", "/admin/manage"]) {
   const r = await kusina(page);
   const leak = ["Chicken Inasal", "Maria", "tbl_hikay", "k7x9q2mp", "biz_hikay"].find((s) => r.text.includes(s));
   check(r.status === 200 && !leak, `${page} shows only Kusina${leak ? ` (found "${leak}")` : ""}`);
@@ -147,7 +147,7 @@ for (const [method, path, body] of [
   const r = await kusina(path, { method, body });
   check(r.status === 403, `${method} ${path} refused for a manager (${r.status})`);
 }
-for (const page of ["/staff/dev", "/staff/dev/billing", `/staff/dev/billing/${HIKAY}`]) {
+for (const page of ["/admin/dev", "/admin/dev/billing", `/admin/dev/billing/${HIKAY}`]) {
   const r = await kusina(page);
   check(r.status === 307 && !r.text.includes("Contracts and payments"), `${page} sends a manager away`);
 }
@@ -165,7 +165,14 @@ const bad = await guest(`/api/visits/${visit}/order`, {
 });
 check(bad.status === 422, `Ordering Hikay's dish from Kusina's table refused (${bad.status})`);
 
-check(fingerprint() === before, "Hikay's data is unchanged after all of it");
+const after = fingerprint();
+check(after === before, "Hikay's data is unchanged after all of it");
+if (after !== before) {
+  const [x, y] = [JSON.parse(before), JSON.parse(after)];
+  for (const k of Object.keys(x)) if (x[k] !== y[k]) console.log(`      changed: ${k}
+        before ${String(x[k]).slice(0, 300)}
+        after  ${String(y[k]).slice(0, 300)}`);
+}
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed");
 process.exit(failed ? 1 : 0);

@@ -22,6 +22,13 @@ const nextConfig: NextConfig = {
   // The workspace root holds other projects; stop the bundler walking up into them.
   outputFileTracingRoot: __dirname,
   poweredByHeader: false,
+  // The staff screens moved from /staff to /admin; old links and bookmarks still land.
+  async redirects() {
+    return [
+      { source: "/staff", destination: "/admin", permanent: false },
+      { source: "/staff/:path*", destination: "/admin/:path*", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

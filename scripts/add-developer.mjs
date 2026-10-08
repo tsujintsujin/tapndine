@@ -60,7 +60,7 @@ writeFileSync(
 try {
   const target = where === "--local" ? ["--local", "--persist-to", ".localdb"] : ["--remote"];
   execFileSync("npx", ["wrangler", "d1", "execute", "tapndine", ...target, "--file", file], { stdio: "inherit", shell: true });
-  console.log(`Developer "${username}" added. Log in at /staff/login.`);
+  console.log(`Developer "${username}" added. Log in at /admin/login.`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
