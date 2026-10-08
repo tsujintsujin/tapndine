@@ -27,9 +27,9 @@ const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 const STATS_V = "2";
 
 const PLANS = [
-  { name: "Standard Cafe Plan", tables: 10, price: 2500 },
-  { name: "Growth Plan", tables: 15, price: 2900 },
-  { name: "Growth Plan (Full)", tables: 20, price: 3500 },
+  { name: "Standard Cafe Plan", tables: 10, price: 2100 },
+  { name: "Growth Plan", tables: 15, price: 2600 },
+  { name: "Growth Plan (Full)", tables: 20, price: 3000 },
 ];
 const EVERY_PLAN = [
   "An NFC tag on every table",
@@ -226,7 +226,7 @@ export default function Home() {
             <div className="absolute bottom-[10%] right-[4%] grid h-28 w-28 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-32 sm:w-32">
               <p className="text-xs font-semibold leading-tight">
                 From
-                <span className="block text-xl font-extrabold sm:text-2xl">₱2,500</span>a year
+                <span className="block text-xl font-extrabold sm:text-2xl">₱2,100</span>a year
               </p>
             </div>
           </div>
