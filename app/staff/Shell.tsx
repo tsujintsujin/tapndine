@@ -13,6 +13,7 @@ import {
   MenuIcon,
   NfcIcon,
   PeopleIcon,
+  ReceiptIcon,
   TableIcon,
   TagIcon,
 } from "@/app/components/Icons";
@@ -36,11 +37,22 @@ const GROUPS = [
   { label: "Team", links: [{ href: "/staff/manage", label: "Staff", Icon: PeopleIcon }] },
 ];
 /** Above every restaurant, for developers only. */
-const DEVELOPER = { label: "Developer", links: [{ href: "/staff/dev", label: "All restaurants", Icon: HomeIcon }] };
+const DEVELOPER = {
+  label: "Developer",
+  links: [
+    { href: "/staff/dev", label: "All restaurants", Icon: HomeIcon },
+    { href: "/staff/dev/billing", label: "Billing", Icon: ReceiptIcon },
+  ],
+};
 
 /** The link is "here" on its own page and the pages under it (a table, a dish). */
 const isHere = (href: string, path: string) =>
-  href === "/staff" ? path === "/staff" || path.startsWith("/staff/t/") : path === href || path.startsWith(href + "/");
+  href === "/staff"
+    ? path === "/staff" || path.startsWith("/staff/t/")
+    : // Billing lives under /staff/dev, so All restaurants is only its own page.
+      href === "/staff/dev"
+      ? path === href
+      : path === href || path.startsWith(href + "/");
 
 function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();

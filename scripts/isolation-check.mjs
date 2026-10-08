@@ -139,12 +139,18 @@ for (const [method, path, body] of [
   ["PATCH", `/api/dev/restaurants/${HIKAY}`, { off: true }],
   ["PATCH", `/api/dev/restaurants/${HIKAY}`, { name: "Hacked" }],
   ["POST", "/api/dev/restaurants", { name: "X", slug: "xx", managerName: "X", username: "xxx", password: "123456" }],
+  ["POST", `/api/dev/billing/${HIKAY}/contracts`, { plan: "X", tables: 1, price: "1", signedOn: "2026-01-01", startsOn: "2026-01-01", endsOn: "2026-12-31" }],
+  ["POST", "/api/dev/billing/contracts/x/payments", { paidOn: "2026-01-01", amount: "1", method: "Cash" }],
+  ["DELETE", "/api/dev/billing/contracts/x"],
+  ["DELETE", "/api/dev/billing/payments/x"],
 ]) {
   const r = await kusina(path, { method, body });
   check(r.status === 403, `${method} ${path} refused for a manager (${r.status})`);
 }
-const devPage = await kusina("/staff/dev");
-check(devPage.status === 307 && !devPage.text.includes("All restaurants"), "/staff/dev sends a manager away");
+for (const page of ["/staff/dev", "/staff/dev/billing", `/staff/dev/billing/${HIKAY}`]) {
+  const r = await kusina(page);
+  check(r.status === 307 && !r.text.includes("Contracts and payments"), `${page} sends a manager away`);
+}
 
 // --- A Kusina guest ordering Hikay's dishes --------------------------------
 const guest = browser();

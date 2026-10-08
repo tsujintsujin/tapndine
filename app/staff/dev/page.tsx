@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { billingOverview } from "@/lib/billing";
 import { restaurants } from "@/lib/dev";
 import { formatPrice } from "@/lib/format";
 import { isRange, type Range } from "@/lib/reports";
@@ -21,7 +22,7 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
   const me = await requireDeveloper();
   const q = await searchParams;
   const range: Range = isRange(q.range) ? q.range : "7d";
-  const list = await restaurants(range);
+  const [list, billing] = await Promise.all([restaurants(range), billingOverview()]);
   const live = list.filter((r) => !r.off);
   const sum = (k: "sent" | "groups" | "ordering") => list.reduce((n, r) => n + r[k], 0);
   const stat = "mt-3 font-display text-[40px] font-bold leading-none tracking-tight";
@@ -77,7 +78,12 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
         </section>
       </div>
 
-      <DevBoard list={list} openId={me.business_id} rangeLabel={RANGE_LABELS[range]} />
+      <DevBoard
+        list={list}
+        openId={me.business_id}
+        rangeLabel={RANGE_LABELS[range]}
+        standings={Object.fromEntries(billing.rows.map((r) => [r.id, r.standing]))}
+      />
 
       <p className="mt-6 max-w-2xl text-[13px] text-muted">
         Orders sent are what guests and waiters sent, not money collected, the same count as each restaurant&apos;s own

@@ -1,19 +1,33 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BASE_PATH } from "@/lib/base";
+import type { Standing } from "@/lib/billing";
 import type { Restaurant } from "@/lib/dev";
 import { formatPrice } from "@/lib/format";
 import { btn, card } from "../kit";
 import { api, useConfirm } from "../ui";
+import { StandingBadge } from "./billing/parts";
 
 const peso = (cents: number) => formatPrice(Math.round(cents / 100) * 100);
 const field =
   "mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
 
 /** The restaurant list with its actions, and the Add a restaurant form. */
-export default function DevBoard({ list, openId, rangeLabel }: { list: Restaurant[]; openId: string | null; rangeLabel: string }) {
+export default function DevBoard({
+  list,
+  openId,
+  rangeLabel,
+  standings,
+}: {
+  list: Restaurant[];
+  openId: string | null;
+  rangeLabel: string;
+  /** Each restaurant's billing standing, by id. */
+  standings: Record<string, Standing>;
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -84,6 +98,7 @@ export default function DevBoard({ list, openId, rangeLabel }: { list: Restauran
                         >
                           {r.off ? "Switched off" : "Live"}
                         </span>
+                        {standings[r.id] && <StandingBadge standing={standings[r.id]} />}
                         {r.id === openId && (
                           <span className="rounded-full bg-mango-soft px-2.5 py-1 text-[12px] font-semibold text-ink">Open now</span>
                         )}
@@ -114,6 +129,9 @@ export default function DevBoard({ list, openId, rangeLabel }: { list: Restauran
                       >
                         Open
                       </button>
+                      <Link href={`/staff/dev/billing/${r.id}`} className={`${btn.secondary} h-10`}>
+                        Billing
+                      </Link>
                       <button type="button" disabled={busy} onClick={() => setRenaming(r.id)} className={`${btn.secondary} h-10`}>
                         Rename
                       </button>
