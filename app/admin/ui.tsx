@@ -37,7 +37,7 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
     cache: "no-store",
   });
   if (res.status === 401) {
-    window.location.href = `${BASE_PATH}/admin/login`;
+    window.location.href = `${BASE_PATH}/login`;
     throw new Error("logged out");
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
@@ -135,7 +135,7 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
   const logOut = async () => {
     setBusy(true);
     await api("/api/staff/logout", { method: "POST", body: {} }).catch(() => {});
-    window.location.href = `${BASE_PATH}/admin/login`;
+    window.location.href = `${BASE_PATH}/login`;
   };
 
   // Waiters only ever see Tables, so they get no menu: just Log out.

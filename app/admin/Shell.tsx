@@ -102,7 +102,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
           onClick={async () => {
             setBusy(true);
             await api("/api/staff/logout", { method: "POST", body: {} }).catch(() => {});
-            window.location.href = `${BASE_PATH}/admin/login`;
+            window.location.href = `${BASE_PATH}/login`;
           }}
           className="mt-2 flex h-11 w-full items-center gap-3 rounded-xl px-4 text-[15px] font-medium text-chili hover:bg-chili/10 disabled:opacity-60"
         >

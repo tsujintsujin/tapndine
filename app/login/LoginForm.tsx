@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
-import { Logo } from "../kit";
+import { Logo } from "@/app/admin/kit";
 
 export default function LoginForm() {
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ export default function LoginForm() {
       <div className="bg-forest pt-[env(safe-area-inset-top)] text-white">
         <div className="mx-auto max-w-sm px-6 pb-8 pt-10">
           <h1>
-            <Logo href="/admin/login" light />
+            <Logo href="/login" light />
           </h1>
         </div>
         <div className="banig" aria-hidden="true" />

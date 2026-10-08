@@ -4,7 +4,7 @@ import { currentLogin } from "@/lib/staff";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Staff login · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Log in · tapndine", robots: { index: false, follow: false } };
 
 export default async function LoginPage() {
   const me = await currentLogin();

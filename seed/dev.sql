@@ -234,7 +234,7 @@ UPDATE dishes SET serves_min = 1, serves_max = 2 WHERE id IN ('d_chickenadobo', 
 UPDATE dishes SET is_new = 1 WHERE id IN ('d_crispypata', 'd_ginataanghipon', 'd_mangoshake');
 
 -- Staff logins for local testing only (test passwords, not used anywhere real).
--- Log in at http://127.0.0.1:3300/tapndine/admin/login
+-- Log in at http://localhost:3300/tapndine/login
 --   manager  /  menu-manager-1   (sees Tables and Staff)
 --   ana      /  menu-waiter-1    (waiter)
 --   ben      /  menu-waiter-2    (waiter)

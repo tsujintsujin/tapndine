@@ -173,7 +173,7 @@ export async function currentStaff(): Promise<Staff | null> {
 /** For staff pages: the login screen if nobody is logged in; a developer with no restaurant open goes to theirs. */
 export async function requireStaff(role?: Staff["role"]): Promise<Staff> {
   const login = await currentLogin();
-  if (!login) redirect("/admin/login");
+  if (!login) redirect("/login");
   const staff = asStaff(login);
   if (!staff) redirect("/admin/dev");
   if (role && staff.role !== role) redirect("/admin");
@@ -183,7 +183,7 @@ export async function requireStaff(role?: Staff["role"]): Promise<Staff> {
 /** For developer pages. */
 export async function requireDeveloper(): Promise<Login> {
   const login = await currentLogin();
-  if (!login) redirect("/admin/login");
+  if (!login) redirect("/login");
   if (login.role !== "developer") redirect("/admin");
   return login;
 }
