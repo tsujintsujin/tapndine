@@ -9,7 +9,8 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:migrate": "wrangler d1 migrations apply tapndine --local --persist-to .localdb",
-    "db:seed": "wrangler d1 execute tapndine --local --persist-to .localdb --file seed/dev.sql",
+    "db:seed": "wrangler d1 execute tapndine --local --persist-to .localdb --file seed/dev.sql && wrangler d1 execute tapndine --local --persist-to .localdb --file seed/kusina.sql",
+    "add-developer": "node scripts/add-developer.mjs",
     "db:reset": "rm -rf .localdb && npm run db:migrate && npm run db:seed",
     "db:seed-history": "node seed/history.mjs > .localdb/history.sql && wrangler d1 execute tapndine --local --persist-to .localdb --file .localdb/history.sql"
   },

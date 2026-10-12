@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
+import { PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookDemoButton } from "./BookDemo";
@@ -26,11 +27,6 @@ const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
 const STATS_V = "2";
 
-const PLANS = [
-  { name: "Standard Cafe Plan", tables: 10, price: 2100 },
-  { name: "Growth Plan", tables: 15, price: 2600 },
-  { name: "Growth Plan (Full)", tables: 20, price: 3000 },
-];
 const EVERY_PLAN = [
   "An NFC tag on every table",
   "Menu with photos, online",

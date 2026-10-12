@@ -322,7 +322,7 @@ export default function MenuApp({
     <>
       <Header
         nickname={nick || ""}
-        place={menu.tableLabel ?? menu.businessName}
+        place={menu.tableLabel ? `${menu.businessName} · ${menu.tableLabel}` : menu.businessName}
         itemCount={itemCount}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
         onOrder={openOrder}

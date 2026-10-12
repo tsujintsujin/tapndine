@@ -124,6 +124,14 @@ export const TagIcon = (p: P) => (
 );
 
 /** A tap: a dot sending waves out, for NFC links. */
+/** A receipt: contracts and payments. */
+export const ReceiptIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21V3z" />
+    <path d="M9 8h6M9 12h6M9 16h3" />
+  </Svg>
+);
+
 export const NfcIcon = (p: P) => (
   <Svg {...p}>
     <circle cx="6" cy="12" r="1.6" />

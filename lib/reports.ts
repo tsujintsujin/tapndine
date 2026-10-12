@@ -49,11 +49,14 @@ async function totals(businessId: string, tableId: string | null, from: number, 
   return r!;
 }
 
+/** When the period starts: midnight restaurant time, `days` days back counting today. */
+export const rangeStart = (range: Range, now = Date.now()) => (dayOf(now) - RANGES[range] + 1) * DAY - TZ;
+
 /** `tableId`: just that table's orders; null for the whole restaurant. Check it belongs to the business first. */
 export async function report(businessId: string, range: Range, tableId: string | null, now = Date.now()) {
   const days = RANGES[range];
   const today = dayOf(now);
-  const from = (today - days + 1) * DAY - TZ;
+  const from = rangeStart(range, now);
   // The same stretch of time one period back, so "today so far" compares
   // with "yesterday up to the same time".
   const span = days * DAY;

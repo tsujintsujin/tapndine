@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
   if (result === "locked") {
     return NextResponse.json({ error: "Too many wrong tries. Wait 5 minutes, then try again." }, { status: 429 });
   }
+  if (result === "off") return NextResponse.json({ error: "This restaurant is switched off. Ask tapndine to switch it back on." }, { status: 403 });
   if (result === "wrong") return NextResponse.json({ error: "Wrong username or password." }, { status: 401 });
   return NextResponse.json({ ok: true });
 }
