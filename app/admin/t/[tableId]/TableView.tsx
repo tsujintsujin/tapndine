@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { Additional, GuestOrders, Line, TableOrders } from "@/lib/orders";
 import { formatPrice, formatTime } from "@/lib/format";
 import Link from "next/link";
-import { ChevronLeft, MinusIcon, PlusIcon } from "@/app/components/Icons";
+import { ChevronLeft, ChevronRight, MinusIcon, PlusIcon } from "@/app/components/Icons";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { btn, card, PageHead } from "../../kit";
 import Shell from "../../Shell";
@@ -166,6 +166,9 @@ export default function TableView({
           Tables
         </Link>
         <PageHead title={table.label} sub={empty ? "No orders yet" : `${guests} ${guests === 1 ? "guest" : "guests"}, live`}>
+          <Link href={`/admin/t/${tableId}/history`} className={btn.secondary}>
+            History
+          </Link>
           <div role="group" aria-label="Show orders" className="flex rounded-full bg-white p-1 shadow-[0_1px_2px_rgb(16_52_42/0.06)]">
             {(["guests", "summary"] as View[]).map((v) => (
               <button
@@ -249,6 +252,14 @@ export default function TableView({
           table.guests.map((g) => <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} />)}
 
         {view === "guests" && additionals}
+
+        <Link
+          href={`/admin/t/${tableId}/history`}
+          className="flex min-h-12 items-center justify-between rounded-2xl border border-line bg-white px-4 text-[15px] font-semibold active:bg-wash"
+        >
+          Past orders at this table
+          <ChevronRight width={20} height={20} className="text-muted" />
+        </Link>
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
