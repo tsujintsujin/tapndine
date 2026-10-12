@@ -8,7 +8,18 @@ import Shell from "../Shell";
 import { api, useConfirm } from "../ui";
 
 /** Who can log in, add a waiter, disable a waiter. Inside the manager's dashboard frame. */
-export default function ManageStaff({ me, name, staff }: { me: string; name: string; staff: StaffListing[] }) {
+export default function ManageStaff({
+  me,
+  name,
+  slug,
+  staff,
+}: {
+  me: string;
+  name: string;
+  /** The restaurant's code: every login here starts with it. */
+  slug: string;
+  staff: StaffListing[];
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -129,7 +140,27 @@ export default function ManageStaff({ me, name, staff }: { me: string; name: str
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Username
-            <input name="username" required autoComplete="off" autoCapitalize="none" spellCheck={false} className={field} />
+            {/* The code is fixed: the waiter logs in as <code>-<what is typed>. */}
+            <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
+              {/* A fixed cap: a long code would otherwise widen the page on a phone. */}
+              <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
+                {slug}
+              </span>
+              <span className="shrink-0 text-[15px] font-normal text-muted">-</span>
+              <input
+                name="username"
+                required
+                pattern="[a-z0-9._]{2,30}"
+                title="2 to 30 lower-case letters, numbers, dots or underscores, no dashes"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="h-full w-0 min-w-0 flex-1 rounded-r-xl bg-transparent pr-3.5 text-[15px] font-normal outline-none"
+                // The box around it shows focus; the page-wide focus outline would draw a second box inside.
+                style={{ outline: "none" }}
+              />
+            </span>
+            <span className="mt-1 block text-[13px] font-normal text-muted">Lower case, no dashes, like maria.</span>
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Password

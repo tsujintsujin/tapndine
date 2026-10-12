@@ -10,8 +10,8 @@
 --   http://127.0.0.1:3300/tapndine/t/t8vc3nje   -> Table 2
 --
 -- Logins (test passwords, not used anywhere real):
---   kusina.manager  /  kusina-manager-1   (manager)
---   kusina.ana      /  kusina-waiter-1    (waiter)
+--   kusina-dos-manager  /  kusina-manager-1   (manager)
+--   kusina-dos-ana      /  kusina-waiter-1    (waiter)
 
 INSERT INTO businesses (id, slug, name, created_at) VALUES
   ('biz_kusina', 'kusina-dos', 'Kusina Dos', 1759104000000);
@@ -67,5 +67,5 @@ UPDATE dishes SET name = CASE id
 WHERE business_id = 'biz_kusina';
 
 INSERT INTO staff (id, business_id, username, name, role, password_hash, created_at) VALUES
-  ('stf_kusina_manager', 'biz_kusina', 'kusina.manager', 'Rosa', 'manager', 'pbkdf2$100000$BVgrHvIM+y35tLroJU+pjg==$iRSGtxfuttnki0qaLzyaV68HaqkJiCme1X23e6EX+ZI=', 1759104000000),
-  ('stf_kusina_ana',     'biz_kusina', 'kusina.ana',     'Ana',  'waiter',  'pbkdf2$100000$GpG/sCHVO1bxhku0wIDK9w==$7RNl7NOW5597ZD5l7nGSIgEg7n/FWNcNmffqz+jJ5+Q=', 1759104000000);
+  ('stf_kusina_manager', 'biz_kusina', 'kusina-dos-manager', 'Rosa', 'manager', 'pbkdf2$100000$BVgrHvIM+y35tLroJU+pjg==$iRSGtxfuttnki0qaLzyaV68HaqkJiCme1X23e6EX+ZI=', 1759104000000),
+  ('stf_kusina_ana',     'biz_kusina', 'kusina-dos-ana',     'Ana',  'waiter',  'pbkdf2$100000$GpG/sCHVO1bxhku0wIDK9w==$7RNl7NOW5597ZD5l7nGSIgEg7n/FWNcNmffqz+jJ5+Q=', 1759104000000);

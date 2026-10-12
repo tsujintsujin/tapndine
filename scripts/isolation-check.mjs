@@ -72,7 +72,7 @@ const hikayDishes = sql(`SELECT json_group_array(id) AS ids FROM dishes WHERE bu
 
 // --- Kusina's manager, against Hikay ---------------------------------------
 const kusina = browser();
-const login = await kusina("/api/staff/login", { method: "POST", body: { username: "kusina.manager", password: "kusina-manager-1" } });
+const login = await kusina("/api/staff/login", { method: "POST", body: { username: "kusina-dos-manager", password: "kusina-manager-1" } });
 check(login.status === 200, "Kusina's manager logs in");
 
 const own = await kusina("/api/staff/tables");

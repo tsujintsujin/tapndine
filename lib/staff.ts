@@ -31,7 +31,12 @@ export type Staff = {
 /** Who is logged in. business_id: their restaurant, or the one a developer has open (null: none yet). */
 export type Login = { id: string; business_id: string | null; username: string; name: string; role: Role };
 
+/** A developer's username. Restaurant logins are longer: "<code>-<name>". */
 export const isUsername = (u: string) => /^[a-z0-9._-]{3,32}$/.test(u);
+/** The part of a restaurant login after its code. No dashes, so the code always ends at the last dash. */
+export const isLoginName = (u: string) => /^[a-z0-9._]{2,30}$/.test(u);
+/** A restaurant login: its code, a dash, the name typed for it. */
+export const restaurantLogin = (slug: string, name: string) => `${slug}-${name}`;
 export const MIN_PASSWORD = 6;
 
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
@@ -210,12 +215,16 @@ export async function listStaff(businessId: string): Promise<StaffListing[]> {
   return r.results;
 }
 
+/** A waiter; loginName is the part after the restaurant's code. Returns the full username, or "taken". */
 export async function addWaiter(
   businessId: string,
   name: string,
-  username: string,
+  loginName: string,
   password: string
-): Promise<"ok" | "taken"> {
+): Promise<string | "taken"> {
+  const biz = await db().prepare("SELECT slug FROM businesses WHERE id = ?").bind(businessId).first<{ slug: string }>();
+  if (!biz) return "taken";
+  const username = restaurantLogin(biz.slug, loginName);
   const taken = await db().prepare("SELECT 1 FROM staff WHERE username = ?").bind(username).first();
   if (taken) return "taken";
   await db()
@@ -225,7 +234,7 @@ export async function addWaiter(
     )
     .bind(randomId(), businessId, username, name, await hashPassword(password), Date.now())
     .run();
-  return "ok";
+  return username;
 }
 
 /**

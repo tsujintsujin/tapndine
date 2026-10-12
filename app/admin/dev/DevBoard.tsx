@@ -32,6 +32,10 @@ export default function DevBoard({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  /** The code typed in Add a restaurant: the manager's login starts with it. */
+  const [slug, setSlug] = useState("");
+  /** The login of the manager just added, to hand over. */
+  const [added, setAdded] = useState("");
   const { confirm, dialog } = useConfirm();
 
   /** Runs one action; a failure shows above the list. */
@@ -171,21 +175,43 @@ export default function DevBoard({
             const form = e.currentTarget;
             const f = new FormData(form);
             const body = Object.fromEntries(["name", "slug", "managerName", "username", "password"].map((k) => [k, f.get(k)]));
-            if (await run(() => api("/api/dev/restaurants", { method: "POST", body }))) {
+            let login = "";
+            const ok = await run(async () => {
+              login = (await api<{ username: string }>("/api/dev/restaurants", { method: "POST", body })).username;
+            });
+            if (ok) {
               form.reset();
+              setSlug("");
+              setAdded(login);
               router.refresh();
             }
           }}
         >
           <h2 className="font-display text-[19px] font-bold">Add a restaurant</h2>
+          {added && (
+            <p role="status" className="mt-3 rounded-xl bg-leaf-tint px-3.5 py-2.5 text-[14px] text-leaf">
+              Added. Its manager logs in as <span className="font-semibold">{added}</span>.
+            </p>
+          )}
           <label className="mt-4 block text-[14px] font-semibold">
             Restaurant name
             <input name="name" required maxLength={60} autoComplete="off" className={field} />
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Code
-            <input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,30}" autoComplete="off" autoCapitalize="none" spellCheck={false} className={field} />
-            <span className="mt-1 block text-[13px] font-normal text-muted">Lower case, like hikay or kusina-dos.</span>
+            <input
+              name="slug"
+              required
+              pattern="[a-z0-9][a-z0-9\-]{1,30}"
+              onChange={(e) => setSlug(e.target.value.trim().toLowerCase())}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              className={field}
+            />
+            <span className="mt-1 block text-[13px] font-normal text-muted">
+              Lower case, like hikay or kusina-dos. Every login here starts with it.
+            </span>
           </label>
           <p className="mt-5 text-[14px] font-semibold">Its first manager</p>
           <label className="mt-3 block text-[14px] font-semibold">
@@ -194,7 +220,27 @@ export default function DevBoard({
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Username
-            <input name="username" required autoComplete="off" autoCapitalize="none" spellCheck={false} className={field} />
+            {/* The code is fixed: the manager logs in as <code>-<what is typed>. */}
+            <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
+              {/* A fixed cap, not a percentage: a long code would otherwise widen the whole page on a phone. */}
+              <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
+                {slug || "code"}
+              </span>
+              <span className="shrink-0 text-[15px] font-normal text-muted">-</span>
+              <input
+                name="username"
+                required
+                pattern="[a-z0-9._]{2,30}"
+                title="2 to 30 lower-case letters, numbers, dots or underscores, no dashes"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="h-full w-0 min-w-0 flex-1 rounded-r-xl bg-transparent pr-3.5 text-[15px] font-normal outline-none"
+                // The box around it shows focus; the page-wide focus outline would draw a second box inside.
+                style={{ outline: "none" }}
+              />
+            </span>
+            <span className="mt-1 block text-[13px] font-normal text-muted">Lower case, no dashes, like maria.</span>
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Password

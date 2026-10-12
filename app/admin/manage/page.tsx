@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { restaurantSlug } from "@/lib/dev";
 import { listStaff, requireStaff } from "@/lib/staff";
 import ManageStaff from "./ManageStaff";
 
@@ -7,5 +8,6 @@ export const metadata: Metadata = { title: "Staff · tapndine", robots: { index:
 
 export default async function ManagePage() {
   const me = await requireStaff("manager");
-  return <ManageStaff me={me.id} name={me.name} staff={await listStaff(me.business_id)} />;
+  const [staff, slug] = await Promise.all([listStaff(me.business_id), restaurantSlug(me.business_id)]);
+  return <ManageStaff me={me.id} name={me.name} slug={slug ?? ""} staff={staff} />;
 }

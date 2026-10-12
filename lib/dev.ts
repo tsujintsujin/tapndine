@@ -105,6 +105,12 @@ export async function restaurantExists(id: string): Promise<boolean> {
   return !!(await db().prepare("SELECT 1 FROM businesses WHERE id = ?").bind(id).first());
 }
 
+/** The restaurant's code: the start of its logins and its photo folder. */
+export async function restaurantSlug(id: string): Promise<string | null> {
+  const r = await db().prepare("SELECT slug FROM businesses WHERE id = ?").bind(id).first<{ slug: string }>();
+  return r?.slug ?? null;
+}
+
 /** The restaurant's name, for the staff screens' frame. */
 export async function restaurantName(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT name FROM businesses WHERE id = ?").bind(id).first<{ name: string }>();
