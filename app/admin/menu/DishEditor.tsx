@@ -116,6 +116,10 @@ export default function DishEditor({
       if (dish) await api(`/api/staff/menu/dishes/${dish.id}`, { method: "PUT", body });
       else await api("/api/staff/menu/dishes", { method: "POST", body });
       done.current = true;
+      // The menu page shows "<name> changes saved" once it opens.
+      try {
+        sessionStorage.setItem("dish-saved", x.name);
+      } catch {}
       router.push("/admin/menu");
       router.refresh();
     } catch (e) {
@@ -277,28 +281,11 @@ export default function DishEditor({
             <p className="mt-0.5 text-[13px] text-muted">The icon tells guests at a glance what&apos;s in it.</p>
             <ul className="mt-3 space-y-2">
               {x.ingredients.map((ing, i) => {
-                const Icon = INGREDIENT_ICONS[ing.kind];
                 const update = (patch: Partial<typeof ing>) =>
                   set("ingredients", x.ingredients.map((v, j) => (j === i ? { ...v, ...patch } : v)));
                 return (
                   <li key={i} className="flex items-center gap-2">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-paper text-forest">
-                      {Icon && <Icon width={22} height={22} />}
-                    </span>
-                    <label className="w-36 shrink-0">
-                      <span className="sr-only">Kind</span>
-                      <select
-                        value={ing.kind}
-                        onChange={(e) => update({ kind: e.target.value })}
-                        className={`${field} mt-0 h-11 px-2.5`}
-                      >
-                        {KINDS.map((k) => (
-                          <option key={k} value={k}>
-                            {INGREDIENT_LABELS[k]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <KindPicker kind={ing.kind} onPick={(kind) => update({ kind })} />
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Ingredient</span>
                       <input
@@ -505,6 +492,76 @@ export default function DishEditor({
       </div>
       {dialog}
     </form>
+  );
+}
+
+/** The ingredient's icon; pressing it opens every icon with its name to pick another. */
+function KindPicker({ kind, onPick }: { kind: string; onPick: (kind: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const Icon = INGREDIENT_ICONS[kind];
+
+  // A press anywhere else, or Escape, closes it.
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      box.current?.querySelector("button")?.focus();
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  return (
+    <div ref={box} className="relative shrink-0">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Icon: ${INGREDIENT_LABELS[kind] ?? kind}. Change`}
+        onClick={() => setOpen((o) => !o)}
+        className={`grid h-11 w-11 place-items-center rounded-xl bg-paper text-forest hover:bg-leaf-tint ${open ? "ring-2 ring-leaf/40" : ""}`}
+      >
+        {Icon && <Icon width={22} height={22} />}
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-20 mt-2 grid w-[min(19rem,calc(100vw-72px))] grid-cols-2 gap-1 rounded-2xl border border-line bg-white p-2 shadow-[0_12px_32px_rgb(16_52_42/0.16)]"
+        >
+          {KINDS.map((k) => {
+            const KIcon = INGREDIENT_ICONS[k];
+            const on = k === kind;
+            return (
+              <button
+                key={k}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                onClick={() => {
+                  onPick(k);
+                  setOpen(false);
+                }}
+                className={`flex h-11 items-center gap-2.5 rounded-xl px-2.5 text-left text-[14px] font-semibold ${
+                  on ? "bg-leaf-tint text-forest" : "text-ink hover:bg-paper"
+                }`}
+              >
+                <KIcon width={20} height={20} className="shrink-0 text-forest" />
+                <span className="truncate">{INGREDIENT_LABELS[k]}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

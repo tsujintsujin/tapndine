@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
 import { formatPrice } from "@/lib/format";
-import { GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
+import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
 import { btn, PageHead } from "../kit";
 import { api } from "../ui";
 
@@ -25,6 +25,22 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
   const before = useRef<AdminDish[] | null>(null);
 
   useEffect(() => setList(dishes), [dishes]);
+
+  // Back from saving a dish: say so for a few seconds.
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => {
+    let name: string | null = null;
+    try {
+      name = sessionStorage.getItem("dish-saved");
+      sessionStorage.removeItem("dish-saved");
+    } catch {}
+    if (name !== null) setSaved(name);
+  }, []);
+  useEffect(() => {
+    if (saved === null) return;
+    const t = setTimeout(() => setSaved(null), 3000);
+    return () => clearTimeout(t);
+  }, [saved]);
 
   const catName = new Map(categories.map((c) => [c.id, c.name]));
   const q = query.trim().toLowerCase();
@@ -238,6 +254,18 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
           </ul>
         )}
       </div>
+
+      {saved !== null && (
+        <div
+          role="status"
+          className="saved-toast fixed bottom-[max(16px,env(safe-area-inset-bottom))] right-4 z-50 flex max-w-[calc(100vw-32px)] items-center gap-3 rounded-2xl bg-white py-3 pl-3 pr-5 shadow-[0_10px_28px_rgb(16_52_42/0.18)]"
+        >
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-leaf text-white">
+            <CheckIcon width={16} height={16} />
+          </span>
+          <span className="min-w-0 truncate text-[15px] font-semibold">{saved} changes saved</span>
+        </div>
+      )}
     </>
   );
 }
