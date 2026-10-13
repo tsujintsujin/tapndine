@@ -38,9 +38,19 @@ function slotsFor(iso: string) {
 
 export function BookDemoButton({ className, children }: { className?: string; children: React.ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  // The calendar depends on today's date and the time now, and the homepage is
+  // rendered once at build time, so it is only built in the browser, on first open.
+  const [opened, setOpened] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => dialog.current?.showModal()} className={className}>
+      <button
+        type="button"
+        onClick={() => {
+          setOpened(true);
+          dialog.current?.showModal();
+        }}
+        className={className}
+      >
         {children}
       </button>
       <dialog
@@ -49,7 +59,7 @@ export function BookDemoButton({ className, children }: { className?: string; ch
         onClick={(e) => e.target === e.currentTarget && dialog.current?.close()}
         className="w-[calc(100%-2rem)] max-w-3xl rounded-3xl bg-white p-0 text-home-cocoa shadow-2xl backdrop:bg-home-cocoa/50"
       >
-        <Scheduler onClose={() => dialog.current?.close()} />
+        {opened && <Scheduler onClose={() => dialog.current?.close()} />}
       </dialog>
     </>
   );
