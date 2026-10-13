@@ -5,6 +5,7 @@ import { BASE_PATH } from "@/lib/base";
 import { PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
+import { SiteFooter } from "@/app/components/SiteFooter";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
@@ -16,10 +17,16 @@ import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
+const TITLE = "tapndine · NFC table menus that send orders to your waiters";
+const DESCRIPTION =
+  "Guests tap the tag on their table, browse your menu with photos and send their order to the waiter. No app to install. From ₱2,100 a year.";
+
 export const metadata: Metadata = {
-  title: "tapndine · NFC table menus that send orders to your waiters",
-  description:
-    "Guests tap the tag on their table, browse your menu with photos and send their order to the waiter. No app to install.",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", url: "/", siteName: "tapndine", title: TITLE, description: DESCRIPTION, locale: "en_PH" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%20restaurant";
@@ -154,11 +161,41 @@ const FACTS = [
 ];
 
 const STEPS = [
-  { src: "m-home", title: "Tap the tag", text: "The menu opens on the guest's phone, already set to their table." },
-  { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today." },
-  { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds." },
-  { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves." },
+  { src: "m-home", title: "Tap the tag", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone opened at Table 1, showing today's pick, Kare-Kare, with its price and an Add to order button" },
+  { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, filtered by Seafood, Chicken, Pork and Beef" },
+  { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter and the total so far" },
+  { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
+
+// What Google reads about the business and the plans (schema.org).
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://tapndine.online/#org",
+      name: "TSUJIN IT SOLUTIONS",
+      url: "https://tapndine.online/",
+      email: "justin.masiga.94@gmail.com",
+      areaServed: "PH",
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "tapndine",
+      url: "https://tapndine.online/",
+      description: DESCRIPTION,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web (iPhone and Android)",
+      provider: { "@id": "https://tapndine.online/#org" },
+      offers: PLANS.map((p) => ({
+        "@type": "Offer",
+        name: `${p.name} (${p.tables} tables, 1 year)`,
+        price: p.price,
+        priceCurrency: "PHP",
+      })),
+    },
+  ],
+};
 
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
 const PILL = "inline-block rounded-full px-6 py-3 font-semibold transition";
@@ -166,6 +203,7 @@ const PILL = "inline-block rounded-full px-6 py-3 font-semibold transition";
 export default function Home() {
   return (
     <div className={`${montserrat.className} overflow-x-clip bg-white text-home-cocoa`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       {/* Hero, nav included */}
       <div className="relative overflow-hidden bg-home-shell">
         <Blob className="-left-40 -top-40 w-[560px] text-home-cream" />
@@ -372,7 +410,7 @@ export default function Home() {
           <ol className="mt-16 grid grid-cols-2 gap-x-5 gap-y-12 text-left lg:grid-cols-4">
             {STEPS.map((s, i) => (
               <li key={s.title}>
-                <Phone src={shot(s.src)} alt="" className="mx-auto w-full max-w-[230px]" />
+                <Phone src={shot(s.src)} alt={s.alt} className="mx-auto w-full max-w-[230px]" />
                 <p className="mt-6 flex items-center gap-2.5 text-lg font-bold">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-base">{i + 1}</span>
                   {s.title}
@@ -441,18 +479,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-home-cocoa text-home-shell">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>
-            <Wordmark />{" "}
-            by <span className="font-bold tracking-wide">TSUJIN IT SOLUTIONS</span>
-          </p>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 font-medium opacity-80">
-            <BookDemoButton className="hover:underline">Contact</BookDemoButton>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

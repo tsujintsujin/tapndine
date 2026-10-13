@@ -12,6 +12,7 @@ const display = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://tapndine.online"),
   title: "tapndine",
   description: "Tap the tag on your table to see the menu.",
 };
