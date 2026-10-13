@@ -42,6 +42,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Only one of this restaurant's own tables; anything else shows them all.
   const table = tables.find((t) => t.id === q.table) ?? null;
   const [r, live] = await Promise.all([report(me.business_id, range, table?.id ?? null), tablesOverview(me.business_id)]);
+  // Charts keep their tapped bar/cell across soft navigation; a new period or
+  // table has different bars, so start them fresh (else "Today" crashes).
+  const view = href(range, table?.id ?? null);
 
   return (
     <Shell name={me.name}>
@@ -66,13 +69,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stats r={r} live={live} filtered={table?.label ?? null} />
 
-        <section className={`${card} sm:col-span-2`}>
+        <section key={`bars ${view}`} className={`${card} sm:col-span-2`}>
           {r.range === "today" ? <HoursToday r={r} /> : <SalesByDay r={r} />}
         </section>
         <LiveTables live={live} />
         <TopDishes r={r} />
 
-        <section className={`${card} sm:col-span-2`}>
+        <section key={`heat ${view}`} className={`${card} sm:col-span-2`}>
           <BusyHours r={r} />
         </section>
         <SecondRounds r={r} />
