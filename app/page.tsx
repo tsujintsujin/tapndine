@@ -19,8 +19,10 @@ const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600"
 
 // Search terms this page is written for: digital menu, online menu, table ordering
 // system, QR code menu (tapndine is the no-scan alternative), restaurants and cafes
-// in the Philippines. Keep them in the title, the H1 line and the body copy.
-const TITLE = "NFC Digital Menu & Table Ordering for Restaurants | tapndine";
+// in the Philippines. Keep them in the description, the H1 line and the body copy.
+// The title is the brand alone, like any site's home page: it is what the browser
+// tab, bookmarks, home-screen icon and share card show.
+const TITLE = "tapndine";
 const DESCRIPTION =
   "Digital menu and table ordering for Philippine restaurants and cafes. Guests tap the table, order on their phone, and it reaches your waiter. From ₱2,100 a year.";
 
@@ -30,6 +32,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: { type: "website", url: "/", siteName: "tapndine", title: TITLE, description: DESCRIPTION, locale: "en_PH" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  appleWebApp: { title: TITLE },
 };
 
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%20restaurant";
@@ -217,6 +220,8 @@ const FAQ = [
 const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
+    // The site name Google shows above the result.
+    { "@type": "WebSite", name: "tapndine", alternateName: "tapndine.online", url: "https://tapndine.online/" },
     {
       "@type": "Organization",
       "@id": "https://tapndine.online/#org",
