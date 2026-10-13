@@ -215,12 +215,13 @@ export async function listStaff(businessId: string): Promise<StaffListing[]> {
   return r.results;
 }
 
-/** A waiter; loginName is the part after the restaurant's code. Returns the full username, or "taken". */
-export async function addWaiter(
+/** A waiter or manager; loginName is the part after the restaurant's code. Returns the full username, or "taken". */
+export async function addStaff(
   businessId: string,
   name: string,
   loginName: string,
-  password: string
+  password: string,
+  role: "waiter" | "manager"
 ): Promise<string | "taken"> {
   const biz = await db().prepare("SELECT slug FROM businesses WHERE id = ?").bind(businessId).first<{ slug: string }>();
   if (!biz) return "taken";
@@ -230,25 +231,38 @@ export async function addWaiter(
   await db()
     .prepare(
       `INSERT INTO staff (id, business_id, username, name, role, password_hash, created_at)
-       VALUES (?, ?, ?, ?, 'waiter', ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(randomId(), businessId, username, name, await hashPassword(password), Date.now())
+    .bind(randomId(), businessId, username, name, role, await hashPassword(password), Date.now())
     .run();
   return username;
 }
 
 /**
- * Disables a waiter: hidden from the list, logged out everywhere, and cannot
- * log in. Nothing is deleted, so past orders still name them. Managers stay.
+ * Disables a waiter or manager: hidden from the list, logged out everywhere,
+ * and cannot log in. Nothing is deleted, so past orders still name them.
+ * Never yourself, and never the restaurant's last manager. Someone already
+ * gone (or not in this restaurant) is "ok": a double tap is not an error.
  */
-export async function disableWaiter(businessId: string, staffId: string): Promise<boolean> {
+export async function disableStaff(businessId: string, staffId: string, me: string): Promise<"ok" | "self" | "last"> {
+  if (staffId === me) return "self";
   const r = await db()
     .prepare(
-      `UPDATE staff SET disabled_at = ? WHERE id = ? AND business_id = ? AND role = 'waiter' AND disabled_at IS NULL`
+      `UPDATE staff SET disabled_at = ?
+       WHERE id = ? AND business_id = ? AND disabled_at IS NULL
+         AND (role = 'waiter' OR (role = 'manager' AND (
+           SELECT COUNT(*) FROM staff WHERE business_id = ? AND role = 'manager' AND disabled_at IS NULL) > 1))`
     )
-    .bind(Date.now(), staffId, businessId)
+    .bind(Date.now(), staffId, businessId, businessId)
     .run();
-  if (!r.meta.changes) return false;
+  if (!r.meta.changes) {
+    // Still here and a manager: the update was refused for being the last one.
+    const kept = await db()
+      .prepare("SELECT 1 FROM staff WHERE id = ? AND business_id = ? AND role = 'manager' AND disabled_at IS NULL")
+      .bind(staffId, businessId)
+      .first();
+    return kept ? "last" : "ok";
+  }
   await db().prepare("DELETE FROM staff_sessions WHERE staff_id = ?").bind(staffId).run();
-  return true;
+  return "ok";
 }
