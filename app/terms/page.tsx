@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Montserrat } from "next/font/google";
-import { Wordmark } from "@/app/components/Wordmark";
-import { SiteFooter } from "@/app/components/SiteFooter";
+import { LegalPage, type LegalSection } from "@/app/components/LegalPage";
 
 // The Terms of Service, for restaurants that buy tapndine. Plain language on purpose.
-
-const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "Terms of Service · tapndine",
@@ -17,7 +13,7 @@ export const metadata: Metadata = {
 const UPDATED = "October 13, 2026";
 const EMAIL = "justin.masiga.94@gmail.com";
 
-const SECTIONS: { title: string; body: React.ReactNode }[] = [
+const SECTIONS: LegalSection[] = [
   {
     title: "Who we are",
     body: (
@@ -120,7 +116,8 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <p>
           The menu link on a guest&apos;s phone stops working after 2 hours, so it can&apos;t be used to order from
           outside the restaurant. We handle guest information in line with the Philippine Data Privacy Act of 2012
-          (Republic Act No. 10173).
+          (Republic Act No. 10173), as our{" "}
+          <Link href="/privacy" className="font-semibold underline">Privacy Policy</Link> explains.
         </p>
         <p>
           Your guests&apos; meals, payments and service are between you and them. tapndine passes orders to your staff;
@@ -200,38 +197,5 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
 ];
 
 export default function Terms() {
-  return (
-    <div className={`${montserrat.className} overflow-x-clip bg-white text-home-cocoa`}>
-      <div className="bg-home-shell">
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-          <Link href="/" className="text-2xl">
-            <Wordmark />
-          </Link>
-          <Link href="/" className="text-sm font-semibold opacity-75 hover:opacity-100">
-            Back to home
-          </Link>
-        </header>
-        <div className="mx-auto max-w-3xl px-4 pb-14 pt-8 sm:px-6 md:pb-20 md:pt-14">
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Terms of Service</h1>
-          <p className="mt-4 font-medium text-home-cocoa/75">Last updated {UPDATED}</p>
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-3xl px-4 py-14 sm:px-6 md:py-20">
-        <ol className="space-y-12">
-          {SECTIONS.map((s, i) => (
-            <li key={s.title}>
-              <h2 className="flex items-baseline gap-3 text-xl font-bold sm:text-2xl">
-                <span className="text-home-orange">{i + 1}.</span>
-                {s.title}
-              </h2>
-              <div className="mt-4 space-y-4 font-medium leading-relaxed text-home-cocoa/80">{s.body}</div>
-            </li>
-          ))}
-        </ol>
-      </main>
-
-      <SiteFooter />
-    </div>
-  );
+  return <LegalPage title="Terms of Service" updated={UPDATED} sections={SECTIONS} />;
 }

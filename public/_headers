@@ -1,0 +1,10 @@
+# Browser caching for static files (Cloudflare Workers static assets read this file).
+# _next/static names change with every build, so they never go stale.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+# Homepage pictures and animations keep their names when replaced: a week, then
+# the browser asks again. Bump ?v= on a file (like STATS_V) to push a change sooner.
+/landing/*
+  Cache-Control: public, max-age=604800
+/anim/*
+  Cache-Control: public, max-age=604800

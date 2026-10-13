@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
-import { PLANS } from "@/lib/plans";
+import { METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { SiteFooter } from "@/app/components/SiteFooter";
@@ -17,9 +17,12 @@ import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
-const TITLE = "tapndine · NFC table menus that send orders to your waiters";
+// Search terms this page is written for: digital menu, online menu, table ordering
+// system, QR code menu (tapndine is the no-scan alternative), restaurants and cafes
+// in the Philippines. Keep them in the title, the H1 line and the body copy.
+const TITLE = "NFC Digital Menu & Table Ordering for Restaurants | tapndine";
 const DESCRIPTION =
-  "Guests tap the tag on their table, browse your menu with photos and send their order to the waiter. No app to install. From ₱2,100 a year.";
+  "Digital menu and table ordering for Philippine restaurants and cafes. Guests tap the table, order on their phone, and it reaches your waiter. From ₱2,100 a year.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -66,7 +69,7 @@ function Dots({ className = "" }: { className?: string }) {
 function Phone({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
   return (
     <div className={`rounded-[2.2rem] bg-home-cocoa p-[7px] shadow-[0_30px_60px_-20px_rgb(59_46_37/0.5)] ${className}`}>
-      <img src={src} alt={alt} width={390} height={844} className="block h-auto w-full rounded-[1.8rem]" />
+      <img src={src} alt={alt} width={390} height={844} loading="lazy" decoding="async" className="block h-auto w-full rounded-[1.8rem]" />
     </div>
   );
 }
@@ -167,6 +170,49 @@ const STEPS = [
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
 
+const PLAN_LIST = PLANS.map((p) => `${peso(p.price)} a year for ${p.tables} tables`).join(", ");
+const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,]*)$/, " or $1");
+
+// Plain-text answers: the FAQ section shows them and Google reads them (FAQPage below).
+const FAQ = [
+  {
+    q: "What is tapndine?",
+    a: "tapndine is a digital menu and table ordering system for restaurants and cafes in the Philippines. Guests tap the NFC tag on their table with their phone, browse your online menu with photos, and send their order straight to your waiter.",
+  },
+  {
+    q: "How is it different from a QR code menu?",
+    a: "Guests tap the tag instead of opening the camera to scan, and the menu opens already set to their table. And it is more than a menu to look at: orders go to the waiter's phone, sorted by guest, and every order counts toward your sales statistics. If you want a printed QR code on the table too, each table's link can be downloaded as one.",
+  },
+  {
+    q: "Do guests need to download an app?",
+    a: "No. The menu opens in the phone's browser, on iPhone and Android. Guests do not make an account; they type a name so the waiter knows whose order is whose.",
+  },
+  {
+    q: "What if a guest's phone can't tap NFC?",
+    a: "Most phones from the last few years read NFC tags; on some Android phones NFC has to be switched on in settings. A guest who can't tap can scan the table's QR code if you print one, order on a friend's phone at the same table, or tell the waiter, who adds the dishes to the table's order from their own phone.",
+  },
+  {
+    q: "Can someone order from outside the restaurant?",
+    a: "The menu link on a guest's phone closes 2 hours after it opens, so a link that was shared or saved stops working. A new tap at the table opens a fresh one. If you ever need to, you can give a table a new link and the old one stops working.",
+  },
+  {
+    q: "How do I change my menu or mark a dish sold out?",
+    a: "Your manager logs in and adds or edits dishes with a photo, price and how many people each one feeds, sorted into your own categories. A dish can be marked sold out for the day, and guests see it before they ask for it.",
+  },
+  {
+    q: "What does it cost?",
+    a: `One yearly price by number of tables: ${PLAN_LIST}. Every plan includes an NFC tag for each table, waiter and manager logins, and sales statistics. Renew at the same rate to keep your menu online.`,
+  },
+  {
+    q: "How do I pay?",
+    a: `Once a year, by ${PAY_WITH}.`,
+  },
+  {
+    q: "Does tapndine take payment from guests?",
+    a: "No. Guests pay you the way they always have. tapndine sends their orders to your staff and keeps count of what sells.",
+  },
+];
+
 // What Google reads about the business and the plans (schema.org).
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -193,6 +239,10 @@ const JSON_LD = {
         price: p.price,
         priceCurrency: "PHP",
       })),
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
     },
   ],
 };
@@ -227,14 +277,19 @@ export default function Home() {
 
         <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-24 pt-6 sm:px-6 md:grid-cols-2 md:pb-32 md:pt-12">
           <div>
-            <h1 className="text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
-              Tap the table.
-              <br />
-              The menu opens.
+            <h1>
+              <span className="mb-4 block text-balance text-sm font-bold uppercase tracking-wider text-home-cocoa/70">
+                Digital menu &amp; table ordering in the Philippines
+              </span>
+              <span className="block text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
+                Tap the table.
+                <br />
+                The menu opens.
+              </span>
             </h1>
             <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
-              Guests tap the tag on their table, browse your menu with photos, and send their order straight to the
-              waiter. No app to install, no paper menus to wipe down.
+              Guests tap the NFC tag on their table, browse your online menu with photos, and send their order straight
+              to the waiter. No app to install, no paper menus to wipe down.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
@@ -297,8 +352,8 @@ export default function Home() {
         <div>
           <h2 className={H2}>Your whole menu, on every phone at the table.</h2>
           <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-            Every dish gets a photo, its price and how many people it feeds. Guests search, filter by Seafood or
-            Pork, and see what&apos;s sold out today before they ask for it.
+            Your digital menu gives every dish a photo, its price and how many people it feeds. Guests search,
+            filter by Seafood or Pork, and see what&apos;s sold out today before they ask for it.
           </p>
           <div className="mt-8 grid max-w-sm grid-cols-3 gap-3">
             {[
@@ -334,8 +389,9 @@ export default function Home() {
           <div className="md:order-1">
             <h2 className={H2}>Orders reach the waiter, sorted by guest.</h2>
             <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-              Each phone at the table shows up as its own guest, with the name they chose. Your waiter reads the order
-              back, fixes a quantity, adds what was asked for out loud, and clears the table once it&apos;s paid.
+              Table ordering without the wait: each phone at the table shows up as its own guest, with the name they
+              chose. Your waiter reads the order back, fixes a quantity, adds what was asked for out loud, and clears
+              the table once it&apos;s paid.
             </p>
             <ul className="mt-6 flex flex-wrap gap-2">
               {["Guest names", "Order rounds", "Read-back fixes", "Waiter-added items", "Table totals", "Clear table", "Waiter logins"].map((t) => (
@@ -371,6 +427,7 @@ export default function Home() {
             alt="The manager's dashboard: sales, busy hours by weekday, top dishes and open tables"
             width={1040}
             height={900}
+            loading="lazy"
             className="hidden h-auto w-full motion-reduce:block"
           />
         </div>
@@ -446,7 +503,8 @@ export default function Home() {
         <div className="relative mx-auto max-w-5xl px-4 py-20 sm:px-6 md:py-28">
           <h2 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl">Pricing</h2>
           <p className="mx-auto mt-4 max-w-md text-center font-medium text-home-cocoa/75">
-            One price a year, by how many tables you have. Renew at the same rate to keep your menu online.
+            One price a year for your restaurant or cafe, by how many tables you have. Renew at the same rate to keep
+            your menu online.
           </p>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {PLANS.map((p) => (
@@ -475,6 +533,26 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="relative scroll-mt-4 bg-white">
+        <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 md:py-28">
+          <h2 className={`${H2} text-center`}>Questions restaurant owners ask</h2>
+          <div className="mt-12 divide-y divide-home-cream border-y border-home-cream">
+            {FAQ.map((f) => (
+              <details key={f.q} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-bold [&::-webkit-details-marker]:hidden">
+                  {f.q}
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-home-shell text-xl leading-none transition group-open:rotate-45" aria-hidden>
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 font-medium leading-relaxed text-home-cocoa/80">{f.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>

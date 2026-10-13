@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BookDemoButton } from "@/app/BookDemo";
 import { Wordmark } from "./Wordmark";
 
-/** The footer on the homepage and the Terms page. */
+/** The footer on the homepage, the Terms and the Privacy Policy. */
 export function SiteFooter() {
   return (
     <footer className="bg-home-cocoa text-home-shell">
@@ -12,7 +12,9 @@ export function SiteFooter() {
           by <span className="font-bold tracking-wide">TSUJIN IT SOLUTIONS</span>
         </p>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 font-medium opacity-80">
+          <Link href="/#faq" className="hover:underline">FAQ</Link>
           <Link href="/terms" className="hover:underline">Terms of Service</Link>
+          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
           <BookDemoButton className="hover:underline">Contact</BookDemoButton>
         </nav>
       </div>
