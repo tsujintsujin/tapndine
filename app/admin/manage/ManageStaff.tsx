@@ -7,7 +7,7 @@ import { btn, card, PageHead } from "../kit";
 import Shell from "../Shell";
 import { api, useConfirm } from "../ui";
 
-/** Who can log in, add a waiter, disable a waiter. Inside the manager's dashboard frame. */
+/** Who can log in, add a waiter or manager, remove one. Inside the manager's dashboard frame. */
 export default function ManageStaff({
   me,
   name,
@@ -78,15 +78,15 @@ export default function ManageStaff({
                     </span>
                   </td>
                   <td className="py-3 text-right">
-                    {s.role === "waiter" && (
+                    {s.id !== me && (s.role === "waiter" || s.role === "manager") && (
                       <button
                         type="button"
                         disabled={busy}
                         onClick={async () => {
                           const ok = await confirm({
-                            title: `Disable ${s.name}?`,
-                            body: "They are logged out, can no longer log in, and leave this list. Nothing is deleted: their past orders keep their name.",
-                            confirmLabel: "Disable",
+                            title: `Remove ${s.name}?`,
+                            body: "They are logged out, can no longer log in, and leave this list. Their past orders keep their name.",
+                            confirmLabel: "Remove",
                             danger: true,
                           });
                           if (!ok) return;
@@ -102,7 +102,7 @@ export default function ManageStaff({
                         }}
                         className={`${btn.danger} h-10`}
                       >
-                        Disable
+                        Remove
                       </button>
                     )}
                   </td>
@@ -123,7 +123,7 @@ export default function ManageStaff({
             try {
               await api("/api/staff/waiters", {
                 method: "POST",
-                body: { name: f.get("name"), username: f.get("username"), password: f.get("password") },
+                body: { name: f.get("name"), username: f.get("username"), password: f.get("password"), role: f.get("role") },
               });
               form.reset();
               router.refresh();
@@ -133,14 +133,28 @@ export default function ManageStaff({
             setBusy(false);
           }}
         >
-          <h2 className="font-display text-[19px] font-bold">Add a waiter</h2>
+          <h2 className="font-display text-[19px] font-bold">Add a login</h2>
+          <fieldset className="mt-4">
+            <legend className="text-[14px] font-semibold">Role</legend>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {(["waiter", "manager"] as const).map((r) => (
+                <label
+                  key={r}
+                  className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-line bg-white text-[15px] font-semibold has-[:checked]:border-leaf has-[:checked]:bg-leaf-tint has-[:checked]:text-leaf"
+                >
+                  <input type="radio" name="role" value={r} defaultChecked={r === "waiter"} className="sr-only" />
+                  {r === "waiter" ? "Waiter" : "Manager"}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="mt-4 block text-[14px] font-semibold">
             Name
             <input name="name" required maxLength={60} autoComplete="off" className={field} />
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Username
-            {/* The code is fixed: the waiter logs in as <code>-<what is typed>. */}
+            {/* The code is fixed: they log in as <code>-<what is typed>. */}
             <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
               {/* A fixed cap: a long code would otherwise widen the page on a phone. */}
               <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
@@ -165,10 +179,10 @@ export default function ManageStaff({
           <label className="mt-4 block text-[14px] font-semibold">
             Password
             <input name="password" type="password" required minLength={6} autoComplete="new-password" className={field} />
-            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to the waiter.</span>
+            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to them.</span>
           </label>
           <button type="submit" disabled={busy} className={`${btn.primary} mt-5 w-full`}>
-            Add waiter
+            Add login
           </button>
         </form>
       </div>
