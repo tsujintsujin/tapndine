@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import type { LinksPage, TableLinks } from "@/lib/tables";
-import { CheckIcon, CopyIcon, PencilIcon, PlusIcon, TrashIcon } from "@/app/components/Icons";
+import { CheckIcon, CopyIcon, PencilIcon, PlusIcon, QrIcon, TrashIcon } from "@/app/components/Icons";
 import { btn, card, PageHead } from "../kit";
 import { api, useConfirm } from "../ui";
 
@@ -171,7 +171,7 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-2.5">
                   {t.tags.map((tag) => (
-                    <LinkRow key={tag} url={link(tag)} />
+                    <LinkRow key={tag} url={link(tag)} name={t.label} />
                   ))}
                   <button type="button" disabled={busy} onClick={() => replace(t)} className={`${btn.danger} h-10`}>
                     New link
@@ -189,7 +189,7 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
           <p className="mt-1 text-[14px] text-muted">These open the menu without a table number, so guests cannot send orders from them.</p>
           <div className="mt-3 grid gap-2.5">
             {unplaced.map((tag) => (
-              <LinkRow key={tag} url={link(tag)} />
+              <LinkRow key={tag} url={link(tag)} name="Menu" />
             ))}
           </div>
         </section>
@@ -199,8 +199,12 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
   );
 }
 
-/** The link, selectable, with a Copy button. */
-function LinkRow({ url }: { url: string }) {
+const pill =
+  "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[14px] font-semibold text-forest shadow-[0_1px_2px_rgb(16_52_42/0.08)] hover:bg-leaf-tint";
+
+/** The link, selectable, with Copy and QR buttons. */
+function LinkRow({ url, name }: { url: string; name: string }) {
+  const [qr, setQr] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   useEffect(() => {
     if (state === "idle") return;
@@ -209,22 +213,79 @@ function LinkRow({ url }: { url: string }) {
   }, [state]);
 
   return (
-    <div className="flex min-w-0 flex-1 basis-72 items-center gap-2 rounded-xl bg-wash py-1 pl-3.5 pr-1">
-      <code className="min-w-0 flex-1 select-all break-all py-2 text-[14px] text-ink">{url}</code>
-      <button
-        type="button"
-        onClick={() =>
-          // No clipboard over plain http (a phone on the LAN): fall back to selecting it.
-          (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(
-            () => setState("copied"),
-            () => setState("failed")
-          )
-        }
-        className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[14px] font-semibold text-forest shadow-[0_1px_2px_rgb(16_52_42/0.08)] hover:bg-leaf-tint"
-      >
-        {state === "copied" ? <CheckIcon width={16} height={16} /> : <CopyIcon width={16} height={16} />}
-        {state === "copied" ? "Copied" : state === "failed" ? "Select it" : "Copy"}
-      </button>
+    <div className="flex min-w-0 flex-1 basis-72 flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-wash py-1 pl-3.5 pr-1">
+      <code className="min-w-0 flex-1 basis-48 select-all break-all py-2 text-[14px] text-ink">{url}</code>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            // No clipboard over plain http (a phone on the LAN): fall back to selecting it.
+            (navigator.clipboard?.writeText(url) ?? Promise.reject()).then(
+              () => setState("copied"),
+              () => setState("failed")
+            )
+          }
+          className={pill}
+        >
+          {state === "copied" ? <CheckIcon width={16} height={16} /> : <CopyIcon width={16} height={16} />}
+          {state === "copied" ? "Copied" : state === "failed" ? "Select it" : "Copy"}
+        </button>
+        <button
+          type="button"
+          aria-label={`QR code for ${name}`}
+          onClick={async () => {
+            const QR = await import("qrcode");
+            setQr(await QR.toDataURL(url, { width: 1024, margin: 2 }));
+          }}
+          className={pill}
+        >
+          <QrIcon width={16} height={16} />
+          QR
+        </button>
+      </div>
+      <QrDialog src={qr} url={url} name={name} onClose={() => setQr(null)} />
     </div>
+  );
+}
+
+/** The link as a QR image, for restaurants that want a printed code too. */
+function QrDialog({ src, url, name, onClose }: { src: string | null; url: string; name: string; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (src && d && !d.open) d.showModal();
+  }, [src]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-label={`QR code for ${name}`}
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
+    >
+      {src && (
+        <div className="p-5">
+          <h2 className="font-display text-[22px] font-bold leading-tight">{name}</h2>
+          <p className="mt-1 break-all text-[13px] text-muted">{url}</p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a data URL */}
+          <img src={src} alt={`QR code for ${url}`} className="mx-auto mt-3 aspect-square w-full max-w-[300px]" />
+          <a
+            href={src}
+            download={`${name.replace(/[^\w-]+/g, "-")}-qr.png`}
+            className="mt-4 flex h-[52px] w-full items-center justify-center rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark"
+          >
+            Download PNG
+          </a>
+          <button
+            type="button"
+            onClick={() => ref.current?.close()}
+            className="mt-1 h-11 w-full rounded-xl text-[15px] font-medium text-muted active:bg-wash"
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </dialog>
   );
 }
