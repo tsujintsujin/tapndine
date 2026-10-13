@@ -4,6 +4,10 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Only tapndine.online: the workers.dev address and justin94.space/tapndine are gone.
+  "workers_dev": false,
+  // tapndine's own domain. Cloudflare makes the DNS record and certificate.
+  "routes": [{ "pattern": "tapndine.online", "custom_domain": true }],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
