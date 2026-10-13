@@ -23,16 +23,21 @@ if (!/^[a-z0-9._-]{3,32}$/.test(username ?? "") || !name || !["--local", "--remo
 /** Reads a line without echoing it when typed; piped input works too. */
 function askPassword() {
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdin.isTTY });
-    if (process.stdin.isTTY) {
-      process.stdout.write("Password: ");
-      rl._writeToOutput = () => {};
-    }
-    rl.question("", (answer) => {
+    const tty = !!process.stdin.isTTY;
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: tty });
+    // The prompt goes through readline itself: written beforehand, readline's
+    // first redraw wiped it and the terminal showed an empty line. Everything
+    // after the prompt (what is typed) is kept off the screen.
+    let muted = false;
+    rl._writeToOutput = (s) => {
+      if (!muted) rl.output.write(s);
+    };
+    rl.question("Password (not shown as you type), then Enter: ", (answer) => {
       rl.close();
-      if (process.stdin.isTTY) process.stdout.write("\n");
+      if (tty) process.stdout.write("\n");
       resolve(answer);
     });
+    muted = tty;
   });
 }
 
