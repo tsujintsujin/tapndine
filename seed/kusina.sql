@@ -6,8 +6,8 @@
 -- tags and logins. Every copied id starts "k2_".
 --
 -- Tag links to try (npm run dev, then open):
---   http://127.0.0.1:3300/tapndine/t/p5mw2xqa   -> Table 1
---   http://127.0.0.1:3300/tapndine/t/t8vc3nje   -> Table 2
+--   http://127.0.0.1:3300/t/p5mw2xqa   -> Table 1
+--   http://127.0.0.1:3300/t/t8vc3nje   -> Table 2
 --
 -- Logins (test passwords, not used anywhere real):
 --   kusina-dos-manager  /  kusina-manager-1   (manager)

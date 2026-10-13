@@ -234,7 +234,7 @@ UPDATE dishes SET serves_min = 1, serves_max = 2 WHERE id IN ('d_chickenadobo', 
 UPDATE dishes SET is_new = 1 WHERE id IN ('d_crispypata', 'd_ginataanghipon', 'd_mangoshake');
 
 -- Staff logins for local testing only (test passwords, not used anywhere real).
--- Log in at http://localhost:3300/tapndine/login
+-- Log in at http://localhost:3300/login
 --   hikay-manager  /  menu-manager-1   (sees Tables and Staff)
 --   hikay-ana      /  menu-waiter-1    (waiter)
 --   hikay-ben      /  menu-waiter-2    (waiter)

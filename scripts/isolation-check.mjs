@@ -5,11 +5,11 @@
 // rows must be byte-for-byte the same afterwards.
 //
 // Local test data only. With `npm run dev` running:
-//   node scripts/isolation-check.mjs [http://localhost:3300/tapndine]
+//   node scripts/isolation-check.mjs [http://localhost:3300]
 
 import { execFileSync } from "node:child_process";
 
-const BASE = process.argv[2] ?? "http://localhost:3300/tapndine";
+const BASE = process.argv[2] ?? "http://localhost:3300";
 const HIKAY = "biz_hikay";
 let failed = 0;
 const check = (ok, what) => {

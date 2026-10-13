@@ -1,16 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+/** Where tapndine lives now. */
+const HOME = "https://tapndine.online";
+
 /**
- * justin94.space reaches this Worker through the Portfolio's Vercel rewrite.
- * Vercel turns every client-side navigation (an RSC request) into a request
- * for `<path>.rsc` before proxying it, so `/admin/t/tbl_1` arrives as
- * `/admin/t/tbl_1.rsc` and the dynamic segment reads "tbl_1.rsc" → 404.
- * Strip the suffix so the route sees the real path. No real route ends in .rsc.
+ * tapndine used to live at justin94.space/tapndine, and NFC tags already
+ * written carry those links. The Portfolio still proxies that path here, so an
+ * old link arrives as /tapndine/<path>: send it to the same page on
+ * tapndine.online. On this PC (localhost or a LAN address) it stays local.
  */
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  url.pathname = url.pathname.replace(/(\.prefetch)?(\.rsc)?$/, "");
-  return NextResponse.rewrite(url);
+  const { hostname, pathname, search, origin } = req.nextUrl;
+  const local = hostname === "localhost" || /^[\d.]+$/.test(hostname);
+  const path = pathname.replace(/^\/tapndine/, "") || "/";
+  return NextResponse.redirect(`${local ? origin : HOME}${path}${search}`, 308);
 }
 
-export const config = { matcher: ["/:path*.rsc", "/:path*.prefetch"] };
+export const config = { matcher: ["/tapndine", "/tapndine/:path*"] };
