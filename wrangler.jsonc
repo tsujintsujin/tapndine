@@ -4,9 +4,8 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Keep the workers.dev address: justin94.space/tapndine proxies to it. Wrangler
-  // turns it off when routes are set unless this says otherwise.
-  "workers_dev": true,
+  // Only tapndine.online: the workers.dev address and justin94.space/tapndine are gone.
+  "workers_dev": false,
   // tapndine's own domain. Cloudflare makes the DNS record and certificate.
   "routes": [{ "pattern": "tapndine.online", "custom_domain": true }],
   "assets": {

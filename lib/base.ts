@@ -1,6 +1,6 @@
 /**
- * The path the app is served under. "" now that it has its own domain
- * (tapndine.online); it was "/tapndine" behind justin94.space. Next prefixes
+ * The path the app is served under: "" on its own domain, tapndine.online.
+ * Next prefixes
  * <Link> and its own assets, but not fetch(), redirects, <img src> or iframe
  * src, so those use this.
  */
