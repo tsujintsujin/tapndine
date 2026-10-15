@@ -23,11 +23,10 @@ export default async function BillingPage() {
       <PageHead title="Billing" sub="What each restaurant signed and paid, as you record it." />
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <section className="relative overflow-hidden rounded-[22px] bg-forest p-5 pb-8 text-white">
+        <section className="relative overflow-hidden rounded-[22px] bg-forest p-5 text-white">
           <p className="text-[15px] font-semibold">Collected, last 30 days</p>
           <p className={stat}>{formatPrice(b.collected30)}</p>
           <p className="mt-3 text-[13px] text-white/75">{formatPrice(b.collectedYear)} so far this year</p>
-          <div className="banig absolute inset-x-0 bottom-0" aria-hidden="true" />
         </section>
         <section className={card}>
           <p className="text-[15px] font-semibold">Owed now</p>

@@ -982,7 +982,7 @@ function MiniRow({
 
 // ---------------------------------------------------------------------------
 
-/** My order's title bar, forest with the banig strip under it. */
+/** My order's title bar, forest. */
 function PanelTitle({ title, onClose, closeLabel }: { title: string; onClose: () => void; closeLabel: string }) {
   return (
     <div className="shrink-0 bg-forest pt-[env(safe-area-inset-top)] text-white">
@@ -1115,7 +1115,6 @@ function OrderList({
   return (
     <>
       <PanelTitle title="My order" onClose={onClose} closeLabel="Close my order" />
-      <div className="banig" aria-hidden="true" />
 
       {lines.length === 0 && !hasSent ? (
         <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">

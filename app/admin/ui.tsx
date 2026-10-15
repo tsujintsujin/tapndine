@@ -105,7 +105,6 @@ export function StaffHeader({
         <h1 className="truncate font-display text-lg font-bold">{title}</h1>
         <div className="flex items-center gap-1 justify-self-end">{right}</div>
       </div>
-      <div className="banig" aria-hidden="true" />
     </header>
   );
 }
@@ -153,7 +152,6 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
             Log out
           </button>
         </nav>
-        <div className="banig" aria-hidden="true" />
       </header>
     );
   }
@@ -207,7 +205,6 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
           </>
         )}
       </nav>
-      <div className="banig" aria-hidden="true" />
     </header>
   );
 }

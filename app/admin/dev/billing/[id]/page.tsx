@@ -32,12 +32,11 @@ export default async function RestaurantBillingPage({ params }: { params: Promis
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <section
-          className={`relative overflow-hidden rounded-[22px] p-5 pb-8 ${t.tone === "bad" ? "bg-chili text-white" : "bg-forest text-white"}`}
+          className={`relative overflow-hidden rounded-[22px] p-5 ${t.tone === "bad" ? "bg-chili text-white" : "bg-forest text-white"}`}
         >
           <p className="text-[15px] font-semibold">Standing</p>
           <p className={stat}>{t.label}</p>
           <p className="mt-3 text-[13px] text-white/80">{t.detail}</p>
-          <div className="banig absolute inset-x-0 bottom-0" aria-hidden="true" />
         </section>
         <section className={card}>
           <p className="text-[15px] font-semibold">Running contract</p>
