@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
 import { btn, PageHead } from "../kit";
 import { api } from "../ui";
+import ImportDialog from "./ImportDialog";
 
 /**
  * Every dish, in menu order. Click a row to edit it; flip the switch to mark
@@ -21,6 +22,7 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
   const [cat, setCat] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   // The order before a drag started, to put back if the drag is abandoned.
   const before = useRef<AdminDish[] | null>(null);
 
@@ -87,6 +89,9 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
         title="Menu"
         sub={`${list.length} dishes${soldOut ? `, ${soldOut} not available today` : ""}`}
       >
+        <button type="button" onClick={() => setImporting(true)} className={btn.secondary}>
+          Import CSV
+        </button>
         <Link href="/admin/menu/new" className={btn.primary}>
           <PlusIcon width={18} height={18} />
           Add dish
@@ -254,6 +259,8 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
           </ul>
         )}
       </div>
+
+      <ImportDialog open={importing} onClose={() => setImporting(false)} />
 
       {saved !== null && (
         <div
