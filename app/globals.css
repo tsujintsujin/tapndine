@@ -138,20 +138,6 @@ html:has(dialog.sheet[open]) {
   overflow: hidden;
 }
 
-/* The banig strip: a woven-mat diamond band, the one decorative device.
-   It marks where the dark stage ends and the menu begins. */
-.banig {
-  height: 14px;
-  background-color: #54443a;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F19A33'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%233B2E25'/%3E%3C/svg%3E");
-  background-size: 14px 14px;
-  background-repeat: repeat-x;
-}
-.theme-green .banig {
-  background-color: #1f5c3f;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cpath d='M7 0L14 7L7 14L0 7Z' fill='%23F2B233'/%3E%3Cpath d='M7 4L10 7L7 10L4 7Z' fill='%2310342A'/%3E%3C/svg%3E");
-}
-
 /* The "Added to order" notice rises into place each time it is shown, and
    fades back down just before AddedToast hides it at 1800ms. */
 .toast:popover-open > div {
