@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 
@@ -36,23 +37,70 @@ function slotsFor(iso: string) {
   return out;
 }
 
-export function BookDemoButton({ className, children }: { className?: string; children: React.ReactNode }) {
+const CLOSE_X =
+  "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl leading-none text-home-cocoa/50 transition hover:bg-home-cream hover:text-home-cocoa";
+
+/**
+ * Opens the demo booking. With `withLogin` it first asks which one: log in
+ * (staff, to /login) or book a demo.
+ */
+export function BookDemoButton({
+  className,
+  children,
+  withLogin = false,
+}: {
+  className?: string;
+  children: React.ReactNode;
+  withLogin?: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const chooser = useRef<HTMLDialogElement>(null);
   // The calendar depends on today's date and the time now, and the homepage is
   // rendered once at build time, so it is only built in the browser, on first open.
   const [opened, setOpened] = useState(false);
+  const openDemo = () => {
+    setOpened(true);
+    dialog.current?.showModal();
+  };
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setOpened(true);
-          dialog.current?.showModal();
-        }}
-        className={className}
-      >
+      <button type="button" onClick={() => (withLogin ? chooser.current?.showModal() : openDemo())} className={className}>
         {children}
       </button>
+      {withLogin && (
+        <dialog
+          ref={chooser}
+          onClick={(e) => e.target === e.currentTarget && chooser.current?.close()}
+          className="w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-white p-0 text-home-cocoa shadow-2xl backdrop:bg-home-cocoa/50"
+        >
+          <div className="p-6 sm:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="pt-1 text-2xl font-extrabold tracking-tight">Get tapndine</h2>
+              <button type="button" onClick={() => chooser.current?.close()} aria-label="Close" className={CLOSE_X}>
+                &times;
+              </button>
+            </div>
+            <div className="mt-6 grid gap-3">
+              <Link
+                href="/login"
+                className="rounded-full border-2 border-home-cocoa px-6 py-3 text-center font-semibold transition hover:bg-home-cocoa hover:text-home-shell"
+              >
+                Login
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  chooser.current?.close();
+                  openDemo();
+                }}
+                className="rounded-full bg-home-orange px-6 py-3 font-semibold transition hover:brightness-95"
+              >
+                Book a Demo
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
       <dialog
         ref={dialog}
         // A click on the backdrop lands on the <dialog> itself; one inside lands on its content.
@@ -144,7 +192,7 @@ function Scheduler({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl leading-none text-home-cocoa/50 transition hover:bg-home-cream hover:text-home-cocoa"
+          className={CLOSE_X}
         >
           &times;
         </button>
