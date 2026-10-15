@@ -2,6 +2,7 @@ import { db } from "./cf";
 import { randomId } from "./ids";
 import { rangeStart, type Range } from "./reports";
 import { hashPassword } from "./staff";
+import { newTagId } from "./tables";
 
 // The developers' screen: every restaurant on tapndine, how each is doing,
 // and adding, renaming and switching them off. Developers only; the routes
@@ -55,7 +56,7 @@ export const parseName = (v: unknown) => {
   return s && s.length <= 60 ? s : null;
 };
 
-/** A new restaurant and its first manager, together or not at all. */
+/** A new restaurant, its first manager and its "Not at a table" link, together or not at all. */
 export async function addRestaurant(
   name: string,
   slug: string,
@@ -79,6 +80,8 @@ export async function addRestaurant(
            VALUES (?, ?, ?, ?, 'manager', ?, ?)`
         )
         .bind(randomId(), id, manager.username, manager.name, await hashPassword(manager.password), now),
+      // The menu-only link (no table), for guests who just want to look.
+      d.prepare("INSERT INTO tags (id, business_id, table_id, created_at) VALUES (?, ?, NULL, ?)").bind(newTagId(), id, now),
     ]);
   } catch {
     // Someone took the code or the username between the check and the insert.
