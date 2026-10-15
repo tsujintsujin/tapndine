@@ -317,3 +317,42 @@ export async function reorderCategories(businessId: string, ids: string[]): Prom
   await d.batch(ids.map((id, i) => d.prepare("UPDATE categories SET sort = ? WHERE id = ?").bind(i + 1, id)));
   return true;
 }
+
+// --- Bulk upload ----------------------------------------------------------------
+
+/**
+ * Adds checked dishes from the CSV upload, in file order, at the end of the
+ * menu. Categories are matched by name (any case) and made if missing. A dish
+ * whose name is already on the menu is skipped, not changed.
+ */
+export async function importDishes(
+  businessId: string,
+  dishes: { input: DishInput; categoryNames: string[] }[]
+): Promise<{ added: number; skipped: string[] }> {
+  const d = db();
+  const existing = await d
+    .prepare("SELECT name FROM dishes WHERE business_id = ? AND removed_at IS NULL")
+    .bind(businessId)
+    .all<{ name: string }>();
+  const onMenu = new Set(existing.results.map((r) => r.name.toLowerCase()));
+  const cats = await d.prepare("SELECT id, name FROM categories WHERE business_id = ?").bind(businessId).all<{ id: string; name: string }>();
+  const catId = new Map(cats.results.map((c) => [c.name.toLowerCase(), c.id]));
+
+  const skipped: string[] = [];
+  let added = 0;
+  for (const x of dishes) {
+    if (onMenu.has(x.input.name.toLowerCase())) {
+      skipped.push(x.input.name);
+      continue;
+    }
+    const categoryIds: string[] = [];
+    for (const name of x.categoryNames) {
+      let id = catId.get(name.toLowerCase());
+      if (!id) catId.set(name.toLowerCase(), (id = await createCategory(businessId, name)));
+      categoryIds.push(id);
+    }
+    await saveDish(businessId, null, { ...x.input, categoryIds });
+    added++;
+  }
+  return { added, skipped };
+}
