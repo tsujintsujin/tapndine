@@ -274,7 +274,7 @@ export default function Home() {
           </Link>
           <nav className="flex items-center gap-6 text-sm font-semibold">
             <a href="#how" className="hidden opacity-75 hover:opacity-100 md:block">How it works</a>
-            <BookDemoButton className="rounded-full bg-home-cocoa px-5 py-2.5 text-home-shell hover:bg-black">
+            <BookDemoButton withLogin className="rounded-full bg-home-cocoa px-5 py-2.5 text-home-shell hover:bg-black">
               Get tapndine
             </BookDemoButton>
           </nav>
