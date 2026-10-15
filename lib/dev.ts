@@ -104,6 +104,39 @@ export async function setRestaurantOff(id: string, off: boolean): Promise<boolea
   return r.meta.changes > 0;
 }
 
+/**
+ * Deletes the restaurant and everything it owns: menu, tables, links, orders,
+ * staff and billing. Cannot be undone. Children go first (D1 enforces the
+ * foreign keys), all in one batch, so it is all or nothing. Developers who
+ * had it open are left with no restaurant open.
+ */
+export async function deleteRestaurant(id: string): Promise<boolean> {
+  const d = db();
+  const sittings = "SELECT id FROM sittings WHERE business_id = ?1";
+  const dishes = "SELECT id FROM dishes WHERE business_id = ?1";
+  const r = await d.batch([
+    `DELETE FROM payments WHERE contract_id IN (SELECT id FROM contracts WHERE business_id = ?1)`,
+    `DELETE FROM contracts WHERE business_id = ?1`,
+    `DELETE FROM batch_items WHERE batch_id IN (SELECT id FROM batches WHERE sitting_id IN (${sittings}))`,
+    `DELETE FROM item_changes WHERE sitting_id IN (${sittings})`,
+    `DELETE FROM visits WHERE business_id = ?1`,
+    `DELETE FROM batches WHERE sitting_id IN (${sittings})`,
+    `DELETE FROM guests WHERE sitting_id IN (${sittings})`,
+    `DELETE FROM sittings WHERE business_id = ?1`,
+    `DELETE FROM dish_categories WHERE dish_id IN (${dishes})`,
+    `DELETE FROM dish_ingredients WHERE dish_id IN (${dishes})`,
+    `DELETE FROM dishes WHERE business_id = ?1`,
+    `DELETE FROM categories WHERE business_id = ?1`,
+    `DELETE FROM tags WHERE business_id = ?1`,
+    `DELETE FROM tables WHERE business_id = ?1`,
+    `DELETE FROM staff_sessions WHERE staff_id IN (SELECT id FROM staff WHERE business_id = ?1)`,
+    `UPDATE staff_sessions SET business_id = NULL WHERE business_id = ?1`,
+    `DELETE FROM staff WHERE business_id = ?1`,
+    `DELETE FROM businesses WHERE id = ?1`,
+  ].map((sql) => d.prepare(sql).bind(id)));
+  return r[r.length - 1].meta.changes > 0;
+}
+
 export async function restaurantExists(id: string): Promise<boolean> {
   return !!(await db().prepare("SELECT 1 FROM businesses WHERE id = ?").bind(id).first());
 }

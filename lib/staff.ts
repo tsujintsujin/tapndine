@@ -86,6 +86,34 @@ type StaffRow = {
   off: number | null;
 };
 
+/** The password against the login's hash. Wrong ones count toward the lock. */
+async function tryPassword(
+  row: Pick<StaffRow, "id" | "password_hash" | "failed_logins" | "locked_until">,
+  password: string,
+  now: number
+): Promise<"ok" | "wrong" | "locked"> {
+  if (row.locked_until > now) return "locked";
+  if (await verifyPassword(password, row.password_hash)) return "ok";
+  const fails = row.failed_logins + 1;
+  await db()
+    .prepare("UPDATE staff SET failed_logins = ?, locked_until = ? WHERE id = ?")
+    .bind(fails >= MAX_FAILS ? 0 : fails, fails >= MAX_FAILS ? now + LOCK_MS : 0, row.id)
+    .run();
+  return fails >= MAX_FAILS ? "locked" : "wrong";
+}
+
+/** Someone logged in types their password again before something that cannot be undone. */
+export async function checkPassword(staffId: string, password: string): Promise<"ok" | "wrong" | "locked"> {
+  const row = await db()
+    .prepare("SELECT id, password_hash, failed_logins, locked_until FROM staff WHERE id = ? AND disabled_at IS NULL")
+    .bind(staffId)
+    .first<Pick<StaffRow, "id" | "password_hash" | "failed_logins" | "locked_until">>();
+  if (!row) return "wrong";
+  const checked = await tryPassword(row, password, Date.now());
+  if (checked === "ok") await db().prepare("UPDATE staff SET failed_logins = 0 WHERE id = ?").bind(row.id).run();
+  return checked;
+}
+
 /** Checks the password and, if right, sets the login cookie. */
 export async function logIn(
   username: string,
@@ -106,16 +134,8 @@ export async function logIn(
     await hashPassword(password);
     return "wrong";
   }
-  if (row.locked_until > now) return "locked";
-
-  if (!(await verifyPassword(password, row.password_hash))) {
-    const fails = row.failed_logins + 1;
-    await db()
-      .prepare("UPDATE staff SET failed_logins = ?, locked_until = ? WHERE id = ?")
-      .bind(fails >= MAX_FAILS ? 0 : fails, fails >= MAX_FAILS ? now + LOCK_MS : 0, row.id)
-      .run();
-    return fails >= MAX_FAILS ? "locked" : "wrong";
-  }
+  const checked = await tryPassword(row, password, now);
+  if (checked !== "ok") return checked;
 
   // Only after the right password, so it says nothing about the account to a guesser.
   if (row.off) return "off";
