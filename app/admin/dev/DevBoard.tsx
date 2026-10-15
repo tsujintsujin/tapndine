@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import type { Standing } from "@/lib/billing";
 import type { Restaurant } from "@/lib/dev";
@@ -37,6 +37,8 @@ export default function DevBoard({
   /** The login of the manager just added, to hand over. */
   const [added, setAdded] = useState("");
   const { confirm, dialog } = useConfirm();
+  /** The restaurant whose Delete dialog is up. */
+  const [deleting, setDeleting] = useState<Restaurant | null>(null);
 
   /** Runs one action; a failure shows above the list. */
   const run = async (f: () => Promise<unknown>) => {
@@ -160,6 +162,9 @@ export default function DevBoard({
                       >
                         {r.off ? "Switch on" : "Switch off"}
                       </button>
+                      <button type="button" disabled={busy} onClick={() => setDeleting(r)} className={`${btn.danger} h-10`}>
+                        Delete
+                      </button>
                     </div>
                   </div>
                 )}
@@ -253,6 +258,109 @@ export default function DevBoard({
         </form>
       </div>
       {dialog}
+      <DeleteDialog
+        restaurant={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={(photos) => {
+          setDeleting(null);
+          if (!photos) setError("Deleted. Its dish photos could not be removed from Cloudinary; they are still there.");
+          router.refresh();
+        }}
+      />
     </>
+  );
+}
+
+/** Delete for good: says what goes, and asks for the developer's own password. */
+function DeleteDialog({
+  restaurant,
+  onClose,
+  onDeleted,
+}: {
+  restaurant: Restaurant | null;
+  onClose: () => void;
+  onDeleted: (photos: boolean) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  // Keep the name up while it closes, after the parent has dropped it.
+  const last = useRef(restaurant);
+  if (restaurant) last.current = restaurant;
+  const r = last.current;
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (restaurant && !d.open) {
+      setError("");
+      d.showModal();
+    } else if (!restaurant && d.open) d.close();
+  }, [restaurant]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="delete-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onClose();
+      }}
+      onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
+    >
+      {r && (
+        <form
+          key={restaurant?.id ?? "closed"}
+          className="p-5"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const password = new FormData(e.currentTarget).get("password");
+            setBusy(true);
+            setError("");
+            try {
+              const res = await api<{ photos: boolean }>(`/api/dev/restaurants/${r.id}`, { method: "DELETE", body: { password } });
+              onDeleted(res.photos);
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <h2 id="delete-title" className="font-display text-[22px] font-bold leading-tight">
+            Delete {r.name} for good?
+          </h2>
+          <p className="mt-1.5 text-[15px] text-muted">
+            Its menu, dish photos, tables, NFC links, orders, staff logins and billing are erased. This cannot be undone. To keep it
+            without it running, switch it off instead.
+          </p>
+          <label className="mt-4 block text-[14px] font-semibold">
+            Your password
+            <input name="password" type="password" required autoFocus autoComplete="current-password" className={field} />
+          </label>
+          {error && (
+            <p role="alert" className="mt-3 rounded-xl bg-chili/10 px-3.5 py-2.5 text-[14px] text-chili">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-5 h-[52px] w-full rounded-xl bg-chili text-[17px] font-semibold text-white active:bg-chili/85 disabled:opacity-60"
+          >
+            {busy ? "Deleting…" : "Delete for good"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+            className="mt-1 h-11 w-full rounded-xl text-[15px] font-medium text-muted active:bg-wash"
+          >
+            Cancel
+          </button>
+        </form>
+      )}
+    </dialog>
   );
 }
