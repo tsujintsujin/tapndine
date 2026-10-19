@@ -23,7 +23,7 @@ tapndine
 │   │   ├── Dish options: sizes, add-ons, "less spicy", with prices
 │   │   ├── Combos / set meals
 │   │   ├── Menus by time: breakfast, lunch, happy hour
-│   │   ├── Filipino / English toggle
+│   │   ├── (Filipino / English toggle: dropped, English only)
 │   │   └── Allergens and dietary tags (spicy, pork-free, veg)
 │   ├── Guest
 │   │   ├── Live order status ("received", "being prepared", "served")
@@ -101,18 +101,18 @@ Justin's OK before the next.
 |---|---|---|---|---|
 | 1 | Dish options: sizes, add-ons, "less spicy", with prices | New option tables; menu editor, guest dish sheet, cart, waiter view, waiter "add items" | Large | Not started |
 | 2 | Combos / set meals ("Meal A + choose a drink") | Mostly a "choose one" option group from #1 | Small | Not started |
-| 3 | Mark served + live status for guests (Sent → Seen → Served) | A status per order line; waiter marks served; guest phone shows it | Medium | Not started |
+| 3 | Mark served + live status for guests (Sent → Seen → Served) | A status per order line; waiter marks each item served, one by one; guest phone shows it | Medium | Not started |
 | 4 | Running bill on the guest's phone, per guest and table total | Read-only, from existing orders | Small | Not started |
 | 5 | Waiter sections: assign tables to waiters | Staff–table link; waiter sees their tables first | Small | Not started |
 | 6 | Move / merge tables | Move a sitting to another table, or join two | Medium | Not started |
 | 7 | Dietary tags: pork-free, veg, contains nuts | Dish tags + guest filter (spice level already exists) | Small | Not started |
 | 8 | Menus by time: breakfast, lunch, happy hour | Time windows on categories | Small | Not started |
-| 9 | Filipino / English toggle | Guest screen text; optional Filipino dish names | Medium | Not started |
+| 9 | ~~Filipino / English toggle~~ | Dropped: English only | — | Dropped |
 | 10 | Feedback after the meal: stars + comment | New table, prompt on clear, list for the manager | Small | Not started |
 | 11 | Better stats: slow movers, best-sellers by day of week | Extends the Stats page | Small | Not started |
 | 12 | Floor map of tables (drag to arrange) | Position per table; layout view for waiter and manager | Large | Not started |
 
-### Open questions (ask Justin before that build)
+### Decided (Justin, 2026-10-19)
 
-- #9 Filipino: guest-screen text only, or also Filipino dish names the manager types?
-- #3 Status: waiter marks each item served, or the whole round at once?
+- #9 Filipino: **English only.** No language toggle, no Filipino dish names.
+- #3 Status: the waiter marks **each item** served, one by one (not the whole round).
