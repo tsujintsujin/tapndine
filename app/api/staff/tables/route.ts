@@ -20,6 +20,8 @@ export async function POST(req: Request) {
   if (me instanceof NextResponse) return me;
   const label = parseLabel((await body(req))?.label);
   if (!label) return fail("Name the table (up to 40 characters).");
-  await addTable(me.business_id, label);
+  if ((await addTable(me.business_id, label)) === "full") {
+    return fail("Your plan's tables are all used. Delete a table, or contact tapndine to move to a bigger plan.", 409);
+  }
   return NextResponse.json({ ok: true });
 }

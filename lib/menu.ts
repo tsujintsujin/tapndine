@@ -27,6 +27,8 @@ export type Category = { id: string; name: string; dishIds: string[] };
 
 export type Menu = {
   businessName: string;
+  /** The restaurant's own logo (Cloudinary URL), or null for name only. */
+  logoUrl: string | null;
   tableLabel: string | null;
   categories: Category[];
   /** Keyed by id; categories and the home sections refer to dishes by id. */
@@ -55,7 +57,7 @@ type DishRow = {
 export async function loadMenu(visit: Visit): Promise<Menu | null> {
   const d = db();
   const [biz, table, cats, dishes, links, ingredients] = await d.batch([
-    d.prepare("SELECT name FROM businesses WHERE id = ?").bind(visit.business_id),
+    d.prepare("SELECT name, logo_url FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
       .prepare("SELECT id, name FROM categories WHERE business_id = ? ORDER BY sort, name")
@@ -83,7 +85,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       .bind(visit.business_id),
   ]);
 
-  const business = (biz.results as { name: string }[])[0];
+  const business = (biz.results as { name: string; logo_url: string | null }[])[0];
   if (!business) return null;
 
   const byId: Record<string, Dish> = {};
@@ -124,6 +126,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
 
   return {
     businessName: business.name,
+    logoUrl: business.logo_url,
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.
     categories: categories.filter((c) => c.dishIds.length > 0),

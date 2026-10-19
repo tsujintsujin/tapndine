@@ -132,7 +132,20 @@ function Scheduler({ onClose }: { onClose: () => void }) {
     ] as (Date | null)[];
   }, [month]);
 
-  const slots = date ? slotsFor(date) : [];
+  // Times someone else already booked on the picked day: hidden from the list.
+  const [taken, setTaken] = useState<{ date: string; mins: number[] } | null>(null);
+  const loadTaken = async (day: string) => {
+    try {
+      const r = await fetch(`${BASE_PATH}/api/demo?date=${day}`, { cache: "no-store" });
+      const j = (await r.json()) as { taken?: number[] };
+      setTaken({ date: day, mins: j.taken ?? [] });
+    } catch {
+      // Offline: show every time; the server still refuses a double booking.
+      setTaken({ date: day, mins: [] });
+    }
+  };
+  const ready = !date || taken?.date === date;
+  const slots = date && ready ? slotsFor(date).filter((m) => !taken!.mins.includes(m)) : [];
   const atThisMonth = month.getFullYear() === today.getFullYear() && month.getMonth() === today.getMonth();
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -147,7 +160,11 @@ function Scheduler({ onClose }: { onClose: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, min: time, name: f.get("name"), email: f.get("email"), message: f.get("message") }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; taken?: boolean };
+      if (data.taken) {
+        setTime(null);
+        await loadTaken(date);
+      }
       if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
       setSent(true);
     } catch (err) {
@@ -248,6 +265,7 @@ function Scheduler({ onClose }: { onClose: () => void }) {
                   onClick={() => {
                     setDate(key);
                     setTime(null);
+                    loadTaken(key);
                   }}
                   aria-current={today0 ? "date" : undefined}
                   title={blocked ? "No demos this day" : undefined}
@@ -279,6 +297,10 @@ function Scheduler({ onClose }: { onClose: () => void }) {
         <div className="h-[340px] overflow-y-auto rounded-2xl border border-home-cream bg-home-shell p-3 md:h-[310px]">
           {!date ? (
             <p className="px-1 py-10 text-center text-sm text-home-cocoa/45">Pick a date to see open times.</p>
+          ) : !ready ? (
+            <p className="px-1 py-10 text-center text-sm text-home-cocoa/45">Checking open times…</p>
+          ) : slots.length === 0 ? (
+            <p className="px-1 py-10 text-center text-sm text-home-cocoa/45">Every time this day is booked. Pick another day.</p>
           ) : (
             [
               { label: "Morning", from: 0, to: 12 * 60 },

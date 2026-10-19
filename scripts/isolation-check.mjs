@@ -38,7 +38,9 @@ const fingerprint = () =>
       (SELECT COUNT(*) || '-' || COUNT(closed_at) FROM sittings WHERE business_id = '${HIKAY}') AS sittings,
       (SELECT COUNT(*) || '-' || SUM(i.qty) FROM batch_items i JOIN batches b ON b.id = i.batch_id JOIN sittings s ON s.id = b.sitting_id WHERE s.business_id = '${HIKAY}') AS items,
       (SELECT group_concat(id || COALESCE(disabled_at, ''), '|') FROM (SELECT * FROM staff WHERE business_id = '${HIKAY}' ORDER BY id)) AS staff,
-      (SELECT name || slug || COALESCE(disabled_at, '') FROM businesses WHERE id = '${HIKAY}') AS business`)
+      (SELECT COUNT(*) || '-' || COUNT(b.seen_at) FROM batches b JOIN sittings s ON s.id = b.sitting_id WHERE s.business_id = '${HIKAY}') AS seen,
+      (SELECT COUNT(*) || '-' || COUNT(c.seen_at) FROM calls c JOIN sittings s ON s.id = c.sitting_id WHERE s.business_id = '${HIKAY}') AS calls,
+      (SELECT name || slug || COALESCE(disabled_at, '') || COALESCE(logo_url, '') FROM businesses WHERE id = '${HIKAY}') AS business`)
   );
 
 /** fetch() as one browser: keeps its cookies. */
@@ -62,6 +64,11 @@ function browser() {
     return { status: res.status, location: res.headers.get("location"), text: await res.text() };
   };
 }
+
+// Something new at Hikay's table 1, so a peek from Kusina that marked it seen would show.
+sql(`UPDATE batches SET seen_at = NULL WHERE id = (
+  SELECT b.id FROM batches b JOIN sittings s ON s.id = b.sitting_id
+  WHERE s.table_id = 'tbl_hikay_1' AND s.closed_at IS NULL LIMIT 1)`);
 
 const before = fingerprint();
 const openItem = sql(
@@ -104,6 +111,8 @@ const attacks = [
   ["PUT", "/api/staff/menu/categories/cat_pork", { name: "Hacked", dishIds: [] }],
   ["DELETE", "/api/staff/menu/categories/cat_pork"],
   ["POST", "/api/staff/menu/categories/order", { ids: ["cat_halal", "cat_veg", "cat_beef", "cat_pork", "cat_chicken", "cat_seafood"] }],
+  // A logo from Hikay's photo folder is not Kusina's to use.
+  ["POST", "/api/staff/logo", { logoUrl: "https://res.cloudinary.com/x/image/upload/tapndine/hikay/logo" }],
 ];
 for (const [method, path, body] of attacks) {
   const r = await kusina(path, { method, body });

@@ -16,7 +16,8 @@ const iconBtn = "grid h-11 w-11 shrink-0 place-items-center rounded-full text-mu
  * Every table and the link its NFC tag should hold. We only hand out the
  * link: the restaurant writes it to the tag with any NFC app.
  */
-export default function LinksBoard({ tables, unplaced }: LinksPage) {
+export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
+  const full = tables.length >= limit;
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
       <PageHead title="NFC links" sub="Copy a table's link and write it to the tag on that table with any NFC app.">
         <button
           type="button"
+          disabled={full}
           onClick={() => {
             setError("");
             setAdding(true);
@@ -82,7 +84,14 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
         </button>
       </PageHead>
 
-      {adding && (
+      {full && (
+        <p className="mt-4 rounded-2xl bg-mango-soft px-4 py-3 text-[15px]">
+          Your plan covers {limit} tables and all {limit} are set up. To add another, delete a table you don&apos;t use, or
+          contact tapndine to move to a bigger plan.
+        </p>
+      )}
+
+      {adding && !full && (
         <form
           className={`${card} mt-6 flex flex-wrap items-end gap-3`}
           onSubmit={async (e) => {
@@ -116,8 +125,9 @@ export default function LinksBoard({ tables, unplaced }: LinksPage) {
 
       <section className={`${card} mt-4`}>
         <h2 className="font-display text-[19px] font-bold">
-          {tables.length} {tables.length === 1 ? "table" : "tables"}
+          {tables.length} of {limit} tables
         </h2>
+        <p className="text-[13px] text-muted">Your plan covers {limit}.</p>
         {tables.length === 0 && <p className="mt-2 text-[15px] text-muted">No tables yet. Add one to get its link.</p>}
         <ul className="mt-2">
           {tables.map((t) => (

@@ -37,6 +37,15 @@ export const BagIcon = (p: P) => (
   </Svg>
 );
 
+/** A service bell: the guest calling their waiter. */
+export const BellIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 16v-4a6 6 0 0 1 12 0v4l1.5 2h-15L6 16z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+    <path d="M12 4V3" />
+  </Svg>
+);
+
 export const ClocheIcon = (p: P) => (
   <Svg {...p}>
     <path d="M4 17a8 8 0 0 1 16 0" />

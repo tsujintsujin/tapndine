@@ -4,12 +4,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Dish, Menu } from "@/lib/menu";
-import type { GuestOrders } from "@/lib/orders";
+import type { CallKind, GuestOrders } from "@/lib/orders";
 import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
 import Expired from "@/app/components/Expired";
 import {
   BagIcon,
+  BellIcon,
   CheckIcon,
   ClocheIcon,
   CloseIcon,
@@ -20,6 +21,7 @@ import {
   MinusIcon,
   PeopleIcon,
   PlusIcon,
+  ReceiptIcon,
   SearchIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
@@ -57,19 +59,49 @@ function closeParam(key: string) {
 // batch on the server and the list starts empty again.
 
 type Order = Record<string, number>;
+/** The guest's note per dish in the list ("no egg"), sent with it. */
+type Notes = Record<string, string>;
 
 function useOrder(visitId: string) {
   const key = `tapndine:order:${visitId}`;
+  const notesKey = `tapndine:notes:${visitId}`;
   const [order, setOrder] = useState<Order>({});
+  const [notes, setNotes] = useState<Notes>({});
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
       if (raw) setOrder(JSON.parse(raw));
+      const rawNotes = localStorage.getItem(notesKey);
+      if (rawNotes) setNotes(JSON.parse(rawNotes));
     } catch {
       // Private mode or blocked storage: the list just starts empty.
     }
-  }, [key]);
+  }, [key, notesKey]);
+
+  const updateNotes = useCallback(
+    (fn: (n: Notes) => Notes) => {
+      setNotes((prev) => {
+        const next = fn(prev);
+        try {
+          localStorage.setItem(notesKey, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    },
+    [notesKey]
+  );
+
+  const setNote = useCallback(
+    (id: string, text: string) =>
+      updateNotes((n) => {
+        const next = { ...n };
+        if (text.trim()) next[id] = text;
+        else delete next[id];
+        return next;
+      }),
+    [updateNotes]
+  );
 
   const update = useCallback(
     (fn: (o: Order) => Order) => {
@@ -85,24 +117,38 @@ function useOrder(visitId: string) {
   );
 
   const setQty = useCallback(
-    (id: string, qty: number) =>
+    (id: string, qty: number) => {
       update((o) => {
         const next = { ...o };
         if (qty <= 0) delete next[id];
         else next[id] = qty;
         return next;
-      }),
-    [update]
+      });
+      // A dish taken off the list takes its note with it.
+      if (qty <= 0) setNote(id, "");
+    },
+    [update, setNote]
   );
 
-  const clear = useCallback(() => update(() => ({})), [update]);
+  const clear = useCallback(() => {
+    update(() => ({}));
+    updateNotes(() => ({}));
+  }, [update, updateNotes]);
 
-  return { order, setQty, clear };
+  return { order, setQty, clear, notes, setNote };
 }
 
-/** What this phone has already sent, from the server. */
-function useSent(visitId: string, onDead: () => void) {
+type OpenCall = { kind: CallKind; createdAt: number };
+
+/**
+ * What this phone has already sent (and whether the waiter has seen it), and
+ * the table's open calls, from the server. While `watch` is on (My order or
+ * the call box is open) it asks again every 10 seconds, so "Waiting for your
+ * waiter" turns into "Seen" without a reload.
+ */
+function useSent(visitId: string, onDead: () => void, watch: boolean) {
   const [sent, setSent] = useState<GuestOrders | null>(null);
+  const [calls, setCalls] = useState<OpenCall[]>([]);
   const deadRef = useRef(onDead);
   deadRef.current = onDead;
 
@@ -110,7 +156,10 @@ function useSent(visitId: string, onDead: () => void) {
     fetch(`${BASE_PATH}/api/visits/${visitId}/order`, { cache: "no-store" })
       .then(async (r) => {
         if (r.status === 410) return deadRef.current();
-        if (r.ok) setSent(((await r.json()) as { sent: GuestOrders | null }).sent);
+        if (!r.ok) return;
+        const j = (await r.json()) as { sent: GuestOrders | null; calls?: OpenCall[] };
+        setSent(j.sent);
+        setCalls(j.calls ?? []);
       })
       .catch(() => {
         // Offline for a moment: keep what we last had.
@@ -118,7 +167,12 @@ function useSent(visitId: string, onDead: () => void) {
   }, [visitId]);
 
   useEffect(load, [load]);
-  return { sent, setSent, load };
+  useEffect(() => {
+    if (!watch) return;
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 10_000);
+    return () => clearInterval(t);
+  }, [watch, load]);
+  return { sent, setSent, calls, setCalls, load };
 }
 
 /**
@@ -201,24 +255,23 @@ export default function MenuApp({
   const dishId = params.get("d");
   const orderOpen = params.get("o") === "1";
 
+  const [callOpen, setCallOpen] = useState(false);
   const { expired, expire } = useVisitAlive(visitId, expiresAt);
-  const { order, setQty, clear } = useOrder(visitId);
-  const { sent, setSent, load: loadSent } = useSent(visitId, expire);
+  const { order, setQty, clear, notes, setNote } = useOrder(visitId);
+  const { sent, setSent, calls, setCalls, load: loadSent } = useSent(visitId, expire, orderOpen || callOpen);
   const { nick, save: saveNick } = useNickname();
   const [nickOpen, setNickOpen] = useState(false);
+  // The nickname is asked the first time this phone sends, not on opening the
+  // menu: looking comes first. True while that question stands between the
+  // guest and their send.
+  const [sendAfterNick, setSendAfterNick] = useState(false);
   // The category tag picked on the whole menu; null is All.
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
-  // First menu on this phone: ask what to call them. Only where there is a
-  // waiter to send to.
+  // Opening My order or the call box picks up anything the waiter did since.
   useEffect(() => {
-    if (canSend && nick === null) setNickOpen(true);
-  }, [canSend, nick]);
-
-  // Opening My order picks up anything the waiter changed since.
-  useEffect(() => {
-    if (orderOpen) loadSent();
-  }, [orderOpen, loadSent]);
+    if (orderOpen || callOpen) loadSent();
+  }, [orderOpen, callOpen, loadSent]);
 
   useEffect(() => {
     const onPop = () => {
@@ -254,10 +307,11 @@ export default function MenuApp({
   }, [view]);
 
   const [toast, setToast] = useState<Toast | null>(null);
-  const addOne = (id: string) => {
-    setQty(id, (order[id] ?? 0) + 1);
+  const addOne = (id: string, n = 1) => {
+    setQty(id, (order[id] ?? 0) + n);
     // A fresh key each time, so adding twice in a row shows it again.
-    setToast({ key: Date.now(), title: "Added to order", detail: menu.dishes[id]?.name ?? "" });
+    const name = menu.dishes[id]?.name ?? "";
+    setToast({ key: Date.now(), title: "Added to order", detail: n > 1 ? `${n}× ${name}` : name });
   };
 
   // One key per list sent, so a double tap or a retry cannot send it twice.
@@ -268,7 +322,7 @@ export default function MenuApp({
   }, [order]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
-  const send = async () => {
+  const send = async (nickname: string | null = nick || null) => {
     sendKey.current ??= randomId();
     setSending(true);
     setSendError("");
@@ -278,8 +332,8 @@ export default function MenuApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           key: sendKey.current,
-          items: Object.entries(order).map(([dishId, qty]) => ({ dishId, qty })),
-          nickname: nick || null,
+          items: Object.entries(order).map(([dishId, qty]) => ({ dishId, qty, note: notes[dishId] ?? "" })),
+          nickname,
         }),
       });
       if (r.status === 410) return expire();
@@ -294,6 +348,36 @@ export default function MenuApp({
       setSending(false);
     }
   };
+  /** Send to waiter: first time on this phone, ask what to call them, then send. */
+  const trySend = () => {
+    if (nick === null) {
+      setSendAfterNick(true);
+      setNickOpen(true);
+    } else send();
+  };
+
+  const [calling, setCalling] = useState<CallKind | null>(null);
+  const [callError, setCallError] = useState("");
+  const call = async (kind: CallKind) => {
+    setCalling(kind);
+    setCallError("");
+    try {
+      const r = await fetch(`${BASE_PATH}/api/visits/${visitId}/call`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, nickname: nick || null }),
+      });
+      if (r.status === 410) return expire();
+      const j = (await r.json().catch(() => ({}))) as { calls?: OpenCall[]; error?: string };
+      if (!r.ok) throw new Error(j.error ?? "Could not reach your waiter. Try again.");
+      setCalls(j.calls ?? []);
+    } catch (e) {
+      setCallError(e instanceof TypeError ? "No connection. Check your signal and try again." : (e as Error).message);
+    } finally {
+      setCalling(null);
+    }
+  };
+
   const openDish = (id: string) => setParams((p) => p.set("d", id), "push");
   const openOrder = () => setParams((p) => p.set("o", "1"), "push");
   const openMenu = () => {
@@ -322,9 +406,13 @@ export default function MenuApp({
     <>
       <Header
         nickname={nick || ""}
-        place={menu.tableLabel ? `${menu.businessName} · ${menu.tableLabel}` : menu.businessName}
+        businessName={menu.businessName}
+        logoUrl={menu.logoUrl}
+        tableLabel={menu.tableLabel}
         itemCount={itemCount}
+        calling={calls.length > 0}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
+        onCall={canSend ? () => setCallOpen(true) : undefined}
         onOrder={openOrder}
       >
         {view === "menu" && (
@@ -363,9 +451,10 @@ export default function MenuApp({
       <Sheet open={!!dish} onClose={() => closeParam("d")} from="bottom" label={dish?.name ?? "Dish"}>
         {dish && (
           <DishDetails
+            key={dish.id}
             dish={dish}
             inOrder={order[dish.id] ?? 0}
-            onAdd={() => addOne(dish.id)}
+            onAdd={(n) => addOne(dish.id, n)}
             onClose={() => closeParam("d")}
           />
         )}
@@ -376,11 +465,13 @@ export default function MenuApp({
           menu={menu}
           order={order}
           setQty={setQty}
+          notes={notes}
+          setNote={setNote}
           sent={sent}
           canSend={canSend}
           sending={sending}
           sendError={sendError}
-          onSend={send}
+          onSend={trySend}
           nickname={nick || ""}
           onNickname={() => setNickOpen(true)}
           onClose={() => closeParam("o")}
@@ -390,9 +481,26 @@ export default function MenuApp({
       <NicknamePrompt
         open={nickOpen}
         initial={nick || ""}
+        sending={sendAfterNick}
         onDone={(v) => {
           saveNick(v);
           setNickOpen(false);
+          if (sendAfterNick) {
+            setSendAfterNick(false);
+            send(v || null);
+          }
+        }}
+      />
+
+      <CallPrompt
+        open={callOpen}
+        calls={calls}
+        calling={calling}
+        error={callError}
+        onCall={call}
+        onClose={() => {
+          setCallOpen(false);
+          setCallError("");
         }}
       />
     </>
@@ -403,7 +511,18 @@ export default function MenuApp({
  * "What should we call you?" A small native dialog over the menu. Skip (or
  * Esc) keeps whatever name the phone had, or none: the waiter then sees Guest #.
  */
-function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: string; onDone: (v: string) => void }) {
+function NicknamePrompt({
+  open,
+  initial,
+  sending,
+  onDone,
+}: {
+  open: boolean;
+  initial: string;
+  /** Asked on the way to Send to waiter: the buttons say so. */
+  sending: boolean;
+  onDone: (v: string) => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const [value, setValue] = useState(initial);
 
@@ -456,14 +575,14 @@ function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: str
           disabled={!value.trim()}
           className="mt-4 h-[52px] w-full rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:opacity-50"
         >
-          Continue
+          {sending ? "Send to waiter" : "Continue"}
         </button>
         <button
           type="button"
           onClick={() => onDone(initial)}
           className="mt-1 h-11 w-full rounded-xl text-[15px] font-medium text-muted active:bg-wash"
         >
-          {initial ? "Cancel" : "Skip"}
+          {sending ? "Skip and send" : initial ? "Cancel" : "Skip"}
         </button>
       </form>
     </dialog>
@@ -471,56 +590,178 @@ function NicknamePrompt({ open, initial, onDone }: { open: boolean; initial: str
 }
 
 
+/**
+ * "Call waiter" and "Bill, please". A small dialog like the nickname one.
+ * A kind already asked for shows as waiting until the waiter opens the
+ * table; asking again would do nothing, so its button is off meanwhile.
+ */
+function CallPrompt({
+  open,
+  calls,
+  calling,
+  error,
+  onCall,
+  onClose,
+}: {
+  open: boolean;
+  calls: { kind: CallKind; createdAt: number }[];
+  calling: CallKind | null;
+  error: string;
+  onCall: (kind: CallKind) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    else if (!open && d.open) d.close();
+  }, [open]);
+
+  const options: { kind: CallKind; label: string; waiting: string; Icon: typeof BellIcon }[] = [
+    { kind: "waiter", label: "Call waiter", waiting: "Waiter called", Icon: BellIcon },
+    { kind: "bill", label: "Bill, please", waiting: "Bill asked for", Icon: ReceiptIcon },
+  ];
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="call-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="call-title" className="pt-1 font-display text-[24px] font-bold leading-tight">
+            Need your waiter?
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
+            <CloseIcon width={20} height={20} />
+          </button>
+        </div>
+        <p className="mt-1 text-[15px] text-muted">It shows on your waiter&apos;s phone right away.</p>
+        <ul className="mt-4 space-y-2.5">
+          {options.map(({ kind, label, waiting, Icon }) => {
+            const open = calls.find((c) => c.kind === kind);
+            return (
+              <li key={kind}>
+                <button
+                  type="button"
+                  disabled={!!open || calling !== null}
+                  onClick={() => onCall(kind)}
+                  className={`flex min-h-[60px] w-full items-center gap-3 rounded-2xl px-4 text-left ${
+                    open ? "bg-mango-soft text-forest" : "bg-leaf text-white active:bg-leaf-dark disabled:opacity-60"
+                  }`}
+                >
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${open ? "bg-mango" : "bg-white/15"}`}>
+                    {open ? <CheckIcon width={20} height={20} /> : <Icon width={20} height={20} />}
+                  </span>
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-[17px] font-semibold">{open ? waiting : calling === kind ? "Calling…" : label}</span>
+                    {open && <span className="block text-[13px] text-forest/70">At {formatTime(open.createdAt)}. Your waiter sees it on their phone.</span>}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {error && (
+          <p role="alert" className="mt-3 text-center text-sm text-chili">
+            {error}
+          </p>
+        )}
+      </div>
+    </dialog>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 /**
- * "Hi Jecery!" and where they are sitting, with the order button opposite.
+ * The restaurant's logo and name, then the table and the guest's name, with
+ * the call button opposite (the order button where there is no waiter).
  * Stays at the top while the page scrolls; on the whole menu it also holds
  * the search and the category tags (`children`).
  */
 function Header({
   nickname,
-  place,
+  businessName,
+  logoUrl,
+  tableLabel,
   itemCount,
+  calling,
   onNickname,
+  onCall,
   onOrder,
   children,
 }: {
   nickname: string;
-  place: string;
+  businessName: string;
+  logoUrl: string | null;
+  tableLabel: string | null;
   itemCount: number;
+  /** A call from this table is waiting for the waiter. */
+  calling: boolean;
   /** Missing where there is no waiter, so no name to set. */
   onNickname?: () => void;
+  /** Missing where there is no waiter to call. */
+  onCall?: () => void;
   onOrder: () => void;
   children?: React.ReactNode;
 }) {
-  const hello = (
-    <>
-      <span className="block truncate font-display text-[26px] font-bold leading-tight">Hi {nickname || "there"}!</span>
-      <span className="block truncate text-[14px] leading-tight text-muted">{place}</span>
-    </>
-  );
+  const who = [tableLabel, nickname ? `Hi ${nickname}` : null].filter(Boolean).join(" · ");
   return (
     <header className="sticky top-0 z-20 bg-paper/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="mx-auto max-w-3xl px-4">
         <div className="flex h-[72px] items-center justify-between gap-3">
-          {onNickname ? (
-            <button type="button" onClick={onNickname} className="-mx-2 min-w-0 rounded-xl px-2 py-1 text-left active:bg-wash">
-              {hello}
-              <span className="sr-only">Change your nickname</span>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-11 w-11 shrink-0 rounded-full bg-white object-contain ring-1 ring-line" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-[22px] font-bold leading-tight">{businessName}</p>
+              {onNickname ? (
+                <button
+                  type="button"
+                  onClick={onNickname}
+                  className="-mx-1.5 -my-1 flex min-h-8 max-w-full items-center gap-1 rounded-lg px-1.5 text-[14px] leading-tight text-muted active:bg-wash"
+                >
+                  <span className="truncate">{who || "Add your name"}</span>
+                  <span className="shrink-0 font-semibold text-leaf">{nickname ? "Edit" : who ? "· Add name" : ""}</span>
+                  <span className="sr-only">Change your nickname</span>
+                </button>
+              ) : (
+                who && <p className="truncate text-[14px] leading-tight text-muted">{who}</p>
+              )}
+            </div>
+          </div>
+          {onCall ? (
+            <button
+              type="button"
+              onClick={onCall}
+              aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
+              className="relative flex h-12 shrink-0 items-center gap-1.5 rounded-full bg-leaf pl-3 pr-4 text-[15px] font-semibold text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
+            >
+              <BellIcon width={22} height={22} />
+              Waiter
+              {calling && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-paper" aria-hidden />}
             </button>
           ) : (
-            <div className="min-w-0">{hello}</div>
+            <button
+              type="button"
+              onClick={onOrder}
+              aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
+              className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
+            >
+              <BagIcon width={22} height={22} />
+              {itemCount > 0 && <CountBadge count={itemCount} />}
+            </button>
           )}
-          <button
-            type="button"
-            onClick={onOrder}
-            aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
-          >
-            <BagIcon width={22} height={22} />
-            {itemCount > 0 && <CountBadge count={itemCount} />}
-          </button>
         </div>
         {children && <div className="pb-3">{children}</div>}
       </div>
@@ -1006,9 +1247,12 @@ function DishDetails({
 }: {
   dish: Dish;
   inOrder: number;
-  onAdd: () => void;
+  /** Adds this many. */
+  onAdd: (n: number) => void;
   onClose: () => void;
 }) {
+  // How many the next Add puts in; back to 1 after each add.
+  const [n, setN] = useState(1);
   return (
     <>
       <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3">
@@ -1037,21 +1281,51 @@ function DishDetails({
 
           <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>
 
-          <button
-            type="button"
-            disabled={!dish.available}
-            onClick={onAdd}
-            className="mt-5 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
-          >
-            {!dish.available ? (
-              "Not Available Today"
-            ) : (
-              <>
-                <PlusIcon width={20} height={20} />
-                Add to order
-              </>
+          <div className="mt-5 flex gap-3">
+            {dish.available && (
+              <div className="flex h-[52px] shrink-0 items-center rounded-xl border border-line" role="group" aria-label="How many">
+                <button
+                  type="button"
+                  disabled={n <= 1}
+                  onClick={() => setN(n - 1)}
+                  aria-label="One less"
+                  className="grid h-full w-12 place-items-center rounded-l-xl active:bg-wash disabled:text-muted/50"
+                >
+                  <MinusIcon width={20} height={20} />
+                </button>
+                <span className="w-7 text-center text-[18px] font-semibold tabular-nums" aria-live="polite">
+                  {n}
+                </span>
+                <button
+                  type="button"
+                  disabled={n >= 20}
+                  onClick={() => setN(n + 1)}
+                  aria-label="One more"
+                  className="grid h-full w-12 place-items-center rounded-r-xl active:bg-wash disabled:text-muted/50"
+                >
+                  <PlusIcon width={20} height={20} />
+                </button>
+              </div>
             )}
-          </button>
+            <button
+              type="button"
+              disabled={!dish.available}
+              onClick={() => {
+                onAdd(n);
+                setN(1);
+              }}
+              className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-leaf px-3 text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
+            >
+              {!dish.available ? (
+                "Not Available Today"
+              ) : (
+                <>
+                  <span className="truncate">{n > 1 ? `Add ${n}` : "Add to order"}</span>
+                  <span className="shrink-0 text-white/75">{formatPrice(dish.priceCents * n)}</span>
+                </>
+              )}
+            </button>
+          </div>
           <p className="mt-2 h-5 text-center text-sm text-muted" aria-live="polite">
             {inOrder > 0 ? `${inOrder} in your order` : ""}
           </p>
@@ -1086,6 +1360,8 @@ function OrderList({
   menu,
   order,
   setQty,
+  notes,
+  setNote,
   sent,
   canSend,
   sending,
@@ -1098,6 +1374,8 @@ function OrderList({
   menu: Menu;
   order: Order;
   setQty: (id: string, qty: number) => void;
+  notes: Notes;
+  setNote: (id: string, text: string) => void;
   sent: GuestOrders | null;
   canSend: boolean;
   sending: boolean;
@@ -1130,21 +1408,24 @@ function OrderList({
                 {hasSent && <h3 className="px-4 pt-4 font-display text-lg font-bold">Not sent yet</h3>}
                 <ul className="divide-y divide-line px-4">
                   {lines.map(({ dish, qty }) => (
-                    <li key={dish.id} className="flex items-center gap-3 py-3">
-                      <DishImage dish={dish} className="aspect-square w-14 shrink-0 rounded-lg" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium leading-snug">{dish.name}</p>
-                        <p className="text-sm text-muted">{formatPrice(dish.priceCents * qty)}</p>
+                    <li key={dish.id} className="py-3">
+                      <div className="flex items-center gap-3">
+                        <DishImage dish={dish} className="aspect-square w-14 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium leading-snug">{dish.name}</p>
+                          <p className="text-sm text-muted">{formatPrice(dish.priceCents * qty)}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center rounded-full border border-line">
+                          <button type="button" onClick={() => setQty(dish.id, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                            <MinusIcon width={18} height={18} />
+                          </button>
+                          <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
+                          <button type="button" onClick={() => setQty(dish.id, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                            <PlusIcon width={18} height={18} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 items-center rounded-full border border-line">
-                        <button type="button" onClick={() => setQty(dish.id, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
-                          <MinusIcon width={18} height={18} />
-                        </button>
-                        <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
-                        <button type="button" onClick={() => setQty(dish.id, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
-                          <PlusIcon width={18} height={18} />
-                        </button>
-                      </div>
+                      {canSend && <NoteField dish={dish} note={notes[dish.id] ?? ""} onNote={(t) => setNote(dish.id, t)} />}
                     </li>
                   ))}
                 </ul>
@@ -1213,7 +1494,47 @@ function OrderList({
   );
 }
 
-/** What this phone already sent, batch by batch. Read-only: the waiter has it. */
+/**
+ * "Add a note" under a dish in My order; tapping it opens a labelled box.
+ * The note goes to the waiter with the dish ("no egg, less spicy").
+ */
+function NoteField({ dish, note, onNote }: { dish: Dish; note: string; onNote: (t: string) => void }) {
+  const [open, setOpen] = useState(note !== "");
+  const id = `note-${dish.id}`;
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="ml-[68px] mt-1 flex min-h-10 items-center gap-1.5 rounded-lg px-1 text-[14px] font-semibold text-leaf active:bg-leaf-tint"
+      >
+        <PlusIcon width={16} height={16} />
+        Add a note
+      </button>
+    );
+  }
+  return (
+    <div className="ml-[68px] mt-2">
+      <label htmlFor={id} className="block text-[13px] font-semibold text-muted">
+        Note for your waiter
+      </label>
+      <input
+        id={id}
+        value={note}
+        onChange={(e) => onNote(e.target.value)}
+        onBlur={() => !note.trim() && setOpen(false)}
+        maxLength={100}
+        autoFocus={note === ""}
+        enterKeyHint="done"
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        placeholder="e.g. no egg, less spicy"
+        className="mt-1 block h-11 w-full rounded-xl border border-line bg-white px-3 text-[16px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20"
+      />
+    </div>
+  );
+}
+
+/** What this phone already sent, batch by batch, and whether the waiter has seen each. Read-only: the waiter has it. */
 function SentOrders({ sent }: { sent: GuestOrders }) {
   return (
     <section aria-label="Sent to waiter" className="pb-4 pt-4">
@@ -1227,11 +1548,27 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
             <span>Batch {i + 1}</span>
             <span className="font-medium">{formatTime(b.sentAt)}</span>
           </p>
+          <p
+            className={`mx-4 mt-2 flex items-center gap-1.5 text-[13px] font-semibold ${b.seenAt ? "text-leaf" : "text-muted"}`}
+          >
+            {b.seenAt ? (
+              <>
+                <CheckIcon width={16} height={16} />
+                Your waiter has it
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 animate-pulse rounded-full bg-mango motion-reduce:animate-none" aria-hidden />
+                Waiting for your waiter to see it
+              </>
+            )}
+          </p>
           <ul className="px-4">
             {b.lines.map((l) => (
               <li key={l.id} className="flex items-baseline justify-between gap-3 py-1.5 text-[15px]">
                 <span className="min-w-0">
                   <span className="font-semibold tabular-nums">{l.qty}×</span> {l.name}
+                  {l.note && <span className="block text-[13px] italic text-muted">“{l.note}”</span>}
                 </span>
                 <span className="shrink-0 text-muted">{formatPrice(l.priceCents * l.qty)}</span>
               </li>

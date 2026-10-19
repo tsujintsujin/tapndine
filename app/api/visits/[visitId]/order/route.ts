@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { cleanNickname, guestOrders, sendOrder, type Requested } from "@/lib/orders";
+import { cleanNickname, guestOrders, openCalls, sendOrder, type Requested } from "@/lib/orders";
 import { liveVisit } from "@/lib/visits";
 
 const json = (body: unknown, status = 200) =>
   NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-/** What this phone has already sent to the waiter. */
+/** What this phone has already sent to the waiter (with whether the waiter has seen it), and the table's open calls. */
 export async function GET(_req: Request, { params }: { params: Promise<{ visitId: string }> }) {
   const visit = await liveVisit((await params).visitId);
   if (!visit) return json({ alive: false }, 410);
-  return json({ alive: true, sent: await guestOrders(visit) });
+  const [sent, calls] = await Promise.all([guestOrders(visit), openCalls(visit)]);
+  return json({ alive: true, sent, calls });
 }
 
-/** Send to waiter. Body: { key, items: [{ dishId, qty }], nickname? }. */
+/** Send to waiter. Body: { key, items: [{ dishId, qty, note? }], nickname? }. */
 export async function POST(req: Request, { params }: { params: Promise<{ visitId: string }> }) {
   const visit = await liveVisit((await params).visitId);
   if (!visit) return json({ alive: false }, 410);

@@ -23,23 +23,40 @@ export default function TablesBoard({
 }) {
   const { data: tables, offline } = usePoll("/api/staff/tables", initial, (d) => (d as { tables: TableSummary[] }).tables);
   const busy = tables.filter((t) => t.items > 0).length;
-  const summary = busy === 0 ? "No orders yet." : `${busy} ${busy === 1 ? "table has" : "tables have"} orders.`;
+  const flagged = tables.filter((t) => t.newOrders > 0 || t.calls.length > 0).length;
+  const summary =
+    (busy === 0 ? "No orders yet." : `${busy} ${busy === 1 ? "table has" : "tables have"} orders.`) +
+    (flagged ? ` ${flagged} ${flagged === 1 ? "needs" : "need"} you.` : "");
 
   const grid = (
     <ul className={`grid auto-rows-fr gap-3 ${isManager ? "mt-6 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "mt-4 grid-cols-2 sm:grid-cols-3"}`}>
       {tables.map((t) => {
         const active = t.items > 0;
+        const flags = [
+          ...(t.newOrders > 0 ? [t.newOrders === 1 ? "New order" : `${t.newOrders} new orders`] : []),
+          ...t.calls.map((c) => (c === "bill" ? "Wants the bill" : "Calling waiter")),
+        ];
         return (
           <li key={t.id}>
             <Link
               href={`/admin/t/${t.id}`}
-              className={`flex h-full flex-col p-4 ${isManager ? "min-h-[150px] rounded-[22px]" : "min-h-[124px] rounded-2xl"} ${
+              aria-label={flags.length ? `${t.label}: ${flags.join(", ")}` : undefined}
+              className={`relative flex h-full flex-col p-4 ${flags.length ? "ring-[3px] ring-mango ring-offset-2 ring-offset-paper " : ""}${isManager ? "min-h-[150px] rounded-[22px]" : "min-h-[124px] rounded-2xl"} ${
                 active
                   ? "bg-forest text-white shadow-[0_8px_20px_rgb(16_52_42/0.25)] hover:bg-forest-soft active:bg-forest-soft"
                   : `${isManager ? "bg-white shadow-[0_1px_2px_rgb(16_52_42/0.06)]" : "border border-line bg-white"} hover:bg-leaf-tint active:bg-wash`
               }`}
             >
               <span className="font-display text-[22px] font-bold leading-tight">{t.label}</span>
+              {flags.length > 0 && (
+                <span className="mt-1.5 flex flex-wrap gap-1">
+                  {flags.map((f) => (
+                    <span key={f} className="whitespace-nowrap rounded-full bg-mango px-2.5 py-0.5 text-[12px] font-bold text-forest">
+                      {f}
+                    </span>
+                  ))}
+                </span>
+              )}
               {active ? (
                 <>
                   <span className="mt-1 text-[14px] text-white/75">

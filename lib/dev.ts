@@ -122,6 +122,7 @@ export async function deleteRestaurant(id: string): Promise<boolean> {
     `DELETE FROM visits WHERE business_id = ?1`,
     `DELETE FROM batches WHERE sitting_id IN (${sittings})`,
     `DELETE FROM guests WHERE sitting_id IN (${sittings})`,
+    `DELETE FROM calls WHERE sitting_id IN (${sittings})`,
     `DELETE FROM sittings WHERE business_id = ?1`,
     `DELETE FROM dish_categories WHERE dish_id IN (${dishes})`,
     `DELETE FROM dish_ingredients WHERE dish_id IN (${dishes})`,
@@ -151,4 +152,19 @@ export async function restaurantSlug(id: string): Promise<string | null> {
 export async function restaurantName(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT name FROM businesses WHERE id = ?").bind(id).first<{ name: string }>();
   return r?.name ?? null;
+}
+
+/**
+ * The restaurant's logo on the guest menu. Only a photo uploaded into this
+ * restaurant's own Cloudinary folder is accepted; null removes it.
+ */
+export async function setLogo(id: string, slug: string, url: string | null): Promise<boolean> {
+  if (url !== null && !(url.startsWith("https://res.cloudinary.com/") && url.includes(`/tapndine/${slug}/`))) return false;
+  const r = await db().prepare("UPDATE businesses SET logo_url = ? WHERE id = ?").bind(url, id).run();
+  return r.meta.changes > 0;
+}
+
+export async function restaurantLogo(id: string): Promise<string | null> {
+  const r = await db().prepare("SELECT logo_url FROM businesses WHERE id = ?").bind(id).first<{ logo_url: string | null }>();
+  return r?.logo_url ?? null;
 }

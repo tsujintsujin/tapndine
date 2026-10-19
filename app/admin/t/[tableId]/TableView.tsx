@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Additional, GuestOrders, Line, TableOrders } from "@/lib/orders";
-import { formatPrice, formatTime } from "@/lib/format";
+import type { Additional, Call, GuestOrders, Line, TableOrders } from "@/lib/orders";
+import { ago, formatPrice, formatTime } from "@/lib/format";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, MinusIcon, PlusIcon } from "@/app/components/Icons";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
@@ -43,6 +43,17 @@ export default function TableView({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const { confirm, dialog } = useConfirm();
+
+  // Opening the table marks everything seen on the server, so what was new
+  // only arrives once (seenAt null, or in calls). Keep it marked here for as
+  // long as this screen is open, so the waiter can still find it.
+  const [newIds, setNewIds] = useState<Set<string>>(() => unseen(initial));
+  const [calls, setCalls] = useState<Call[]>(initial.calls);
+  useEffect(() => {
+    const fresh = unseen(table);
+    if (fresh.size) setNewIds((s) => new Set([...s, ...fresh]));
+    if (table.calls.length) setCalls((c) => [...c, ...table.calls.filter((x) => !c.some((y) => y.id === x.id))]);
+  }, [table]);
 
   // The waiter's last choice sticks across tables. Read after mount, so the
   // server render and the first browser render agree.
@@ -110,6 +121,27 @@ export default function TableView({
   };
 
   // Shared by both layouts.
+  const callNote = calls.length > 0 && (
+    <section role="status" className="flex items-start gap-3 rounded-2xl bg-mango px-4 py-3 text-forest">
+      <ul className="min-w-0 flex-1 space-y-0.5 text-[15px]">
+        {calls.map((c) => (
+          <li key={c.id}>
+            <span className="font-bold">
+              {c.name ?? "A guest"} {c.kind === "bill" ? "asked for the bill" : "is calling you"}
+            </span>{" "}
+            <span className="text-forest/75">· {ago(c.createdAt)}</span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => setCalls([])}
+        className="-my-1 h-10 shrink-0 rounded-xl bg-forest px-4 text-[14px] font-semibold text-white active:bg-forest-soft"
+      >
+        Done
+      </button>
+    </section>
+  );
   const errorNote = error && (
     <p role="alert" className="rounded-xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
       {error}
@@ -205,13 +237,14 @@ export default function TableView({
             {view === "guests" && <div className="order-3">{additionals}</div>}
           </div>
           <div className="order-2 min-w-0 space-y-4 lg:order-1">
+            {callNote}
             {errorNote}
             {emptyNote}
             {view === "summary" && !empty && <Summary table={table} />}
             {view === "guests" && guests > 0 && (
               <div className="grid items-start gap-4 xl:grid-cols-2">
                 {table.guests.map((g) => (
-                  <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} />
+                  <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} newIds={newIds} />
                 ))}
               </div>
             )}
@@ -242,6 +275,7 @@ export default function TableView({
       <OfflineNote offline={offline} />
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 pb-36 pt-4">
+        {callNote}
         {errorNote}
 
         {emptyNote}
@@ -249,7 +283,7 @@ export default function TableView({
         {view === "summary" && !empty && <Summary table={table} />}
 
         {view === "guests" &&
-          table.guests.map((g) => <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} />)}
+          table.guests.map((g) => <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} newIds={newIds} />)}
 
         {view === "guests" && additionals}
 
@@ -288,14 +322,14 @@ export default function TableView({
  * like a receipt: Item, Orders, Total. Read-only; changes happen in By guest.
  */
 function Summary({ table }: { table: TableOrders }) {
-  const rows = new Map<string, { name: string; priceCents: number; qty: number }>();
+  const rows = new Map<string, { name: string; priceCents: number; qty: number; note: string | null }>();
   const all = [...table.guests.flatMap((g) => g.batches.flatMap((b) => b.lines)), ...table.additionals];
   for (const l of all) {
-    // Same dish at the same price is one row; a price change mid-meal shows as two.
-    const key = `${l.name}|${l.priceCents}`;
+    // Same dish, price and note is one row; a price change mid-meal or a "no egg" shows as its own.
+    const key = `${l.name}|${l.priceCents}|${l.note ?? ""}`;
     const row = rows.get(key);
     if (row) row.qty += l.qty;
-    else rows.set(key, { name: l.name, priceCents: l.priceCents, qty: l.qty });
+    else rows.set(key, { name: l.name, priceCents: l.priceCents, qty: l.qty, note: l.note });
   }
   const items = all.reduce((n, l) => n + l.qty, 0);
 
@@ -315,9 +349,10 @@ function Summary({ table }: { table: TableOrders }) {
         </thead>
         <tbody>
           {[...rows.values()].map((r) => (
-            <tr key={`${r.name}|${r.priceCents}`} className="border-b border-line last:border-0">
+            <tr key={`${r.name}|${r.priceCents}|${r.note ?? ""}`} className="border-b border-line last:border-0">
               <td className="py-2.5 pr-2 align-top">
                 <span className="block leading-snug">{r.name}</span>
+                {r.note && <span className="block text-[13px] font-semibold italic text-chili">“{r.note}”</span>}
                 <span className="block text-[13px] text-muted">{formatPrice(r.priceCents)} each</span>
               </td>
               <td className="py-2.5 text-center align-top font-semibold">{r.qty}</td>
@@ -343,10 +378,13 @@ function GuestCard({
   guest,
   busy,
   onQty,
+  newIds,
 }: {
   guest: GuestOrders;
   busy: string | null;
   onQty: (line: Line, qty: number) => void;
+  /** Batches that were new when this screen opened them. */
+  newIds: Set<string>;
 }) {
   return (
     <section className="rounded-2xl border border-line bg-white pb-2" aria-labelledby={`guest-${guest.number}`}>
@@ -361,8 +399,17 @@ function GuestCard({
       </p>
       {guest.batches.map((b, i) => (
         <div key={b.id} className="mt-3">
-          <h3 className="flex items-center justify-between bg-wash px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wide text-muted">
-            <span>Batch {i + 1}</span>
+          <h3
+            className={`flex items-center justify-between px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wide ${
+              newIds.has(b.id) ? "bg-mango-soft text-forest" : "bg-wash text-muted"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              Batch {i + 1}
+              {newIds.has(b.id) && (
+                <span className="rounded-full bg-mango px-2 py-0.5 text-[11px] font-bold normal-case tracking-normal text-forest">New</span>
+              )}
+            </span>
             <span className="font-medium normal-case tracking-normal">{formatTime(b.sentAt)}</span>
           </h3>
           <ul className="divide-y divide-line px-4">
@@ -393,6 +440,7 @@ function LineRow({
     <li className="flex items-center gap-3 py-3">
       <div className="min-w-0 flex-1">
         <p className="font-medium leading-snug">{line.name}</p>
+        {line.note && <p className="text-[14px] font-semibold italic leading-snug text-chili">“{line.note}”</p>}
         <p className="text-sm text-muted">
           {formatPrice(line.priceCents * line.qty)}
           {meta && ` · ${meta}`}
@@ -478,4 +526,9 @@ function AddDish({ dishes, busy, onAdd }: { dishes: DishOption[]; busy: boolean;
       )}
     </div>
   );
+}
+
+/** Ids of the batches that came back not yet seen. */
+function unseen(t: TableOrders): Set<string> {
+  return new Set(t.guests.flatMap((g) => g.batches.filter((b) => b.seenAt === null).map((b) => b.id)));
 }

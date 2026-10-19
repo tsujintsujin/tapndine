@@ -6,6 +6,7 @@ import { METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { SiteFooter } from "@/app/components/SiteFooter";
+import QRCode from "qrcode";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 
@@ -48,6 +49,17 @@ const EVERY_PLAN = [
   "Sales and busy-hour statistics",
 ];
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
+/** A plan's yearly price per table per month: ₱2,100 for 10 tables is ₱17.50. */
+const perTableMonth = (p: { price: number; tables: number }) =>
+  "₱" + (p.price / p.tables / 12).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * The demo restaurant's "Not at a table" link: the real guest menu, to look
+ * through, with no waiter to send to. Same tag on the live site and in the
+ * seed data (seed/dev.sql).
+ */
+const DEMO_PATH = "/t/h3nd6vya";
+const DEMO_URL = `https://tapndine.online${DEMO_PATH}`;
 
 const BLOB =
   "M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z";
@@ -207,6 +219,14 @@ const FAQ = [
     a: `One yearly price by number of tables: ${PLAN_LIST}. Every plan includes an NFC tag for each table, waiter and manager logins, and sales statistics. Renew at the same rate to keep your menu online.`,
   },
   {
+    q: "Can I try it before I pay?",
+    a: "Yes. You get one week free with the full system: your menu online, orders to your waiters' phones, and the statistics. The trial uses QR codes instead of NFC tags: print each table's code from your manager login and put it on the table. NFC tags come with a paid plan.",
+  },
+  {
+    q: "Does tapndine replace my POS?",
+    a: "No. tapndine sits on top of what you already use. Guests' orders arrive on your waiter's phone, and your waiter enters them into your POS as usual, so your POS stays your till and your sales record. If you want a POS or another system built for your restaurant, ask us.",
+  },
+  {
     q: "How do I pay?",
     a: `Once a year, by ${PAY_WITH}.`,
   },
@@ -255,7 +275,8 @@ const JSON_LD = {
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
 const PILL = "inline-block rounded-full px-6 py-3 font-semibold transition";
 
-export default function Home() {
+export default async function Home() {
+  const demoQr = await QRCode.toString(DEMO_URL, { type: "svg", margin: 0, color: { dark: "#3B2E25", light: "#0000" } });
   return (
     <div className={`${montserrat.className} overflow-x-clip bg-white text-home-cocoa`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
@@ -300,8 +321,8 @@ export default function Home() {
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
                 See pricing
               </a>
-              <a href="#how" className={`${PILL} border-2 border-home-cocoa hover:bg-home-cocoa hover:text-home-shell`}>
-                How it works
+              <a href={`${BASE_PATH}${DEMO_PATH}`} className={`${PILL} border-2 border-home-cocoa hover:bg-home-cocoa hover:text-home-shell`}>
+                Try the menu
               </a>
             </div>
           </div>
@@ -481,11 +502,33 @@ export default function Home() {
               </li>
             ))}
           </ol>
+
+          <div className="mx-auto mt-16 flex max-w-2xl flex-col items-center gap-6 rounded-3xl bg-home-shell p-6 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.45)] sm:flex-row sm:p-8 sm:text-left">
+            <div
+              className="hidden h-32 w-32 shrink-0 rounded-2xl bg-white p-3 sm:block [&>svg]:h-full [&>svg]:w-full"
+              role="img"
+              aria-label="QR code that opens the demo menu"
+              dangerouslySetInnerHTML={{ __html: demoQr }}
+            />
+            <div className="min-w-0">
+              <h3 className="text-2xl font-extrabold tracking-tight">Try the menu yourself</h3>
+              <p className="mt-2 font-medium leading-relaxed text-home-cocoa/80">
+                <span className="hidden sm:inline">Scan the code with your phone camera, or open it here. </span>
+                It is the same menu your guests get, with a demo restaurant&apos;s dishes.
+              </p>
+              <a
+                href={`${BASE_PATH}${DEMO_PATH}`}
+                className={`${PILL} mt-5 bg-home-cocoa text-home-shell hover:bg-black`}
+              >
+                Open the demo menu
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Statement, between two plates */}
-      <section className="relative overflow-hidden bg-home-mist">
+      <section className="relative overflow-hidden bg-home-cream">
         <Plate Dish={Shrimp} className="absolute -left-10 top-1/2 hidden w-60 -translate-y-1/2 lg:block" />
         <Plate Dish={Fish} className="absolute -right-10 top-1/2 hidden w-60 -translate-y-1/2 lg:block" />
         <Leaf className="absolute left-[16%] top-12 w-10 -rotate-12 text-home-sage/70" />
@@ -511,6 +554,9 @@ export default function Home() {
             One price a year for your restaurant or cafe, by how many tables you have. Renew at the same rate to keep
             your menu online.
           </p>
+          <p className="mx-auto mt-4 w-fit rounded-full bg-home-butter px-4 py-1.5 text-center text-sm font-bold">
+            Try it free for a week, with QR codes
+          </p>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {PLANS.map((p) => (
               <div key={p.name} className="flex flex-col rounded-3xl bg-white p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
@@ -520,6 +566,7 @@ export default function Home() {
                   <span className="text-4xl font-extrabold tracking-tight">{peso(p.price)}</span>
                   <span className="text-sm font-semibold opacity-60"> / year</span>
                 </p>
+                <p className="mt-1 text-sm font-medium text-home-cocoa/70">{perTableMonth(p)} per table a month</p>
                 <a href={`${CONTACT}%20(${encodeURIComponent(p.name)})`} className={`${PILL} mt-8 bg-home-orange text-center hover:brightness-95`}>
                   Choose {p.name.replace(" Plan", "")}
                 </a>

@@ -5,13 +5,24 @@ import { isVisitId, type Visit } from "./visits";
 // Orders as the waiter sees them: a table's open sitting, its guests, and
 // each guest's batches. See migrations/0002 for how the tables fit together.
 
-export type Line = { id: string; name: string; priceCents: number; qty: number };
-export type Batch = { id: string; sentAt: number; lines: Line[]; subtotal: number };
+/** note: what the guest typed for this line ("no egg"); null if nothing. */
+export type Line = { id: string; name: string; priceCents: number; qty: number; note: string | null };
+/** seenAt: when a waiter first opened the table after it came in; null = not yet. */
+export type Batch = { id: string; sentAt: number; seenAt: number | null; lines: Line[]; subtotal: number };
 export type GuestOrders = { number: number; nickname: string | null; batches: Batch[]; subtotal: number };
 /** A line a waiter added, with who added it. */
 export type Additional = Line & { addedAt: number; addedBy: string | null };
 
-export type Requested = { dishId: string; qty: number }[];
+export type Requested = { dishId: string; qty: number; note?: unknown }[];
+
+export const MAX_NOTE = 100;
+
+/** A guest's note on a line: single-spaced, no control characters, at most MAX_NOTE; empty becomes null. */
+export function cleanNote(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const s = raw.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_NOTE).trim();
+  return s || null;
+}
 
 const MAX_QTY = 50;
 export const MAX_NICKNAME = 24;
@@ -41,7 +52,7 @@ async function price(businessId: string, items: Requested) {
     .all<{ id: string; name: string; price_cents: number }>();
   const byId = new Map(r.results.map((d) => [d.id, d]));
   if (!items.every((i) => byId.has(i.dishId))) return null;
-  return items.map((i) => ({ ...byId.get(i.dishId)!, qty: i.qty }));
+  return items.map((i) => ({ ...byId.get(i.dishId)!, qty: i.qty, note: cleanNote(i.note) }));
 }
 
 function insertBatch(
@@ -49,19 +60,21 @@ function insertBatch(
   sittingId: string,
   guestId: string | null,
   staffId: string | null,
-  lines: { id: string; name: string; price_cents: number; qty: number }[]
+  lines: { id: string; name: string; price_cents: number; qty: number; note: string | null }[]
 ) {
   const d = db();
+  const now = Date.now();
   return [
+    // A waiter's own addition is seen by definition; a guest's waits for a waiter.
     d
-      .prepare("INSERT INTO batches (id, sitting_id, guest_id, staff_id, sent_at) VALUES (?, ?, ?, ?, ?)")
-      .bind(batchId, sittingId, guestId, staffId, Date.now()),
+      .prepare("INSERT INTO batches (id, sitting_id, guest_id, staff_id, sent_at, seen_at) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(batchId, sittingId, guestId, staffId, now, staffId ? now : null),
     ...lines.map((l, i) =>
       d
         .prepare(
-          "INSERT INTO batch_items (id, batch_id, dish_id, name, price_cents, qty, sort) VALUES (?, ?, ?, ?, ?, ?, ?)"
+          "INSERT INTO batch_items (id, batch_id, dish_id, name, price_cents, qty, note, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
-        .bind(randomId(), batchId, l.id, l.name, l.price_cents, l.qty, i)
+        .bind(randomId(), batchId, l.id, l.name, l.price_cents, l.qty, l.note, i)
     ),
   ];
 }
@@ -131,18 +144,20 @@ type BatchRow = {
   guest_number: number | null;
   nickname: string | null;
   sent_at: number;
+  seen_at: number | null;
   added_by: string | null;
   item_id: string;
   name: string;
   price_cents: number;
   qty: number;
+  note: string | null;
 };
 
 async function sittingRows(sittingId: string, phoneId?: string): Promise<BatchRow[]> {
   const r = await db()
     .prepare(
-      `SELECT b.id AS batch_id, b.guest_id, g.number AS guest_number, g.nickname, b.sent_at, s.name AS added_by,
-              i.id AS item_id, i.name, i.price_cents, i.qty
+      `SELECT b.id AS batch_id, b.guest_id, g.number AS guest_number, g.nickname, b.sent_at, b.seen_at, s.name AS added_by,
+              i.id AS item_id, i.name, i.price_cents, i.qty, i.note
        FROM batches b
        JOIN batch_items i ON i.batch_id = b.id
        LEFT JOIN guests g ON g.id = b.guest_id
@@ -161,7 +176,7 @@ function group(rows: BatchRow[]) {
   const batches = new Map<string, Batch>();
   const additionals: Additional[] = [];
   for (const r of rows) {
-    const line = { id: r.item_id, name: r.name, priceCents: r.price_cents, qty: r.qty };
+    const line = { id: r.item_id, name: r.name, priceCents: r.price_cents, qty: r.qty, note: r.note };
     if (!r.guest_id) {
       additionals.push({ ...line, addedAt: r.sent_at, addedBy: r.added_by });
       continue;
@@ -173,7 +188,7 @@ function group(rows: BatchRow[]) {
     }
     let batch = batches.get(r.batch_id);
     if (!batch) {
-      batch = { id: r.batch_id, sentAt: r.sent_at, lines: [], subtotal: 0 };
+      batch = { id: r.batch_id, sentAt: r.sent_at, seenAt: r.seen_at, lines: [], subtotal: 0 };
       batches.set(r.batch_id, batch);
       guest.batches.push(batch);
     }
@@ -203,7 +218,14 @@ export type TableSummary = {
   items: number;
   totalCents: number;
   lastOrderAt: number | null;
+  /** Guest batches no waiter has opened the table for yet. */
+  newOrders: number;
+  /** Open guest calls, oldest first. */
+  calls: CallKind[];
 };
+
+export type CallKind = "waiter" | "bill";
+export const isCallKind = (v: unknown): v is CallKind => v === "waiter" || v === "bill";
 
 /** Every table, with what its open sitting has ordered so far. */
 export async function tablesOverview(businessId: string): Promise<TableSummary[]> {
@@ -215,14 +237,26 @@ export async function tablesOverview(businessId: string): Promise<TableSummary[]
                         WHERE b.sitting_id = s.id), 0) AS items,
               COALESCE((SELECT SUM(i.qty * i.price_cents) FROM batch_items i JOIN batches b ON b.id = i.batch_id
                         WHERE b.sitting_id = s.id), 0) AS total_cents,
-              (SELECT MAX(b.sent_at) FROM batches b WHERE b.sitting_id = s.id) AS last_order_at
+              (SELECT MAX(b.sent_at) FROM batches b WHERE b.sitting_id = s.id) AS last_order_at,
+              (SELECT COUNT(*) FROM batches b WHERE b.sitting_id = s.id AND b.seen_at IS NULL) AS new_orders,
+              (SELECT group_concat(kind) FROM (SELECT c.kind FROM calls c
+                 WHERE c.sitting_id = s.id AND c.seen_at IS NULL ORDER BY c.created_at)) AS calls
        FROM tables t
        LEFT JOIN sittings s ON s.table_id = t.id AND s.closed_at IS NULL
        WHERE t.business_id = ? AND t.removed_at IS NULL
        ORDER BY t.sort, t.label`
     )
     .bind(businessId)
-    .all<{ id: string; label: string; guests: number; items: number; total_cents: number; last_order_at: number | null }>();
+    .all<{
+      id: string;
+      label: string;
+      guests: number;
+      items: number;
+      total_cents: number;
+      last_order_at: number | null;
+      new_orders: number;
+      calls: string | null;
+    }>();
   return r.results.map((t) => ({
     id: t.id,
     label: t.label,
@@ -230,8 +264,13 @@ export async function tablesOverview(businessId: string): Promise<TableSummary[]
     items: t.items,
     totalCents: t.total_cents,
     lastOrderAt: t.last_order_at,
+    newOrders: t.new_orders,
+    calls: (t.calls ? t.calls.split(",") : []).filter(isCallKind),
   }));
 }
+
+/** A guest's call as the waiter sees it: what, who, when. */
+export type Call = { id: string; kind: CallKind; name: string | null; createdAt: number };
 
 export type TableOrders = {
   label: string;
@@ -239,9 +278,17 @@ export type TableOrders = {
   additionals: Additional[];
   additionalsSubtotal: number;
   totalCents: number;
+  /** Calls that were open when the waiter opened the table (opening clears them). */
+  calls: Call[];
 };
 
-/** One table's open sitting, for the waiter. Null if the table is not this business's. */
+/**
+ * One table's open sitting, for the waiter. Null if the table is not this
+ * business's. A waiter opening the table counts as seeing it: every new
+ * batch and open call is marked seen, which clears "New" on the Tables
+ * screen and tells the guest their waiter has it. What was new comes back
+ * with seenAt null and in `calls`, so the screen can point at it.
+ */
 export async function tableOrders(businessId: string, tableId: string): Promise<TableOrders | null> {
   const d = db();
   const [table, sitting] = await d.batch([
@@ -251,7 +298,28 @@ export async function tableOrders(businessId: string, tableId: string): Promise<
   const label = (table.results as { label: string }[])[0]?.label;
   if (!label) return null;
   const sittingId = (sitting.results as { id: string }[])[0]?.id;
-  const { guests, additionals } = group(sittingId ? await sittingRows(sittingId) : []);
+  let calls: Call[] = [];
+  let rows: BatchRow[] = [];
+  if (sittingId) {
+    const now = Date.now();
+    const [open] = await d.batch([
+      d
+        .prepare("SELECT id, kind, name, created_at FROM calls WHERE sitting_id = ? AND seen_at IS NULL ORDER BY created_at")
+        .bind(sittingId),
+      d.prepare("UPDATE calls SET seen_at = ? WHERE sitting_id = ? AND seen_at IS NULL").bind(now, sittingId),
+    ]);
+    calls = (open.results as { id: string; kind: CallKind; name: string | null; created_at: number }[]).map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      name: c.name,
+      createdAt: c.created_at,
+    }));
+    rows = await sittingRows(sittingId);
+    if (rows.some((r) => r.seen_at === null)) {
+      await d.prepare("UPDATE batches SET seen_at = ? WHERE sitting_id = ? AND seen_at IS NULL").bind(now, sittingId).run();
+    }
+  }
+  const { guests, additionals } = group(rows);
   const additionalsSubtotal = sum(additionals);
   return {
     label,
@@ -259,7 +327,44 @@ export async function tableOrders(businessId: string, tableId: string): Promise<
     additionals,
     additionalsSubtotal,
     totalCents: guests.reduce((s, g) => s + g.subtotal, 0) + additionalsSubtotal,
+    calls,
   };
+}
+
+// --- Guest calls -------------------------------------------------------------
+
+/**
+ * "Call waiter" or "Bill, please" from a guest's phone. Asking again while
+ * the same kind is still open does nothing, so a tap-happy guest cannot
+ * flood the waiter. Menus not at a table (no sitting) cannot call.
+ */
+export async function callWaiter(visit: Visit, kind: CallKind, nickname: string | null): Promise<boolean> {
+  if (!visit.sitting_id || !visit.phone_id) return false;
+  const d = db();
+  const guest = await d
+    .prepare("SELECT number, nickname FROM guests WHERE sitting_id = ? AND phone_id = ?")
+    .bind(visit.sitting_id, visit.phone_id)
+    .first<{ number: number; nickname: string | null }>();
+  const name = nickname ?? guest?.nickname ?? (guest ? `Guest ${guest.number}` : null);
+  await d
+    .prepare(
+      `INSERT INTO calls (id, sitting_id, kind, name, created_at)
+       SELECT ?1, ?2, ?3, ?4, ?5
+       WHERE NOT EXISTS (SELECT 1 FROM calls WHERE sitting_id = ?2 AND kind = ?3 AND seen_at IS NULL)`
+    )
+    .bind(randomId(), visit.sitting_id, kind, name, Date.now())
+    .run();
+  return true;
+}
+
+/** The table's open calls, for the guest's buttons: which kinds are waiting, and since when. */
+export async function openCalls(visit: Visit): Promise<{ kind: CallKind; createdAt: number }[]> {
+  if (!visit.sitting_id) return [];
+  const r = await db()
+    .prepare("SELECT kind, created_at FROM calls WHERE sitting_id = ? AND seen_at IS NULL ORDER BY created_at")
+    .bind(visit.sitting_id)
+    .all<{ kind: CallKind; created_at: number }>();
+  return r.results.map((c) => ({ kind: c.kind, createdAt: c.created_at }));
 }
 
 /** One Send to waiter, or one waiter addition, in a past sitting. */
@@ -288,7 +393,7 @@ export async function tableHistory(
            AND EXISTS (SELECT 1 FROM batches b WHERE b.sitting_id = sittings.id)
          ORDER BY closed_at DESC LIMIT ?3)
        SELECT p.id AS sitting_id, p.opened_at, p.closed_at, b.id AS batch_id, b.guest_id, g.number AS guest_number,
-              g.nickname, b.sent_at, s.name AS added_by, i.id AS item_id, i.name, i.price_cents, i.qty
+              g.nickname, b.sent_at, b.seen_at, s.name AS added_by, i.id AS item_id, i.name, i.price_cents, i.qty, i.note
        FROM past p
        JOIN batches b ON b.sitting_id = p.id
        JOIN batch_items i ON i.batch_id = b.id
@@ -318,7 +423,7 @@ export async function tableHistory(
       entries.set(row.batch_id, e);
       s.log.push(e);
     }
-    e.lines.push({ id: row.item_id, name: row.name, priceCents: row.price_cents, qty: row.qty });
+    e.lines.push({ id: row.item_id, name: row.name, priceCents: row.price_cents, qty: row.qty, note: row.note });
     s.totalCents += row.price_cents * row.qty;
     s.items += row.qty;
     if (row.guest_id) s.guestIds.add(row.guest_id);
