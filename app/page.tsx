@@ -40,6 +40,8 @@ const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%2
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
 const STATS_V = "2";
+/** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
+const ANIM_V = "2";
 
 const EVERY_PLAN = [
   "An NFC tag on every table",
@@ -112,7 +114,7 @@ function Anim({
   return (
     <>
       <iframe
-        src={`${BASE_PATH}/anim/${name}/play.html#embed`}
+        src={`${BASE_PATH}/anim/${name}/play.html?v=${ANIM_V}#embed`}
         title={label}
         aria-hidden
         tabIndex={-1}
