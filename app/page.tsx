@@ -309,15 +309,13 @@ export default async function Home() {
               <span className="mb-4 block text-balance text-sm font-bold uppercase tracking-wider text-home-cocoa/70">
                 Digital menu &amp; table ordering in the Philippines
               </span>
-              <span className="block text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
-                Tap the table.
-                <br />
-                The menu opens.
+              <span className="block max-w-[14ch] text-balance text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
+                The whole menu, in your hands.
               </span>
             </h1>
             <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
-              Guests tap the NFC tag on their table, browse your online menu with photos, and send their order straight
-              to the waiter. No app to install, no paper menus to wipe down.
+              Every guest sees every dish on their own phone: photo, price, how many it feeds. No waiting for the menu
+              booklet, no guessing what a dish looks like. Orders go straight to the waiter.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
