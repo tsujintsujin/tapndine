@@ -369,6 +369,9 @@
 
       // On the homepage (?embed): scale the canvas to the frame, then play while
       // it is on screen (looping). Reduced motion gets one still frame (5.5s).
+      // The first play starts at 4.9s, with the menu already open on the phone,
+      // so a visitor's first look is the product, not a dark screen; every
+      // loop after that plays the whole dinner from the tap.
       // HyperFrames' own runtime never sets ?embed, so Studio and renders skip this.
       window.__timelines = window.__timelines || {};
       if (document.documentElement.classList.contains("embed")) {
@@ -386,7 +389,7 @@
           tl.repeat(-1).repeatDelay(Math.max(0, Number(root.dataset.duration) - tl.duration()));
           let started = false;
           new IntersectionObserver(([e]) => {
-            if (e.isIntersecting) { tl.play(); started = true; }
+            if (e.isIntersecting) { if (!started) tl.seek(4.9); tl.play(); started = true; }
             else if (true && started) tl.pause();
           }).observe(document.documentElement);
         }

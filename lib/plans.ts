@@ -6,7 +6,7 @@
 export const PLANS = [
   { name: "Standard Cafe Plan", tables: 10, price: 2100 },
   { name: "Growth Plan", tables: 15, price: 2600 },
-  { name: "Growth Plan (Full)", tables: 20, price: 3000 },
+  { name: "Pro Plan", tables: 20, price: 3000 },
 ];
 
 /** How a restaurant can pay us; a payment records one. */

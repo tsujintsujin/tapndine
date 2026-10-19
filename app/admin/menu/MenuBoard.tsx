@@ -9,13 +9,23 @@ import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icon
 import { btn, PageHead } from "../kit";
 import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
+import LogoCard from "./LogoCard";
 
 /**
  * Every dish, in menu order. Click a row to edit it; flip the switch to mark
  * it sold out for today; drag the handle (or focus it and press the arrow
  * keys) to change where it sits on the guests' menu.
  */
-export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[]; categories: AdminCategory[] }) {
+export default function MenuBoard({
+  dishes,
+  categories,
+  logo,
+}: {
+  dishes: AdminDish[];
+  categories: AdminCategory[];
+  /** The restaurant's name and logo, for the logo card under the title. */
+  logo: { name: string; url: string | null };
+}) {
   const router = useRouter();
   const [list, setList] = useState(dishes);
   const [query, setQuery] = useState("");
@@ -97,6 +107,8 @@ export default function MenuBoard({ dishes, categories }: { dishes: AdminDish[];
           Add dish
         </Link>
       </PageHead>
+
+      <LogoCard name={logo.name} logoUrl={logo.url} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">
