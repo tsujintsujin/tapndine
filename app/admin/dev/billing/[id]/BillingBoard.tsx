@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Contract, RestaurantBilling } from "@/lib/billing";
 import { formatPrice } from "@/lib/format";
-import { METHODS, PLANS } from "@/lib/plans";
+import { EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
 import { btn, card } from "@/app/admin/kit";
 import { api, useConfirm } from "@/app/admin/ui";
 import { day } from "../parts";
@@ -232,7 +232,22 @@ function ContractForm({
       <div className="grid grid-cols-2 gap-3">
         <label className={label}>
           Tables
-          <input name="tables" type="number" min={1} max={500} required value={tables} onChange={(e) => setTables(e.target.value)} className={field} />
+          <input
+            name="tables"
+            type="number"
+            min={1}
+            max={500}
+            required
+            value={tables}
+            onChange={(e) => {
+              setTables(e.target.value);
+              // A plan's price plus its extra tables, if they signed for more than it covers.
+              const p = PLANS.find((x) => x.name === plan);
+              const n = Number(e.target.value);
+              if (p && n > 0) setPrice(String(p.price + Math.max(0, n - p.tables) * EXTRA_TABLE));
+            }}
+            className={field}
+          />
         </label>
         <label className={label}>
           Price (₱)

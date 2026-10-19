@@ -4,10 +4,14 @@
  * tables and price, so changing a price here never rewrites a signed contract.
  */
 export const PLANS = [
-  { name: "Standard Cafe Plan", tables: 10, price: 2100 },
-  { name: "Growth Plan", tables: 15, price: 2600 },
-  { name: "Pro Plan", tables: 20, price: 3000 },
+  { name: "Starter", tables: 5, price: 3000 },
+  { name: "Small Cafe", tables: 10, price: 5000 },
+  { name: "Standard", tables: 15, price: 7100 },
+  { name: "High-end", tables: 20, price: 8500 },
 ];
+
+/** A table beyond the plan's count, added to any plan: ₱35 a month, in whole pesos a year. */
+export const EXTRA_TABLE = 420;
 
 /** How a restaurant can pay us; a payment records one. */
 export const METHODS = ["GCash", "Maya", "Bank transfer", "Cash", "Other"] as const;

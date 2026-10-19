@@ -35,8 +35,10 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 ## Plans (lib/plans.ts)
 
-Standard Cafe 10 tables ₱2,100/yr, Growth 15 tables ₱2,600/yr, Pro 20 tables
-₱3,000/yr. Free 1-week trial: the full system with QR codes, no NFC tags.
+Starter 5 tables ₱3,000/yr, Small Cafe 10 ₱5,000/yr, Standard 15 ₱7,100/yr,
+High-end 20 ₱8,500/yr. Extra tables on any plan: ₱35 per table a month
+(₱420/yr). Set 2026-10-19 (₱50 a table a month base, less for bigger plans and
+for paying yearly; still under Qashier ₱590/mo and MenuTiger ~₱1,000/mo). Free 1-week trial: the full system with QR codes, no NFC tags.
 A restaurant's table limit comes from its current contract; with no contract
 (a trial) it is the biggest plan's count.
 

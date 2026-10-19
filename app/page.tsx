@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
-import { METHODS, PLANS } from "@/lib/plans";
+import { EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { SiteFooter } from "@/app/components/SiteFooter";
@@ -25,7 +25,7 @@ const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600"
 // tab, bookmarks, home-screen icon and share card show.
 const TITLE = "tapndine";
 const DESCRIPTION =
-  "Digital menu and table ordering for Philippine restaurants and cafes. Guests tap the table, order on their phone, and it reaches your waiter. From ₱2,100 a year.";
+  `Digital menu and table ordering for Philippine restaurants and cafes. Guests tap the table, order on their phone, and it reaches your waiter. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -51,7 +51,7 @@ const EVERY_PLAN = [
   "Sales and busy-hour statistics",
 ];
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
-/** A plan's yearly price per table per month: ₱2,100 for 10 tables is ₱17.50. */
+/** A plan's yearly price per table per month: ₱5,000 for 10 tables is ₱41.67. */
 const perTableMonth = (p: { price: number; tables: number }) =>
   "₱" + (p.price / p.tables / 12).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -218,7 +218,7 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `One yearly price by number of tables: ${PLAN_LIST}. Every plan includes an NFC tag for each table, waiter and manager logins, and sales statistics. Renew at the same rate to keep your menu online.`,
+    a: `One yearly price by number of tables: ${PLAN_LIST}. Extra tables on any plan are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Every plan includes an NFC tag for each table, waiter and manager logins, and sales statistics. Renew at the same rate to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
@@ -341,7 +341,7 @@ export default async function Home() {
             <div className="absolute bottom-[10%] right-[4%] grid h-28 w-28 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-32 sm:w-32">
               <p className="text-xs font-semibold leading-tight">
                 From
-                <span className="block text-xl font-extrabold sm:text-2xl">₱2,100</span>a year
+                <span className="block text-xl font-extrabold sm:text-2xl">{peso(PLANS[0].price)}</span>a year
               </p>
             </div>
           </div>
@@ -548,7 +548,7 @@ export default async function Home() {
       <section id="pricing" className="relative scroll-mt-4 overflow-hidden bg-home-shell">
         <Blob className="-left-40 top-10 w-[480px] text-home-cream" />
         <Bowl className="absolute right-[14%] top-14 hidden w-14 text-home-cocoa/25 md:block" />
-        <div className="relative mx-auto max-w-5xl px-4 py-20 sm:px-6 md:py-28">
+        <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
           <h2 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl">Pricing</h2>
           <p className="mx-auto mt-4 max-w-md text-center font-medium text-home-cocoa/75">
             One price a year for your restaurant or cafe, by how many tables you have. Renew at the same rate to keep
@@ -557,7 +557,7 @@ export default async function Home() {
           <p className="mx-auto mt-4 w-fit rounded-full bg-home-butter px-4 py-1.5 text-center text-sm font-bold">
             Try it free for a week, with QR codes
           </p>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {PLANS.map((p) => (
               <div key={p.name} className="flex flex-col rounded-3xl bg-white p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
                 <h3 className="text-lg font-bold">{p.name}</h3>
@@ -568,10 +568,21 @@ export default async function Home() {
                 </p>
                 <p className="mt-1 text-sm font-medium text-home-cocoa/70">{perTableMonth(p)} per table a month</p>
                 <a href={`${CONTACT}%20(${encodeURIComponent(p.name)})`} className={`${PILL} mt-8 bg-home-orange text-center hover:brightness-95`}>
-                  Choose {p.name.replace(" Plan", "")}
+                  Choose {p.name}
                 </a>
               </div>
             ))}
+          </div>
+          <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-3xl bg-white px-6 py-5 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] sm:flex-row sm:text-left">
+            <div>
+              <h3 className="text-lg font-bold">Extra tables</h3>
+              <p className="text-sm font-medium text-home-cocoa/70">Add tables to any plan, one at a time.</p>
+            </div>
+            <p>
+              <span className="text-2xl font-extrabold tracking-tight">{peso(EXTRA_TABLE / 12)}</span>
+              <span className="text-sm font-semibold opacity-60"> per table a month</span>
+              <span className="block text-sm font-medium text-home-cocoa/70">{peso(EXTRA_TABLE)} a year</span>
+            </p>
           </div>
           <div className="mt-8 rounded-3xl bg-white/70 px-6 py-6 ring-1 ring-home-cream">
             <h3 className="text-center font-bold">Every plan includes</h3>
