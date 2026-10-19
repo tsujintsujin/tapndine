@@ -14,6 +14,8 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   accounting exports. The POS has those. The dashboard counts orders sent,
   not money collected.
 - A POS or other system gets built only if a client asks for one, as separate work.
+- The plan to grow it step by step into a whole-restaurant system is in
+  `ROADMAP.md` (stages, and the Stage 1 builds with their status).
 - Judge a feature by how well it gets the order to the waiter and helps them
   key it into the POS.
 
