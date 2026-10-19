@@ -39,12 +39,18 @@ Update a build's Status there when it ships.
 - One build at a time. Each one is checked in Chrome on desktop and phone, with
   screenshots, then stop for Justin's OK. Don't start the next build alone.
 
-## Next
-- **Build 1: dish options** (sizes, add-ons, "less spicy", with prices).
-  Waiting for Justin's go-ahead. Rough shape: option groups + options per
-  dish (new migration), chosen options saved on each `batch_items` line,
-  shown in the menu editor, guest dish sheet, cart, waiter table view and
-  waiter "add items". Combos (Build 2) should fall out of a "choose one" group.
+## Next (for the session that picks this up)
+- **You build Stage 1, starting with Build 1: dish options** (sizes, add-ons,
+  "less spicy", with prices). This session only planned it.
+- Before coding, tell Justin your plan for the build in a few lines and wait
+  for his OK (global CLAUDE.md rule 12). Run the design skills before any UI
+  work.
+- Rough shape: option groups + options per dish (new migration), chosen
+  options saved on each `batch_items` line, shown in the menu editor, guest
+  dish sheet, cart, waiter table view and waiter "add items". Combos (Build 2)
+  should come out of a "choose one" group.
+- Then Builds 2–12 in the order in `ROADMAP.md`, one at a time, each stopping
+  for Justin's OK.
 
 ## Working notes
 - Dev server: `cmd.exe //c start "tapndine dev 3390" cmd //k "cd /d D:\AIO Freelance\tapndine && npx next dev -p 3390"`,
