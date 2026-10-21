@@ -523,14 +523,14 @@ export async function setLineQty(businessId: string, staffId: string, itemId: st
   const d = db();
   const item = await d
     .prepare(
-      `SELECT i.batch_id, i.dish_id, i.name, i.qty, b.sitting_id, b.guest_id IS NOT NULL AS from_guest
+      `SELECT i.batch_id, i.dish_id, i.name, i.options, i.qty, b.sitting_id, b.guest_id IS NOT NULL AS from_guest
        FROM batch_items i
        JOIN batches b ON b.id = i.batch_id
        JOIN sittings s ON s.id = b.sitting_id
        WHERE i.id = ? AND s.business_id = ? AND s.closed_at IS NULL`
     )
     .bind(itemId, businessId)
-    .first<{ batch_id: string; dish_id: string; name: string; qty: number; sitting_id: string; from_guest: number }>();
+    .first<{ batch_id: string; dish_id: string; name: string; options: string | null; qty: number; sitting_id: string; from_guest: number }>();
   if (!item) return false;
   if (qty === item.qty) return true;
   const log = d
@@ -538,7 +538,19 @@ export async function setLineQty(businessId: string, staffId: string, itemId: st
       `INSERT INTO item_changes (id, item_id, sitting_id, dish_id, name, old_qty, new_qty, from_guest, staff_id, changed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(randomId(), itemId, item.sitting_id, item.dish_id, item.name, item.qty, qty, item.from_guest, staffId, Date.now());
+    // The name as the waiter saw it, picks included, so two ways of one dish stay apart in Stats.
+    .bind(
+      randomId(),
+      itemId,
+      item.sitting_id,
+      item.dish_id,
+      item.options ? `${item.name} (${item.options})` : item.name,
+      item.qty,
+      qty,
+      item.from_guest,
+      staffId,
+      Date.now()
+    );
   if (qty > 0) {
     await d.batch([d.prepare("UPDATE batch_items SET qty = ? WHERE id = ?").bind(qty, itemId), log]);
   } else {
