@@ -7,6 +7,16 @@ import type { Dish, Menu } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
 import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
+import {
+  extraCents,
+  lineKey,
+  mustPick,
+  offered,
+  optionsLabel,
+  parseLineKey,
+  resolvePicks,
+  type DishOption,
+} from "@/lib/options";
 import Expired from "@/app/components/Expired";
 import {
   BagIcon,
@@ -58,9 +68,29 @@ function closeParam(key: string) {
 // The list being built lives on this phone until Send to waiter; then it is a
 // batch on the server and the list starts empty again.
 
+/** Line key (lib/options.ts lineKey: the dish plus its picks) to how many. */
 type Order = Record<string, number>;
-/** The guest's note per dish in the list ("no egg"), sent with it. */
+/** The guest's note per line in the list ("no egg"), sent with it. */
 type Notes = Record<string, string>;
+
+/** A line in the phone's order, priced from today's menu. */
+type OrderLine = { key: string; dish: Dish; picks: DishOption[]; label: string | null; unitCents: number; qty: number };
+
+/**
+ * The order's lines in menu order. A line whose dish or picks the menu no
+ * longer offers is left out, so it is neither shown nor sent.
+ */
+function orderLines(menu: Menu, order: Order): OrderLine[] {
+  const lines: OrderLine[] = [];
+  for (const [key, qty] of Object.entries(order)) {
+    const { dishId, optionIds } = parseLineKey(key);
+    const dish = menu.dishes[dishId];
+    const picks = dish && resolvePicks(dish, optionIds);
+    if (dish && picks) lines.push({ key, dish, picks, label: optionsLabel(picks), unitCents: dish.priceCents + extraCents(picks), qty });
+  }
+  const at = (l: OrderLine) => menu.dishOrder.indexOf(l.dish.id);
+  return lines.sort((a, b) => at(a) - at(b));
+}
 
 function useOrder(visitId: string) {
   const key = `tapndine:order:${visitId}`;
@@ -258,6 +288,7 @@ export default function MenuApp({
   const [callOpen, setCallOpen] = useState(false);
   const { expired, expire } = useVisitAlive(visitId, expiresAt);
   const { order, setQty, clear, notes, setNote } = useOrder(visitId);
+  const lines = orderLines(menu, order);
   const { sent, setSent, calls, setCalls, load: loadSent } = useSent(visitId, expire, orderOpen || callOpen);
   const { nick, save: saveNick } = useNickname();
   const [nickOpen, setNickOpen] = useState(false);
@@ -307,10 +338,14 @@ export default function MenuApp({
   }, [view]);
 
   const [toast, setToast] = useState<Toast | null>(null);
-  const addOne = (id: string, n = 1) => {
-    setQty(id, (order[id] ?? 0) + n);
+  /** Adds n of one line (lineKey: the dish plus its picks). */
+  const addOne = (key: string, n = 1) => {
+    setQty(key, (order[key] ?? 0) + n);
+    const { dishId, optionIds } = parseLineKey(key);
+    const dish = menu.dishes[dishId];
+    const label = dish && optionsLabel(resolvePicks(dish, optionIds) ?? []);
+    const name = [dish?.name ?? "", label].filter(Boolean).join(", ");
     // A fresh key each time, so adding twice in a row shows it again.
-    const name = menu.dishes[id]?.name ?? "";
     setToast({ key: Date.now(), title: "Added to order", detail: n > 1 ? `${n}× ${name}` : name });
   };
 
@@ -332,7 +367,12 @@ export default function MenuApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           key: sendKey.current,
-          items: Object.entries(order).map(([dishId, qty]) => ({ dishId, qty, note: notes[dishId] ?? "" })),
+          items: lines.map((l) => ({
+            dishId: l.dish.id,
+            options: l.picks.map((p) => p.id),
+            qty: l.qty,
+            note: notes[l.key] ?? "",
+          })),
           nickname,
         }),
       });
@@ -379,6 +419,13 @@ export default function MenuApp({
   };
 
   const openDish = (id: string) => setParams((p) => p.set("d", id), "push");
+  /** The quick + on a card: straight in, unless the dish needs a size picked first. */
+  const quickAdd = (id: string) => {
+    const d = menu.dishes[id];
+    if (!d) return;
+    if (mustPick(d)) return openDish(id);
+    addOne(lineKey(id, resolvePicks(d, []) ?? []));
+  };
   const openOrder = () => setParams((p) => p.set("o", "1"), "push");
   const openMenu = () => {
     setCategoryId(null);
@@ -394,11 +441,8 @@ export default function MenuApp({
     window.scrollTo(0, 0);
   };
 
-  const itemCount = Object.values(order).reduce((a, b) => a + b, 0);
-  const orderTotal = Object.entries(order).reduce(
-    (sum, [id, qty]) => sum + (menu.dishes[id]?.priceCents ?? 0) * qty,
-    0
-  );
+  const itemCount = lines.reduce((a, l) => a + l.qty, 0);
+  const orderTotal = lines.reduce((sum, l) => sum + l.unitCents * l.qty, 0);
 
   if (expired) return <Expired />;
 
@@ -430,9 +474,9 @@ export default function MenuApp({
       <main className="pb-[calc(112px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)]">
         <div key={view} className="view-in">
           {view === "menu" ? (
-            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={addOne} />
+            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={quickAdd} />
           ) : (
-            <HomeView menu={menu} onDish={openDish} onAdd={addOne} onMenu={openMenu} />
+            <HomeView menu={menu} onDish={openDish} onAdd={quickAdd} onMenu={openMenu} />
           )}
         </div>
       </main>
@@ -453,8 +497,8 @@ export default function MenuApp({
           <DishDetails
             key={dish.id}
             dish={dish}
-            inOrder={order[dish.id] ?? 0}
-            onAdd={(n) => addOne(dish.id, n)}
+            inOrder={lines.reduce((n, l) => n + (l.dish.id === dish.id ? l.qty : 0), 0)}
+            onAdd={(n, picks) => addOne(lineKey(dish.id, picks), n)}
             onClose={() => closeParam("d")}
           />
         )}
@@ -462,8 +506,7 @@ export default function MenuApp({
 
       <Sheet open={orderOpen} onClose={() => closeParam("o")} from="right" label="My order">
         <OrderList
-          menu={menu}
-          order={order}
+          lines={lines}
           setQty={setQty}
           notes={notes}
           setNote={setNote}
@@ -1246,13 +1289,95 @@ function DishDetails({
   onClose,
 }: {
   dish: Dish;
+  /** How many of this dish are in the order, all picks together. */
   inOrder: number;
-  /** Adds this many. */
-  onAdd: (n: number) => void;
+  /** Adds this many, with these picks. */
+  onAdd: (n: number, picks: DishOption[]) => void;
   onClose: () => void;
 }) {
-  // How many the next Add puts in; back to 1 after each add.
+  const sizes = offered(dish, "size");
+  const addons = offered(dish, "addon");
+  const spices = offered(dish, "spice");
+  const hasOptions = sizes.length + addons.length + spices.length > 0;
+  // A size the guest doesn't have to pick starts on the first one.
+  const fresh = () => new Set(!dish.sizeRequired && sizes[0] ? [sizes[0].id] : []);
+  // How many the next Add puts in, and with what; back to the start after each add.
   const [n, setN] = useState(1);
+  const [picked, setPicked] = useState(fresh);
+  const picks = resolvePicks(dish, [...picked]);
+  const ready = dish.available && picks !== null;
+  const unit = dish.priceCents + extraCents(picks ?? []);
+
+  /** Sizes and spice: one at a time (spice can be un-picked). Add-ons: toggled. */
+  const pick = (o: DishOption) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (o.kind === "addon") {
+        if (!next.delete(o.id)) next.add(o.id);
+        return next;
+      }
+      const was = next.has(o.id);
+      for (const x of o.kind === "size" ? sizes : spices) next.delete(x.id);
+      if (!was || o.kind === "size") next.add(o.id);
+      return next;
+    });
+
+  const addRow = (
+    <>
+      <div className="flex gap-3">
+        {dish.available && (
+          <div className="flex h-[52px] shrink-0 items-center rounded-xl border border-line" role="group" aria-label="How many">
+            <button
+              type="button"
+              disabled={n <= 1}
+              onClick={() => setN(n - 1)}
+              aria-label="One less"
+              className="grid h-full w-12 place-items-center rounded-l-xl active:bg-wash disabled:text-muted/50"
+            >
+              <MinusIcon width={20} height={20} />
+            </button>
+            <span className="w-7 text-center text-[18px] font-semibold tabular-nums" aria-live="polite">
+              {n}
+            </span>
+            <button
+              type="button"
+              disabled={n >= 20}
+              onClick={() => setN(n + 1)}
+              aria-label="One more"
+              className="grid h-full w-12 place-items-center rounded-r-xl active:bg-wash disabled:text-muted/50"
+            >
+              <PlusIcon width={20} height={20} />
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={!ready}
+          onClick={() => {
+            onAdd(n, picks!);
+            setN(1);
+            setPicked(fresh());
+          }}
+          className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-leaf px-3 text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
+        >
+          {!dish.available ? (
+            "Not Available Today"
+          ) : !picks ? (
+            "Choose a size"
+          ) : (
+            <>
+              <span className="truncate">{n > 1 ? `Add ${n}` : "Add to order"}</span>
+              <span className="shrink-0 text-white/75">{formatPrice(unit * n)}</span>
+            </>
+          )}
+        </button>
+      </div>
+      <p className="mt-2 h-5 text-center text-sm text-muted" aria-live="polite">
+        {inOrder > 0 ? `${inOrder} in your order` : ""}
+      </p>
+    </>
+  );
+
   return (
     <>
       <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3">
@@ -1262,7 +1387,11 @@ function DishDetails({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(24px+env(safe-area-inset-bottom))]">
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${
+          hasOptions ? "pb-6" : "pb-[calc(24px+env(safe-area-inset-bottom))]"
+        }`}
+      >
         <DishImage dish={dish} eager className="mx-4 aspect-[4/3] rounded-2xl" />
 
         <div className="px-4">
@@ -1281,54 +1410,34 @@ function DishDetails({
 
           <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>
 
-          <div className="mt-5 flex gap-3">
-            {dish.available && (
-              <div className="flex h-[52px] shrink-0 items-center rounded-xl border border-line" role="group" aria-label="How many">
-                <button
-                  type="button"
-                  disabled={n <= 1}
-                  onClick={() => setN(n - 1)}
-                  aria-label="One less"
-                  className="grid h-full w-12 place-items-center rounded-l-xl active:bg-wash disabled:text-muted/50"
-                >
-                  <MinusIcon width={20} height={20} />
-                </button>
-                <span className="w-7 text-center text-[18px] font-semibold tabular-nums" aria-live="polite">
-                  {n}
-                </span>
-                <button
-                  type="button"
-                  disabled={n >= 20}
-                  onClick={() => setN(n + 1)}
-                  aria-label="One more"
-                  className="grid h-full w-12 place-items-center rounded-r-xl active:bg-wash disabled:text-muted/50"
-                >
-                  <PlusIcon width={20} height={20} />
-                </button>
+          {sizes.length > 0 && (
+            <div role="radiogroup" aria-labelledby={`size-${dish.id}`} className="mt-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 id={`size-${dish.id}`} className="font-display text-[19px] font-bold">
+                  Size
+                </h3>
+                {dish.sizeRequired && (
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                      picks ? "bg-leaf-tint text-ink" : "bg-mango text-forest"
+                    }`}
+                  >
+                    {picks ? "Picked" : "Required"}
+                  </span>
+                )}
               </div>
-            )}
-            <button
-              type="button"
-              disabled={!dish.available}
-              onClick={() => {
-                onAdd(n);
-                setN(1);
-              }}
-              className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-leaf px-3 text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
-            >
-              {!dish.available ? (
-                "Not Available Today"
-              ) : (
-                <>
-                  <span className="truncate">{n > 1 ? `Add ${n}` : "Add to order"}</span>
-                  <span className="shrink-0 text-white/75">{formatPrice(dish.priceCents * n)}</span>
-                </>
-              )}
-            </button>
-          </div>
-          <p className="mt-2 h-5 text-center text-sm text-muted" aria-live="polite">
-            {inOrder > 0 ? `${inOrder} in your order` : ""}
-          </p>
+              <p className="text-sm text-muted">Choose 1</p>
+              <div className="mt-2.5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+                {sizes.map((o) => (
+                  <OptionRow key={o.id} option={o} on={picked.has(o.id)} round onPick={() => pick(o)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {addons.length + spices.length > 0 && <Extras addons={addons} spices={spices} picked={picked} onPick={pick} />}
+
+          {!hasOptions && <div className="mt-5">{addRow}</div>}
 
           {dish.ingredients.length > 0 && (
             <>
@@ -1350,15 +1459,101 @@ function DishDetails({
           )}
         </div>
       </div>
+
+      {/* With options the sheet scrolls further, so Add stays in reach at the bottom. */}
+      {hasOptions && (
+        <div className="shrink-0 border-t border-line px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-3">{addRow}</div>
+      )}
     </>
+  );
+}
+
+/** One choice: a full-width row with a radio or tick mark, its name and what it adds. */
+function OptionRow({ option, on, round, onPick }: { option: DishOption; on: boolean; round: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      role={round ? "radio" : "checkbox"}
+      aria-checked={on}
+      onClick={onPick}
+      className={`flex min-h-14 w-full items-center gap-3 px-3.5 py-2 text-left ${on ? "bg-leaf-tint" : "bg-white active:bg-wash"}`}
+    >
+      <span
+        className={`grid h-6 w-6 shrink-0 place-items-center border-2 ${round ? "rounded-full" : "rounded-[7px]"} ${
+          on ? "border-leaf bg-leaf text-white" : "border-muted/50 bg-white"
+        }`}
+        aria-hidden
+      >
+        {on && (round ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : <CheckIcon width={16} height={16} />)}
+      </span>
+      <span className="min-w-0 flex-1 text-[16px] font-medium">{option.name}</span>
+      {option.priceCents > 0 && <span className="shrink-0 text-[15px] tabular-nums text-muted">+{formatPrice(option.priceCents)}</span>}
+    </button>
+  );
+}
+
+/** Add-ons and spice behind one "+" line, so a guest who wants the dish as it comes can skip them. */
+function Extras({
+  addons,
+  spices,
+  picked,
+  onPick,
+}: {
+  addons: DishOption[];
+  spices: DishOption[];
+  picked: Set<string>;
+  onPick: (o: DishOption) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const title = addons.length && spices.length ? "Add-ons and spice" : addons.length ? "Add-ons" : "Spice";
+  const chosen = [...addons, ...spices]
+    .filter((o) => picked.has(o.id))
+    .map((o) => o.name)
+    .join(", ");
+  return (
+    <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex min-h-14 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-wash"
+      >
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-leaf-tint" aria-hidden>
+          {open ? <MinusIcon width={16} height={16} /> : <PlusIcon width={16} height={16} />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold">{title}</span>
+          {chosen && <span className="block text-[13px] text-muted">{chosen}</span>}
+        </span>
+      </button>
+      {open && addons.length > 0 && (
+        <div role="group" aria-label="Add-ons" className="border-t border-line">
+          <p className="px-3.5 pb-0.5 pt-2.5 text-[13px] font-bold text-muted">Add-ons · Choose any</p>
+          <div className="divide-y divide-line">
+            {addons.map((o) => (
+              <OptionRow key={o.id} option={o} on={picked.has(o.id)} round={false} onPick={() => onPick(o)} />
+            ))}
+          </div>
+        </div>
+      )}
+      {open && spices.length > 0 && (
+        <div role="radiogroup" aria-label="Spice" className="border-t border-line">
+          <p className="px-3.5 pb-0.5 pt-2.5 text-[13px] font-bold text-muted">Spice · Choose 1</p>
+          <div className="divide-y divide-line">
+            {spices.map((o) => (
+              <OptionRow key={o.id} option={o} on={picked.has(o.id)} round onPick={() => onPick(o)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 
 function OrderList({
-  menu,
-  order,
+  lines,
   setQty,
   notes,
   setNote,
@@ -1371,9 +1566,8 @@ function OrderList({
   onNickname,
   onClose,
 }: {
-  menu: Menu;
-  order: Order;
-  setQty: (id: string, qty: number) => void;
+  lines: OrderLine[];
+  setQty: (key: string, qty: number) => void;
   notes: Notes;
   setNote: (id: string, text: string) => void;
   sent: GuestOrders | null;
@@ -1386,8 +1580,7 @@ function OrderList({
   onNickname: () => void;
   onClose: () => void;
 }) {
-  const lines = menu.dishOrder.filter((id) => order[id]).map((id) => ({ dish: menu.dishes[id], qty: order[id] }));
-  const total = lines.reduce((sum, l) => sum + l.dish.priceCents * l.qty, 0);
+  const total = lines.reduce((sum, l) => sum + l.unitCents * l.qty, 0);
   const hasSent = !!sent && sent.batches.length > 0;
 
   return (
@@ -1407,25 +1600,26 @@ function OrderList({
               <section aria-label="Not sent yet">
                 {hasSent && <h3 className="px-4 pt-4 font-display text-lg font-bold">Not sent yet</h3>}
                 <ul className="divide-y divide-line px-4">
-                  {lines.map(({ dish, qty }) => (
-                    <li key={dish.id} className="py-3">
+                  {lines.map(({ key, dish, label, unitCents, qty }, i) => (
+                    <li key={key} className="py-3">
                       <div className="flex items-center gap-3">
                         <DishImage dish={dish} className="aspect-square w-14 shrink-0 rounded-lg" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium leading-snug">{dish.name}</p>
-                          <p className="text-sm text-muted">{formatPrice(dish.priceCents * qty)}</p>
+                          {label && <p className="text-sm leading-snug">{label}</p>}
+                          <p className="text-sm text-muted">{formatPrice(unitCents * qty)}</p>
                         </div>
                         <div className="flex shrink-0 items-center rounded-full border border-line">
-                          <button type="button" onClick={() => setQty(dish.id, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                          <button type="button" onClick={() => setQty(key, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
                             <MinusIcon width={18} height={18} />
                           </button>
                           <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
-                          <button type="button" onClick={() => setQty(dish.id, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                          <button type="button" onClick={() => setQty(key, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
                             <PlusIcon width={18} height={18} />
                           </button>
                         </div>
                       </div>
-                      {canSend && <NoteField dish={dish} note={notes[dish.id] ?? ""} onNote={(t) => setNote(dish.id, t)} />}
+                      {canSend && <NoteField id={`note-${i}`} note={notes[key] ?? ""} onNote={(t) => setNote(key, t)} />}
                     </li>
                   ))}
                 </ul>
@@ -1498,9 +1692,8 @@ function OrderList({
  * "Add a note" under a dish in My order; tapping it opens a labelled box.
  * The note goes to the waiter with the dish ("no egg, less spicy").
  */
-function NoteField({ dish, note, onNote }: { dish: Dish; note: string; onNote: (t: string) => void }) {
+function NoteField({ id, note, onNote }: { id: string; note: string; onNote: (t: string) => void }) {
   const [open, setOpen] = useState(note !== "");
-  const id = `note-${dish.id}`;
   if (!open) {
     return (
       <button
@@ -1568,6 +1761,7 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
               <li key={l.id} className="flex items-baseline justify-between gap-3 py-1.5 text-[15px]">
                 <span className="min-w-0">
                   <span className="font-semibold tabular-nums">{l.qty}×</span> {l.name}
+                  {l.options && <span className="block text-[13px]">{l.options}</span>}
                   {l.note && <span className="block text-[13px] italic text-muted">“{l.note}”</span>}
                 </span>
                 <span className="shrink-0 text-muted">{formatPrice(l.priceCents * l.qty)}</span>

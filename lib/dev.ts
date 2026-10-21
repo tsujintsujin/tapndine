@@ -126,6 +126,7 @@ export async function deleteRestaurant(id: string): Promise<boolean> {
     `DELETE FROM sittings WHERE business_id = ?1`,
     `DELETE FROM dish_categories WHERE dish_id IN (${dishes})`,
     `DELETE FROM dish_ingredients WHERE dish_id IN (${dishes})`,
+    `DELETE FROM dish_options WHERE dish_id IN (${dishes})`,
     `DELETE FROM dishes WHERE business_id = ?1`,
     `DELETE FROM categories WHERE business_id = ?1`,
     `DELETE FROM tags WHERE business_id = ?1`,

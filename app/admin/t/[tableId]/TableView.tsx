@@ -1,17 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { Additional, Call, GuestOrders, Line, TableOrders } from "@/lib/orders";
+import { useEffect, useRef, useState } from "react";
+import type { Additional, Call, GuestOrders, Line, TableOrders, WaiterDish } from "@/lib/orders";
+import { extraCents, offered, OPTION_KINDS, resolvePicks, type DishOption, type OptionKind } from "@/lib/options";
 import { ago, formatPrice, formatTime } from "@/lib/format";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MinusIcon, PlusIcon } from "@/app/components/Icons";
+import { ChevronLeft, ChevronRight, CloseIcon, MinusIcon, PlusIcon } from "@/app/components/Icons";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { btn, card, PageHead } from "../../kit";
 import Shell from "../../Shell";
 import { api, OfflineNote, StaffHeader, useConfirm, usePoll } from "../../ui";
 
-type DishOption = { id: string; name: string; priceCents: number };
 type View = "guests" | "summary";
 const VIEW_KEY = "tapndine:tableView";
 
@@ -30,7 +30,7 @@ export default function TableView({
 }: {
   tableId: string;
   initial: TableOrders;
-  dishes: DishOption[];
+  dishes: WaiterDish[];
   /** The manager's name: renders in the dashboard frame. Null for waiters. */
   manager: string | null;
 }) {
@@ -173,11 +173,11 @@ export default function TableView({
       <AddDish
         dishes={dishes}
         busy={busy === "add"}
-        onAdd={(d) =>
+        onAdd={(d, picks) =>
           act("add", () =>
             api(`/api/staff/tables/${tableId}/items`, {
               method: "POST",
-              body: { dishId: d.id, qty: 1 },
+              body: { dishId: d.id, qty: 1, options: picks.map((p) => p.id) },
             }),
           )
         }
@@ -322,14 +322,14 @@ export default function TableView({
  * like a receipt: Item, Orders, Total. Read-only; changes happen in By guest.
  */
 function Summary({ table }: { table: TableOrders }) {
-  const rows = new Map<string, { name: string; priceCents: number; qty: number; note: string | null }>();
+  const rows = new Map<string, { name: string; priceCents: number; qty: number; options: string | null; note: string | null }>();
   const all = [...table.guests.flatMap((g) => g.batches.flatMap((b) => b.lines)), ...table.additionals];
   for (const l of all) {
-    // Same dish, price and note is one row; a price change mid-meal or a "no egg" shows as its own.
-    const key = `${l.name}|${l.priceCents}|${l.note ?? ""}`;
+    // Same dish, options, price and note is one row; "Large", a price change mid-meal or a "no egg" shows as its own.
+    const key = `${l.name}|${l.options ?? ""}|${l.priceCents}|${l.note ?? ""}`;
     const row = rows.get(key);
     if (row) row.qty += l.qty;
-    else rows.set(key, { name: l.name, priceCents: l.priceCents, qty: l.qty, note: l.note });
+    else rows.set(key, { name: l.name, priceCents: l.priceCents, qty: l.qty, options: l.options, note: l.note });
   }
   const items = all.reduce((n, l) => n + l.qty, 0);
 
@@ -348,10 +348,11 @@ function Summary({ table }: { table: TableOrders }) {
           </tr>
         </thead>
         <tbody>
-          {[...rows.values()].map((r) => (
-            <tr key={`${r.name}|${r.priceCents}|${r.note ?? ""}`} className="border-b border-line last:border-0">
+          {[...rows.entries()].map(([key, r]) => (
+            <tr key={key} className="border-b border-line last:border-0">
               <td className="py-2.5 pr-2 align-top">
                 <span className="block leading-snug">{r.name}</span>
+                {r.options && <span className="block text-[13px] font-semibold leading-snug">{r.options}</span>}
                 {r.note && <span className="block text-[13px] font-semibold italic text-chili">“{r.note}”</span>}
                 <span className="block text-[13px] text-muted">{formatPrice(r.priceCents)} each</span>
               </td>
@@ -440,6 +441,7 @@ function LineRow({
     <li className="flex items-center gap-3 py-3">
       <div className="min-w-0 flex-1">
         <p className="font-medium leading-snug">{line.name}</p>
+        {line.options && <p className="text-[14px] font-semibold leading-snug">{line.options}</p>}
         {line.note && <p className="text-[14px] font-semibold italic leading-snug text-chili">“{line.note}”</p>}
         <p className="text-sm text-muted">
           {formatPrice(line.priceCents * line.qty)}
@@ -471,9 +473,13 @@ function LineRow({
   );
 }
 
-/** Type part of a dish name, tap it to add one. No photos: the waiter knows the food. */
-function AddDish({ dishes, busy, onAdd }: { dishes: DishOption[]; busy: boolean; onAdd: (d: DishOption) => void }) {
+/**
+ * Type part of a dish name, tap it to add one. No photos: the waiter knows the food.
+ * A dish with options opens a picker first, with the same choices the guest gets.
+ */
+function AddDish({ dishes, busy, onAdd }: { dishes: WaiterDish[]; busy: boolean; onAdd: (d: WaiterDish, picks: DishOption[]) => void }) {
   const [q, setQ] = useState("");
+  const [picking, setPicking] = useState<WaiterDish | null>(null);
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = words.length
     ? dishes.filter((d) => words.every((w) => d.name.toLowerCase().includes(w))).slice(0, 6)
@@ -511,7 +517,8 @@ function AddDish({ dishes, busy, onAdd }: { dishes: DishOption[]; busy: boolean;
                   type="button"
                   disabled={busy}
                   onClick={() => {
-                    onAdd(d);
+                    if (OPTION_KINDS.some((k) => offered(d, k).length > 0)) setPicking(d);
+                    else onAdd(d, []);
                     setQ("");
                   }}
                   className="flex min-h-12 w-full items-center justify-between gap-3 px-3 text-left text-[16px] active:bg-leaf-tint disabled:opacity-50"
@@ -524,11 +531,146 @@ function AddDish({ dishes, busy, onAdd }: { dishes: DishOption[]; busy: boolean;
           )}
         </ul>
       )}
+      <PickOptions
+        dish={picking}
+        onClose={() => setPicking(null)}
+        onAdd={(d, picks) => {
+          setPicking(null);
+          onAdd(d, picks);
+        }}
+      />
     </div>
   );
 }
 
-/** Ids of the batches that came back not yet seen. */
+const KIND_TITLES: Record<OptionKind, string> = { size: "Size", addon: "Add-ons", spice: "Spice" };
+
+/** The waiter's option picker: tap buttons per kind, then Add to table. A dialog, so Back and Esc close it. */
+function PickOptions({
+  dish,
+  onClose,
+  onAdd,
+}: {
+  dish: WaiterDish | null;
+  onClose: () => void;
+  onAdd: (d: WaiterDish, picks: DishOption[]) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // Keep the dish up while it closes, after the parent has dropped it.
+  const last = useRef(dish);
+  if (dish) last.current = dish;
+  const d = last.current;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (dish && !el.open) {
+      // A size the guest doesn't have to pick starts on the first one, as on the guest's phone.
+      const first = offered(dish, "size")[0];
+      setPicked(new Set(!dish.sizeRequired && first ? [first.id] : []));
+      el.showModal();
+    } else if (!dish && el.open) el.close();
+  }, [dish]);
+
+  const picks = d && resolvePicks(d, [...picked]);
+  const pick = (o: DishOption) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (o.kind === "addon") {
+        if (!next.delete(o.id)) next.add(o.id);
+        return next;
+      }
+      const was = next.has(o.id);
+      for (const x of offered(d!, o.kind)) next.delete(x.id);
+      if (!was || o.kind === "size") next.add(o.id);
+      return next;
+    });
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="pick-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        // A tap on the backdrop lands on the dialog itself, not the card.
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="mb-0 mt-auto w-full max-w-none rounded-t-[24px] border-0 bg-paper p-0 text-ink shadow-[0_-10px_40px_rgb(59_46_37/0.25)] backdrop:bg-forest/60 sm:m-auto sm:w-[min(440px,calc(100%-32px))] sm:rounded-[20px]"
+    >
+      {d && (
+        <div className="px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 id="pick-title" className="font-display text-[22px] font-bold leading-tight">
+                {d.name}
+              </h2>
+              <p className="text-[14px] text-muted">Pick what the guest wants</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line"
+            >
+              <CloseIcon width={20} height={20} />
+            </button>
+          </div>
+          {OPTION_KINDS.map((kind) => {
+            const list = offered(d, kind);
+            if (!list.length) return null;
+            const needed = kind === "size" && d.sizeRequired && !list.some((o) => picked.has(o.id));
+            return (
+              <div key={kind} role="group" aria-label={KIND_TITLES[kind]} className="mt-4">
+                <p className="flex items-center gap-2 text-[14px] font-bold">
+                  {KIND_TITLES[kind]}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
+                      needed ? "bg-mango text-forest" : "bg-wash text-muted"
+                    }`}
+                  >
+                    {needed ? "Required" : kind === "addon" ? "Choose any" : "Choose 1"}
+                  </span>
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {list.map((o) => {
+                    const on = picked.has(o.id);
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => pick(o)}
+                        className={`min-h-11 rounded-full border px-3.5 text-[15px] font-semibold ${
+                          on ? "border-leaf bg-leaf text-white" : "border-line bg-white text-ink active:bg-wash"
+                        }`}
+                      >
+                        {o.name}
+                        {o.priceCents > 0 && <span className={on ? "text-white/75" : "text-muted"}> +{formatPrice(o.priceCents)}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            disabled={!picks}
+            onClick={() => picks && onAdd(d, picks)}
+            className="mt-5 h-[52px] w-full rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
+          >
+            {picks ? `Add to table · ${formatPrice(d.priceCents + extraCents(picks))}` : "Pick a size first"}
+          </button>
+        </div>
+      )}
+    </dialog>
+  );
+}
+
 function unseen(t: TableOrders): Set<string> {
   return new Set(t.guests.flatMap((g) => g.batches.filter((b) => b.seenAt === null).map((b) => b.id)));
 }

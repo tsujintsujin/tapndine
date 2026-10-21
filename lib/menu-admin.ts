@@ -1,7 +1,8 @@
 import { INGREDIENT_LABELS } from "@/app/components/Icons";
 import { db } from "./cf";
 import { randomId } from "./ids";
-import type { Ingredient } from "./menu";
+import { toOption, type Ingredient, type OptionRow } from "./menu";
+import { OPTION_KINDS, type DishOption, type OptionKind } from "./options";
 
 // The manager's menu editor: dishes, the categories they sit in, and the
 // order both appear in. One order runs through the whole menu: a category's
@@ -23,6 +24,9 @@ export type AdminDish = {
   isNew: boolean;
   categoryIds: string[];
   ingredients: Ingredient[];
+  /** Sizes, add-ons and spice choices (lib/options.ts). A kind is on when it has options. */
+  options: DishOption[];
+  sizeRequired: boolean;
 };
 
 export type AdminCategory = { id: string; name: string; dishCount: number };
@@ -41,16 +45,17 @@ type Row = {
   featured: number;
   best_seller: number;
   is_new: number;
+  size_required: number;
 };
 
 /** Every dish still on the menu (sold out included) and every category, in menu order. */
 export async function loadMenuAdmin(businessId: string) {
   const d = db();
-  const [dishes, cats, links, ingredients] = await d.batch([
+  const [dishes, cats, links, ingredients, options] = await d.batch([
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url, spice_level,
-                serves_min, serves_max, available, featured, best_seller, is_new
+                serves_min, serves_max, available, featured, best_seller, is_new, size_required
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(businessId),
@@ -67,6 +72,13 @@ export async function loadMenuAdmin(businessId: string) {
         `SELECT di.dish_id, di.name, di.kind FROM dish_ingredients di
          JOIN dishes x ON x.id = di.dish_id
          WHERE x.business_id = ? AND x.removed_at IS NULL ORDER BY di.sort`
+      )
+      .bind(businessId),
+    d
+      .prepare(
+        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+         JOIN dishes x ON x.id = o.dish_id
+         WHERE x.business_id = ? AND x.removed_at IS NULL ORDER BY o.sort`
       )
       .bind(businessId),
   ]);
@@ -87,6 +99,8 @@ export async function loadMenuAdmin(businessId: string) {
     isNew: r.is_new === 1,
     categoryIds: [],
     ingredients: [],
+    options: [],
+    sizeRequired: r.size_required === 1,
   }));
   const byId = new Map(list.map((x) => [x.id, x]));
   for (const l of links.results as { dish_id: string; category_id: string }[]) {
@@ -94,6 +108,9 @@ export async function loadMenuAdmin(businessId: string) {
   }
   for (const i of ingredients.results as { dish_id: string; name: string; kind: string }[]) {
     byId.get(i.dish_id)?.ingredients.push({ name: i.name, kind: i.kind });
+  }
+  for (const o of options.results as OptionRow[]) {
+    byId.get(o.dish_id)?.options.push(toOption(o));
   }
 
   const categories: AdminCategory[] = (cats.results as { id: string; name: string }[]).map((c) => ({
@@ -137,6 +154,20 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     ingredients.push({ name: n, kind });
   }
   if (ingredients.length > 20) return "Up to 20 ingredients.";
+  const options: DishOption[] = [];
+  for (const o of (Array.isArray(b.options) ? b.options : []) as Record<string, unknown>[]) {
+    const n = str(o?.name);
+    const kind = str(o?.kind) as OptionKind;
+    if (!n) continue;
+    if (!OPTION_KINDS.includes(kind)) return "Check the options.";
+    if (n.length > 40) return "Keep each option under 40 characters.";
+    const cents = int(o?.priceCents);
+    if (!(cents >= 0 && cents <= 10_000_000)) return `Check the price of ${n}.`;
+    // An id the editor got from loadMenuAdmin; saveDish keeps it only if it is this dish's.
+    const id = typeof o?.id === "string" && /^o_[\w-]{1,40}$/.test(o.id) ? o.id : "";
+    options.push({ id, kind, name: n, priceCents: cents });
+  }
+  if (OPTION_KINDS.some((k) => options.filter((o) => o.kind === k).length > 20)) return "Up to 20 choices of each kind.";
   return {
     name,
     shortDescription,
@@ -152,6 +183,8 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     isNew: b.isNew === true,
     categoryIds,
     ingredients,
+    options,
+    sizeRequired: b.sizeRequired !== false,
   };
 }
 
@@ -180,21 +213,27 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
     id = "d_" + randomId();
   }
 
+  // Option ids stay the same across saves, so a guest's open order still matches.
+  // An id that is new, or not this dish's, gets a fresh one.
+  const mine = await d.prepare("SELECT id FROM dish_options WHERE dish_id = ?").bind(id).all<{ id: string }>();
+  const keep = new Set(mine.results.map((o) => o.id));
+  const options = x.options.map((o) => ({ ...o, id: keep.has(o.id) ? o.id : "o_" + randomId() }));
+
   const values = [
     x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, x.spiceLevel,
-    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew,
+    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.sizeRequired,
   ];
   await d.batch([
     d
       .prepare(
         `INSERT INTO dishes (id, business_id, sort, name, short_description, description, price_cents, image_url,
-                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, short_description = excluded.short_description,
            description = excluded.description, price_cents = excluded.price_cents, image_url = excluded.image_url,
            spice_level = excluded.spice_level, serves_min = excluded.serves_min, serves_max = excluded.serves_max,
            available = excluded.available, featured = excluded.featured, best_seller = excluded.best_seller,
-           is_new = excluded.is_new`
+           is_new = excluded.is_new, size_required = excluded.size_required`
       )
       .bind(id, businessId, sort, ...values),
     // The menu home has one hero: picking this one unpicks the old one.
@@ -208,6 +247,12 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
     d.prepare("DELETE FROM dish_ingredients WHERE dish_id = ?").bind(id),
     ...x.ingredients.map((i, n) =>
       d.prepare("INSERT INTO dish_ingredients (dish_id, name, kind, sort) VALUES (?, ?, ?, ?)").bind(id, i.name, i.kind, n + 1)
+    ),
+    d.prepare("DELETE FROM dish_options WHERE dish_id = ?").bind(id),
+    ...options.map((o, n) =>
+      d
+        .prepare("INSERT INTO dish_options (id, dish_id, kind, name, price_cents, sort) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(o.id, id, o.kind, o.name, o.priceCents, n + 1)
     ),
   ]);
   return id;
