@@ -32,7 +32,20 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - **Guests**: no account. A nickname, asked the first time they send.
 - **Waiters**: Tables, a table's orders by guest, add items, clear the table.
 - **Managers**: plus Dashboard, NFC links (tables and their tag links, capped
-  by the plan's table count), Menu (dishes, logo), Categories, Staff.
+  by the plan's table count), Menu (dishes, dish options, logo), Categories, Staff.
+
+## Dish options (Stage 1 Build 1, live 2026-10-21)
+
+- Per dish, a manager switches on Sizes, Add-ons and Spice choices (all off by
+  default) and says whether the guest must pick a size. Spice choices only
+  show on dishes with a spice level. Kept simple on purpose: Justin asked for
+  add-ons behind one "+" line, not a page of option groups.
+- The pick rules live once in `lib/options.ts` (server pricing and both
+  phones use them); `node scripts/options-check.ts` checks them.
+- An order line stores what was picked as text (`batch_items.options`), and
+  its price already includes the extras.
+- The homepage demo tag (`DEMO_TAG` in `lib/visits.ts`) says ordering is in
+  the real version instead of "show it to your waiter".
 - **Developers** (TSUJIN): every restaurant, billing (contracts and payments).
 
 ## Plans (lib/plans.ts)
@@ -46,14 +59,19 @@ A restaurant's table limit comes from its current contract; with no contract
 
 ## Stack and running it
 
-- Next.js 15 on Cloudflare Workers (OpenNext) with D1. Schema in `migrations/`.
+- Next.js 16 on Cloudflare Workers (OpenNext) with D1. Schema in `migrations/`.
+  (Moved off Next 15 on 2026-10-22: OpenNext refuses to build a Next major past
+  its two-year support date.)
 - Local DB: `npm run db:reset` (migrate + seed into `.localdb`). Seed restaurant
   is Hikay; its menu-only demo tag is `h3nd6vya` (also on live; the homepage's
   "Try the menu" opens it).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
+- Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`, and with the dev
+  server up, `node scripts/isolation-check.mjs http://localhost:3390`.
 - Deploys are **manual** (`opennextjs-cloudflare build` + `deploy`) from a clean
   copy outside this folder, never by building here while `next dev` runs.
   Apply new D1 migrations to live (`wrangler d1 migrations apply tapndine --remote`)
-  **before** deploying code that reads them.
+  **before** deploying code that reads them. Back up live first
+  (`wrangler d1 export tapndine --remote --output <file on D:>`).
 - Credentials: `D:\AIO Freelance\Credentials\README.md` (tapndine section).
