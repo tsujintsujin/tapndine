@@ -13,7 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ visitId
   return json({ alive: true, sent, calls });
 }
 
-/** Send to waiter. Body: { key, items: [{ dishId, qty, note? }], nickname? }. */
+/** Send to waiter. Body: { key, items: [{ dishId, qty, note?, options? }], nickname? }. */
 export async function POST(req: Request, { params }: { params: Promise<{ visitId: string }> }) {
   const visit = await liveVisit((await params).visitId);
   if (!visit) return json({ alive: false }, 410);

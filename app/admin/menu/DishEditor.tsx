@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish, DishInput } from "@/lib/menu-admin";
+import { OPTION_KINDS, type DishOption, type OptionKind } from "@/lib/options";
 import { formatPrice, servesLabel } from "@/lib/format";
 import {
   ChevronLeft,
@@ -35,6 +36,8 @@ const EMPTY: DishInput = {
   isNew: true,
   categoryIds: [],
   ingredients: [],
+  options: [],
+  sizeRequired: true,
 };
 const KINDS = Object.keys(INGREDIENT_LABELS);
 const MAX_PHOTO = 10 * 1024 * 1024; // Cloudinary's free-plan limit per image
@@ -67,7 +70,17 @@ export default function DishEditor({
   const done = useRef(false);
 
   const set = <K extends keyof DishInput>(k: K, v: DishInput[K]) => setX((p) => ({ ...p, [k]: v }));
-  const dirty = JSON.stringify(x) !== JSON.stringify(start.current) || price !== (dish ? String(dish.priceCents / 100) : "");
+  // Options as typed; x.options is only filled in on Save.
+  const startOpts = useRef({
+    rows: (dish?.options ?? []).map<OptRow>((o) => ({ id: o.id, kind: o.kind, name: o.name, price: o.priceCents ? String(o.priceCents / 100) : "" })),
+    on: Object.fromEntries(OPTION_KINDS.map((k) => [k, !!dish?.options.some((o) => o.kind === k)])) as OptsOn,
+  });
+  const [optRows, setOptRows] = useState(startOpts.current.rows);
+  const [optOn, setOptOn] = useState(startOpts.current.on);
+  const dirty =
+    JSON.stringify(x) !== JSON.stringify(start.current) ||
+    price !== (dish ? String(dish.priceCents / 100) : "") ||
+    JSON.stringify([optRows, optOn]) !== JSON.stringify([startOpts.current.rows, startOpts.current.on]);
 
   // Leaving with unsaved changes asks first (reload, close, or typing a URL).
   useEffect(() => {
@@ -109,9 +122,17 @@ export default function DishEditor({
   const save = async () => {
     const pesos = Number(price.replace(/[₱,\s]/g, ""));
     if (!Number.isFinite(pesos) || pesos < 0 || price.trim() === "") return setError("Enter a price.");
+    // A set switched off saves no options; a row without a name is skipped.
+    const options: DishOption[] = [];
+    for (const r of optRows) {
+      if (!optOn[r.kind] || !r.name.trim()) continue;
+      const add = r.price.trim() === "" ? 0 : Number(r.price.replace(/[₱,\s]/g, ""));
+      if (!Number.isFinite(add) || add < 0) return setError(`Check the price of ${r.name.trim()}.`);
+      options.push({ id: r.id, kind: r.kind, name: r.name, priceCents: Math.round(add * 100) });
+    }
     setBusy(true);
     setError("");
-    const body = { ...x, priceCents: Math.round(pesos * 100) };
+    const body = { ...x, priceCents: Math.round(pesos * 100), options };
     try {
       if (dish) await api(`/api/staff/menu/dishes/${dish.id}`, { method: "PUT", body });
       else await api("/api/staff/menu/dishes", { method: "POST", body });
@@ -320,6 +341,16 @@ export default function DishEditor({
             )}
           </section>
 
+          <OptionsCard
+            rows={optRows}
+            on={optOn}
+            sizeRequired={x.sizeRequired}
+            spiceLevel={x.spiceLevel}
+            onRows={setOptRows}
+            onOn={setOptOn}
+            onSizeRequired={(v) => set("sizeRequired", v)}
+          />
+
           <section className={card}>
             <h2 className="font-display text-[19px] font-bold">Spice and portion</h2>
             <div className="mt-4 grid gap-6 sm:grid-cols-2">
@@ -480,7 +511,7 @@ export default function DishEditor({
             </ul>
           </section>
 
-          <Preview x={x} price={price} />
+          <Preview x={x} price={price} rows={optRows.filter((r) => optOn[r.kind] && r.name.trim())} />
 
           {dish && (
             <button type="button" disabled={busy} onClick={remove} className={`${btn.danger} w-full`}>
@@ -606,8 +637,16 @@ function Stepper({
   );
 }
 
-/** The dish as a guest sees it in the menu grid, updating as you type. */
-function Preview({ x, price }: { x: DishInput; price: string }) {
+/** The dish as a guest sees it in the menu grid, updating as you type, with its options under it. */
+function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow[] }) {
+  const sizes = rows.filter((r) => r.kind === "size");
+  const extras = rows.filter((r) => r.kind === "addon" || (r.kind === "spice" && (x.spiceLevel ?? 0) > 0));
+  const extrasTitle = [
+    rows.some((r) => r.kind === "addon") && "Add-ons",
+    extras.some((r) => r.kind === "spice") && "spice",
+  ]
+    .filter(Boolean)
+    .join(" and ");
   const cents = Math.round(Number(price.replace(/[₱,\s]/g, "")) * 100);
   return (
     <section className={card}>
@@ -633,6 +672,189 @@ function Preview({ x, price }: { x: DishInput; price: string }) {
           <span className="font-semibold text-leaf">{Number.isFinite(cents) && price ? formatPrice(cents) : "₱–"}</span>
           <span className="text-muted">{servesLabel(x.servesMin, x.servesMax)}</span>
         </p>
+      </div>
+      {sizes.length + extras.length > 0 && (
+        <div className="theme-warm mt-4 rounded-2xl bg-paper p-3 text-[14px] text-ink">
+          {sizes.length > 0 && (
+            <>
+              <p className="flex items-center justify-between font-bold">
+                Size
+                {x.sizeRequired && <span className="rounded-full bg-mango px-2 py-0.5 text-[11px] text-forest">Required</span>}
+              </p>
+              <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
+                {sizes.map((r, i) => {
+                  const on = !x.sizeRequired && i === 0;
+                  return (
+                    <li key={i} className={`flex items-center gap-2 px-2.5 py-2 ${on ? "bg-leaf-tint" : ""}`}>
+                      <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${on ? "border-leaf bg-leaf" : "border-muted/50"}`} />
+                      <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                      {r.price && Number(r.price) > 0 && <span className="text-muted">+₱{r.price}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+          {extras.length > 0 && (
+            <p className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-white px-2.5 py-2 font-semibold">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-leaf-tint">
+                <PlusIcon width={12} height={12} />
+              </span>
+              {extrasTitle.charAt(0).toUpperCase() + extrasTitle.slice(1)}
+            </p>
+          )}
+          <p
+            className={`mt-2 grid h-10 place-items-center rounded-lg font-semibold ${
+              sizes.length && x.sizeRequired ? "bg-wash text-muted" : "bg-leaf text-white"
+            }`}
+          >
+            {sizes.length && x.sizeRequired ? "Choose a size" : "Add to order"}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** An option row as typed: the price stays text until Save, so "1." or "" don't jump around. */
+type OptRow = { id: string; kind: OptionKind; name: string; price: string };
+type OptsOn = Record<OptionKind, boolean>;
+
+const SETS: Record<OptionKind, { title: string; help: string; add: string; placeholder: string }> = {
+  size: { title: "Sizes", help: "Guest picks one size.", add: "Add size", placeholder: "Sharing" },
+  addon: { title: "Add-ons", help: "Extras the guest can tick, as many as they like.", add: "Add add-on", placeholder: "Extra egg" },
+  spice: { title: "Spice choices", help: "Less or extra spicy. Only shown on dishes with a spice level.", add: "Add choice", placeholder: "Less spicy" },
+};
+
+/** Sizes, add-ons and spice choices for this dish: each switched on only when the dish needs it. */
+function OptionsCard({
+  rows,
+  on,
+  sizeRequired,
+  spiceLevel,
+  onRows,
+  onOn,
+  onSizeRequired,
+}: {
+  rows: OptRow[];
+  on: OptsOn;
+  sizeRequired: boolean;
+  spiceLevel: number | null;
+  onRows: (rows: OptRow[]) => void;
+  onOn: (on: OptsOn) => void;
+  onSizeRequired: (v: boolean) => void;
+}) {
+  const seg = (active: boolean) =>
+    `flex h-9 min-w-[52px] items-center justify-center rounded-full px-3.5 text-[14px] font-semibold ${
+      active ? "bg-forest text-white" : "text-muted hover:text-ink"
+    }`;
+  return (
+    <section className={card}>
+      <h2 className="font-display text-[19px] font-bold">Options</h2>
+      <p className="mt-0.5 text-[13px] text-muted">
+        All off to start. Switch on only what this dish needs. Prices are what each choice adds to the dish&apos;s price.
+      </p>
+      <div className="mt-3 space-y-3">
+        {OPTION_KINDS.map((kind) => {
+          const set = SETS[kind];
+          const mine = rows.filter((r) => r.kind === kind);
+          const update = (row: OptRow, patch: Partial<OptRow>) => onRows(rows.map((r) => (r === row ? { ...r, ...patch } : r)));
+          const add = () => onRows([...rows, { id: "", kind, name: "", price: "" }]);
+          return (
+            <div key={kind} className="rounded-2xl border border-line bg-paper p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold">{set.title}</span>
+                  <span className="block text-[13px] text-muted">{set.help}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[14px] font-semibold">
+                  {on[kind] ? "On" : "Off"}
+                  <Switch
+                    on={on[kind]}
+                    label={set.title}
+                    onChange={() => {
+                      onOn({ ...on, [kind]: !on[kind] });
+                      // Switching on an empty set starts it with a row to type in.
+                      if (!on[kind] && mine.length === 0) add();
+                    }}
+                  />
+                </span>
+              </div>
+              {on[kind] && (
+                <>
+                  {kind === "spice" && !spiceLevel && (
+                    <p className="mt-3 rounded-xl bg-mango-soft px-3 py-2 text-[13px]">
+                      This dish has no spice level, so guests won&apos;t see these. Set one under Spice and portion.
+                    </p>
+                  )}
+                  {kind === "size" && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5">
+                      <span className="min-w-0 text-[14px]">
+                        <span className="block font-semibold">Guest must pick a size</span>
+                        <span className="block text-[13px] text-muted">
+                          {sizeRequired ? "Add stays locked until they pick." : "The first size is picked for them; they can change it."}
+                        </span>
+                      </span>
+                      <span role="group" aria-label="Guest must pick a size" className="flex shrink-0 rounded-full bg-paper p-1">
+                        <button type="button" aria-pressed={sizeRequired} onClick={() => onSizeRequired(true)} className={seg(sizeRequired)}>
+                          Yes
+                        </button>
+                        <button type="button" aria-pressed={!sizeRequired} onClick={() => onSizeRequired(false)} className={seg(!sizeRequired)}>
+                          No
+                        </button>
+                      </span>
+                    </div>
+                  )}
+                  <ul className="mt-3 space-y-2">
+                    {mine.map((r, i) => (
+                      <li key={i} className="flex items-center gap-1.5 sm:gap-2">
+                        <label className="min-w-0 flex-1">
+                          <span className="sr-only">{set.title}: name</span>
+                          <input
+                            maxLength={40}
+                            value={r.name}
+                            onChange={(e) => update(r, { name: e.target.value })}
+                            placeholder={set.placeholder}
+                            className={`${field} mt-0 h-11`}
+                          />
+                        </label>
+                        <label className="relative block w-[84px] shrink-0 sm:w-36">
+                          <span className="sr-only">{r.name || set.title}: adds to the price</span>
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[15px] text-muted">+₱</span>
+                          <input
+                            inputMode="decimal"
+                            value={r.price}
+                            onChange={(e) => update(r, { price: e.target.value })}
+                            placeholder="0"
+                            className={`${field} mt-0 h-11 pl-8 pr-2 tabular-nums`}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${r.name || "choice"}`}
+                          onClick={() => onRows(rows.filter((x) => x !== r))}
+                          className="-mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted hover:bg-chili/10 hover:text-chili sm:mr-0"
+                        >
+                          <CloseIcon width={18} height={18} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {mine.length < 20 && (
+                    <button
+                      type="button"
+                      onClick={add}
+                      className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-leaf hover:bg-leaf-tint"
+                    >
+                      <PlusIcon width={18} height={18} />
+                      {set.add}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

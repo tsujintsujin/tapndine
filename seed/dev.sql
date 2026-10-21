@@ -233,6 +233,19 @@ UPDATE dishes SET serves_min = 1, serves_max = 2 WHERE id IN ('d_chickenadobo', 
 -- "New on the menu" on the menu home.
 UPDATE dishes SET is_new = 1 WHERE id IN ('d_crispypata', 'd_ginataanghipon', 'd_mangoshake');
 
+-- Dish options: Sisig needs a size picked; the shake's size is optional (Regular is picked).
+INSERT INTO dish_options (id, dish_id, kind, name, price_cents, sort) VALUES
+  ('o_sisig_solo',    'd_sisig', 'size',  'Solo',            0, 1),
+  ('o_sisig_sharing', 'd_sisig', 'size',  'Sharing',     16000, 2),
+  ('o_sisig_egg',     'd_sisig', 'addon', 'Extra egg',    2000, 3),
+  ('o_sisig_rice',    'd_sisig', 'addon', 'Garlic rice',  4500, 4),
+  ('o_sisig_chich',   'd_sisig', 'addon', 'Chicharon bits', 3500, 5),
+  ('o_sisig_less',    'd_sisig', 'spice', 'Less spicy',      0, 6),
+  ('o_sisig_extra',   'd_sisig', 'spice', 'Extra spicy',     0, 7),
+  ('o_shake_reg',     'd_mangoshake', 'size', 'Regular',     0, 1),
+  ('o_shake_large',   'd_mangoshake', 'size', 'Large',    4000, 2);
+UPDATE dishes SET size_required = 0 WHERE id = 'd_mangoshake';
+
 -- Staff logins for local testing only (test passwords, not used anywhere real).
 -- Log in at http://localhost:3300/login
 --   hikay-manager  /  menu-manager-1   (sees Tables and Staff)

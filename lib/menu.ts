@@ -1,4 +1,5 @@
 import { db } from "./cf";
+import type { DishOption, OptionKind } from "./options";
 import type { Visit } from "./visits";
 
 export type Ingredient = { name: string; kind: string };
@@ -21,6 +22,10 @@ export type Dish = {
   /** Shown under "New on the menu" on the menu home. */
   isNew: boolean;
   ingredients: Ingredient[];
+  /** Sizes, add-ons and spice choices, in menu order (lib/options.ts). */
+  options: DishOption[];
+  /** With sizes: the guest has to pick one before adding. */
+  sizeRequired: boolean;
 };
 
 export type Category = { id: string; name: string; dishIds: string[] };
@@ -51,12 +56,16 @@ type DishRow = {
   featured: number;
   best_seller: number;
   is_new: number;
+  size_required: number;
 };
+
+export type OptionRow = { id: string; dish_id: string; kind: OptionKind; name: string; price_cents: number };
+export const toOption = (o: OptionRow): DishOption => ({ id: o.id, kind: o.kind, name: o.name, priceCents: o.price_cents });
 
 /** Everything the menu screens need, for the business the visit belongs to. */
 export async function loadMenu(visit: Visit): Promise<Menu | null> {
   const d = db();
-  const [biz, table, cats, dishes, links, ingredients] = await d.batch([
+  const [biz, table, cats, dishes, links, ingredients, options] = await d.batch([
     d.prepare("SELECT name, logo_url FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
@@ -65,7 +74,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url,
-                spice_level, serves_min, serves_max, available, featured, best_seller, is_new
+                spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(visit.business_id),
@@ -81,6 +90,13 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
         `SELECT di.dish_id, di.name, di.kind FROM dish_ingredients di
          JOIN dishes x ON x.id = di.dish_id
          WHERE x.business_id = ? ORDER BY di.sort`
+      )
+      .bind(visit.business_id),
+    d
+      .prepare(
+        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+         JOIN dishes x ON x.id = o.dish_id
+         WHERE x.business_id = ? ORDER BY o.sort`
       )
       .bind(visit.business_id),
   ]);
@@ -107,11 +123,16 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       bestSeller: r.best_seller === 1,
       isNew: r.is_new === 1,
       ingredients: [],
+      options: [],
+      sizeRequired: r.size_required === 1,
     };
     dishOrder.push(r.id);
   }
   for (const i of ingredients.results as { dish_id: string; name: string; kind: string }[]) {
     byId[i.dish_id]?.ingredients.push({ name: i.name, kind: i.kind });
+  }
+  for (const o of options.results as OptionRow[]) {
+    byId[o.dish_id]?.options.push(toOption(o));
   }
 
   const categories: Category[] = (cats.results as { id: string; name: string }[]).map((c) => ({

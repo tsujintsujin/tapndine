@@ -1,19 +1,25 @@
 import { db } from "./cf";
 import { randomId } from "./ids";
+import { toOption, type OptionRow } from "./menu";
+import { extraCents, optionsLabel, resolvePicks, type DishOption } from "./options";
 import { isVisitId, type Visit } from "./visits";
 
 // Orders as the waiter sees them: a table's open sitting, its guests, and
 // each guest's batches. See migrations/0002 for how the tables fit together.
 
-/** note: what the guest typed for this line ("no egg"); null if nothing. */
-export type Line = { id: string; name: string; priceCents: number; qty: number; note: string | null };
+/**
+ * options: what was picked ("Sharing · Extra egg"), already in the price; null if none.
+ * note: what the guest typed for this line ("no egg"); null if nothing.
+ */
+export type Line = { id: string; name: string; priceCents: number; qty: number; options: string | null; note: string | null };
 /** seenAt: when a waiter first opened the table after it came in; null = not yet. */
 export type Batch = { id: string; sentAt: number; seenAt: number | null; lines: Line[]; subtotal: number };
 export type GuestOrders = { number: number; nickname: string | null; batches: Batch[]; subtotal: number };
 /** A line a waiter added, with who added it. */
 export type Additional = Line & { addedAt: number; addedBy: string | null };
 
-export type Requested = { dishId: string; qty: number; note?: unknown }[];
+/** options: the picked option ids (lib/options.ts). */
+export type Requested = { dishId: string; qty: number; note?: unknown; options?: unknown }[];
 
 export const MAX_NOTE = 100;
 
@@ -37,22 +43,70 @@ const MAX_LINES = 60;
 
 const sum = (lines: { priceCents: number; qty: number }[]) => lines.reduce((s, l) => s + l.priceCents * l.qty, 0);
 
-/** Prices and names the request against the business's own, available dishes. */
-async function price(businessId: string, items: Requested) {
+const MAX_PICKS = 30;
+
+type Priced = { id: string; name: string; price_cents: number; qty: number; options: string | null; note: string | null };
+
+/**
+ * Prices and names the request against the business's own, available dishes,
+ * with each line's picks checked against that dish's options. Null if any
+ * line is not orderable as asked.
+ */
+async function price(businessId: string, items: Requested): Promise<Priced[] | null> {
   if (items.length === 0 || items.length > MAX_LINES) return null;
-  if (!items.every((i) => typeof i.dishId === "string" && Number.isInteger(i.qty) && i.qty >= 1 && i.qty <= MAX_QTY)) {
+  const pickIds = (o: unknown) => (o === undefined ? [] : o);
+  if (
+    !items.every(
+      (i) =>
+        typeof i.dishId === "string" &&
+        Number.isInteger(i.qty) &&
+        i.qty >= 1 &&
+        i.qty <= MAX_QTY &&
+        Array.isArray(pickIds(i.options)) &&
+        (pickIds(i.options) as unknown[]).length <= MAX_PICKS &&
+        (pickIds(i.options) as unknown[]).every((x) => typeof x === "string")
+    )
+  ) {
     return null;
   }
-  const r = await db()
-    .prepare(
-      `SELECT id, name, price_cents FROM dishes
-       WHERE business_id = ? AND available = 1 AND removed_at IS NULL AND id IN (SELECT value FROM json_each(?))`
-    )
-    .bind(businessId, JSON.stringify(items.map((i) => i.dishId)))
-    .all<{ id: string; name: string; price_cents: number }>();
-  const byId = new Map(r.results.map((d) => [d.id, d]));
-  if (!items.every((i) => byId.has(i.dishId))) return null;
-  return items.map((i) => ({ ...byId.get(i.dishId)!, qty: i.qty, note: cleanNote(i.note) }));
+  const d = db();
+  const ids = JSON.stringify(items.map((i) => i.dishId));
+  const [dishes, options] = await d.batch([
+    d
+      .prepare(
+        `SELECT id, name, price_cents, spice_level, size_required FROM dishes
+         WHERE business_id = ? AND available = 1 AND removed_at IS NULL AND id IN (SELECT value FROM json_each(?))`
+      )
+      .bind(businessId, ids),
+    d
+      .prepare(
+        `SELECT id, dish_id, kind, name, price_cents FROM dish_options
+         WHERE dish_id IN (SELECT value FROM json_each(?)) ORDER BY sort`
+      )
+      .bind(ids),
+  ]);
+  type Row = { id: string; name: string; price_cents: number; spice_level: number | null; size_required: number };
+  const byId = new Map((dishes.results as Row[]).map((x) => [x.id, { ...x, options: [] as DishOption[] }]));
+  for (const o of options.results as OptionRow[]) byId.get(o.dish_id)?.options.push(toOption(o));
+  const out: Priced[] = [];
+  for (const i of items) {
+    const dish = byId.get(i.dishId);
+    if (!dish) return null;
+    const picks = resolvePicks(
+      { options: dish.options, sizeRequired: dish.size_required === 1, spiceLevel: dish.spice_level },
+      pickIds(i.options) as string[]
+    );
+    if (!picks) return null;
+    out.push({
+      id: dish.id,
+      name: dish.name,
+      price_cents: dish.price_cents + extraCents(picks),
+      qty: i.qty,
+      options: optionsLabel(picks),
+      note: cleanNote(i.note),
+    });
+  }
+  return out;
 }
 
 function insertBatch(
@@ -60,7 +114,7 @@ function insertBatch(
   sittingId: string,
   guestId: string | null,
   staffId: string | null,
-  lines: { id: string; name: string; price_cents: number; qty: number; note: string | null }[]
+  lines: Priced[]
 ) {
   const d = db();
   const now = Date.now();
@@ -72,9 +126,9 @@ function insertBatch(
     ...lines.map((l, i) =>
       d
         .prepare(
-          "INSERT INTO batch_items (id, batch_id, dish_id, name, price_cents, qty, note, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+          "INSERT INTO batch_items (id, batch_id, dish_id, name, price_cents, qty, options, note, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
-        .bind(randomId(), batchId, l.id, l.name, l.price_cents, l.qty, l.note, i)
+        .bind(randomId(), batchId, l.id, l.name, l.price_cents, l.qty, l.options, l.note, i)
     ),
   ];
 }
@@ -150,6 +204,7 @@ type BatchRow = {
   name: string;
   price_cents: number;
   qty: number;
+  options: string | null;
   note: string | null;
 };
 
@@ -157,7 +212,7 @@ async function sittingRows(sittingId: string, phoneId?: string): Promise<BatchRo
   const r = await db()
     .prepare(
       `SELECT b.id AS batch_id, b.guest_id, g.number AS guest_number, g.nickname, b.sent_at, b.seen_at, s.name AS added_by,
-              i.id AS item_id, i.name, i.price_cents, i.qty, i.note
+              i.id AS item_id, i.name, i.price_cents, i.qty, i.options, i.note
        FROM batches b
        JOIN batch_items i ON i.batch_id = b.id
        LEFT JOIN guests g ON g.id = b.guest_id
@@ -176,7 +231,7 @@ function group(rows: BatchRow[]) {
   const batches = new Map<string, Batch>();
   const additionals: Additional[] = [];
   for (const r of rows) {
-    const line = { id: r.item_id, name: r.name, priceCents: r.price_cents, qty: r.qty, note: r.note };
+    const line = { id: r.item_id, name: r.name, priceCents: r.price_cents, qty: r.qty, options: r.options, note: r.note };
     if (!r.guest_id) {
       additionals.push({ ...line, addedAt: r.sent_at, addedBy: r.added_by });
       continue;
@@ -393,7 +448,7 @@ export async function tableHistory(
            AND EXISTS (SELECT 1 FROM batches b WHERE b.sitting_id = sittings.id)
          ORDER BY closed_at DESC LIMIT ?3)
        SELECT p.id AS sitting_id, p.opened_at, p.closed_at, b.id AS batch_id, b.guest_id, g.number AS guest_number,
-              g.nickname, b.sent_at, b.seen_at, s.name AS added_by, i.id AS item_id, i.name, i.price_cents, i.qty, i.note
+              g.nickname, b.sent_at, b.seen_at, s.name AS added_by, i.id AS item_id, i.name, i.price_cents, i.qty, i.options, i.note
        FROM past p
        JOIN batches b ON b.sitting_id = p.id
        JOIN batch_items i ON i.batch_id = b.id
@@ -423,7 +478,7 @@ export async function tableHistory(
       entries.set(row.batch_id, e);
       s.log.push(e);
     }
-    e.lines.push({ id: row.item_id, name: row.name, priceCents: row.price_cents, qty: row.qty, note: row.note });
+    e.lines.push({ id: row.item_id, name: row.name, priceCents: row.price_cents, qty: row.qty, options: row.options, note: row.note });
     s.totalCents += row.price_cents * row.qty;
     s.items += row.qty;
     if (row.guest_id) s.guestIds.add(row.guest_id);
@@ -440,12 +495,13 @@ export async function addAdditional(
   tableId: string,
   staffId: string,
   dishId: string,
-  qty: number
+  qty: number,
+  options: unknown
 ): Promise<boolean> {
   const d = db();
   const table = await d.prepare("SELECT 1 FROM tables WHERE id = ? AND business_id = ? AND removed_at IS NULL").bind(tableId, businessId).first();
   if (!table) return false;
-  const lines = await price(businessId, [{ dishId, qty }]);
+  const lines = await price(businessId, [{ dishId, qty, options }]);
   if (!lines) return false;
   const [, found] = await d.batch([
     d
@@ -516,11 +572,36 @@ export async function clearTable(businessId: string, tableId: string): Promise<b
   return true;
 }
 
-/** Name and price of every dish, for the waiter's add box. */
+/** A dish in the waiter's add box. */
+export type WaiterDish = Awaited<ReturnType<typeof dishList>>[number];
+
+/** Every orderable dish with its options, for the waiter's add box. */
 export async function dishList(businessId: string) {
-  const r = await db()
-    .prepare("SELECT id, name, price_cents FROM dishes WHERE business_id = ? AND available = 1 AND removed_at IS NULL ORDER BY name")
-    .bind(businessId)
-    .all<{ id: string; name: string; price_cents: number }>();
-  return r.results.map((x) => ({ id: x.id, name: x.name, priceCents: x.price_cents }));
+  const d = db();
+  const [dishes, options] = await d.batch([
+    d
+      .prepare(
+        `SELECT id, name, price_cents, spice_level, size_required FROM dishes
+         WHERE business_id = ? AND available = 1 AND removed_at IS NULL ORDER BY name`
+      )
+      .bind(businessId),
+    d
+      .prepare(
+        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+         JOIN dishes x ON x.id = o.dish_id WHERE x.business_id = ? ORDER BY o.sort`
+      )
+      .bind(businessId),
+  ]);
+  type Row = { id: string; name: string; price_cents: number; spice_level: number | null; size_required: number };
+  const list = (dishes.results as Row[]).map((x) => ({
+    id: x.id,
+    name: x.name,
+    priceCents: x.price_cents,
+    spiceLevel: x.spice_level,
+    sizeRequired: x.size_required === 1,
+    options: [] as DishOption[],
+  }));
+  const byId = new Map(list.map((x) => [x.id, x]));
+  for (const o of options.results as OptionRow[]) byId.get(o.dish_id)?.options.push(toOption(o));
+  return list;
 }

@@ -96,6 +96,7 @@ function Sitting({ sitting: s, open }: { sitting: PastSitting; open: boolean }) 
                   <span className="w-7 shrink-0 font-semibold">{l.qty}×</span>
                   <span className="min-w-0 flex-1 leading-snug">
                     {l.name}
+                    {l.options && <span className="block text-[13px]">{l.options}</span>}
                     {l.note && <span className="block text-[13px] italic text-muted">“{l.note}”</span>}
                   </span>
                   <span className="shrink-0">{formatPrice(l.priceCents * l.qty)}</span>

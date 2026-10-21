@@ -99,7 +99,7 @@ Justin's OK before the next.
 
 | # | Build | What it touches | Size | Status |
 |---|---|---|---|---|
-| 1 | Dish options: sizes, add-ons, "less spicy", with prices | New option tables; menu editor, guest dish sheet, cart, waiter view, waiter "add items" | Large | Not started |
+| 1 | Dish options: sizes, add-ons, "less spicy", with prices | New option tables; menu editor, guest dish sheet, cart, waiter view, waiter "add items" | Large | Built locally (branch `claude/stage1-dish-options`), waiting for Justin's OK |
 | 2 | Combos / set meals ("Meal A + choose a drink") | Mostly a "choose one" option group from #1 | Small | Not started |
 | 3 | Mark served + live status for guests (Sent → Seen → Served) | A status per order line; waiter marks each item served, one by one; guest phone shows it | Medium | Not started |
 | 4 | Running bill on the guest's phone, per guest and table total | Read-only, from existing orders | Small | Not started |
