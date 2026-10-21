@@ -3,10 +3,10 @@
   "configurations": [
     {
       "name": "tapndine",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3300,
-      "url": "http://127.0.0.1:3300"
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "3390"],
+      "port": 3390,
+      "url": "http://localhost:3390"
     }
   ]
 }

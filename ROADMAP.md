@@ -92,10 +92,11 @@ tapndine
 
 ## Stage 1: builds, in order
 
-Local only until Justin says otherwise: each build runs on the local database
-and dev server, on its own branch. No live migrations and no deploys. One
-build at a time, each checked in Chrome on desktop and phone, then stop for
-Justin's OK before the next.
+One build at a time. Each one is designed first on a Claude Design canvas
+for Justin to see, then built on the local database and dev server on its
+own branch, checked in Chrome on desktop and phone, then stops for Justin's
+OK. It goes live (migration, merge, deploy) only when he says so; Build 1
+went live 2026-10-21 that way.
 
 | # | Build | What it touches | Size | Status |
 |---|---|---|---|---|
