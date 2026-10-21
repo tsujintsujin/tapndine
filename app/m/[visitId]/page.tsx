@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Expired from "@/app/components/Expired";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { loadMenu } from "@/lib/menu";
-import { liveVisit } from "@/lib/visits";
+import { DEMO_TAG, liveVisit } from "@/lib/visits";
 import MenuApp from "./MenuApp";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,13 @@ export default async function MenuPage({ params }: { params: Promise<{ visitId: 
   return (
     <>
       <WarmBackdrop />
-      <MenuApp visitId={visitId} menu={menu} expiresAt={visit.expires_at} canSend={!!visit.sitting_id} />
+      <MenuApp
+        visitId={visitId}
+        menu={menu}
+        expiresAt={visit.expires_at}
+        canSend={!!visit.sitting_id}
+        demo={visit.tag_id === DEMO_TAG}
+      />
     </>
   );
 }

@@ -22,6 +22,12 @@ export type Visit = {
   expires_at: number;
 };
 
+/**
+ * The demo restaurant's "Not at a table" tag: the homepage's "Try the menu".
+ * Same id on the live site and in the seed data (seed/dev.sql).
+ */
+export const DEMO_TAG = "h3nd6vya";
+
 /** Tag ids are what is written on the physical tag. Reject anything else early. */
 export const isTagId = (id: string) => /^[a-z0-9]{4,32}$/.test(id);
 export const isVisitId = (id: string) => /^[A-Za-z0-9_-]{22}$/.test(id);

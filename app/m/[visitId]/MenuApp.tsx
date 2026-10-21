@@ -273,12 +273,15 @@ export default function MenuApp({
   menu,
   expiresAt,
   canSend,
+  demo,
 }: {
   visitId: string;
   menu: Menu;
   expiresAt: number;
   /** False for a tag not placed at a table: there is no waiter to send to. */
   canSend: boolean;
+  /** The homepage's demo menu: says ordering is in the real thing. */
+  demo: boolean;
 }) {
   const params = useSearchParams();
   const view = params.get("v") === "menu" ? "menu" : "home";
@@ -512,6 +515,7 @@ export default function MenuApp({
           setNote={setNote}
           sent={sent}
           canSend={canSend}
+          demo={demo}
           sending={sending}
           sendError={sendError}
           onSend={trySend}
@@ -1559,6 +1563,7 @@ function OrderList({
   setNote,
   sent,
   canSend,
+  demo,
   sending,
   sendError,
   onSend,
@@ -1572,6 +1577,7 @@ function OrderList({
   setNote: (id: string, text: string) => void;
   sent: GuestOrders | null;
   canSend: boolean;
+  demo: boolean;
   sending: boolean;
   sendError: string;
   onSend: () => void;
@@ -1666,6 +1672,11 @@ function OrderList({
                       </p>
                     )}
                   </>
+                ) : demo ? (
+                  <p className="mt-2 text-sm text-muted">
+                    This is a demo menu. In a restaurant with tapndine, Send to waiter goes right here and your order lands
+                    on the waiter&apos;s phone.
+                  </p>
                 ) : (
                   <p className="mt-2 text-sm text-muted">
                     This list stays on your phone. Show it to your waiter when you&apos;re ready to order.

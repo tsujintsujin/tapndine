@@ -9,6 +9,7 @@ import { SiteFooter } from "@/app/components/SiteFooter";
 import QRCode from "qrcode";
 import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
+import { DEMO_TAG } from "@/lib/visits";
 
 // The tapndine homepage: what it is, for restaurant owners. The product screens
 // are real captures of a test run at the sample restaurant (public/landing/);
@@ -57,10 +58,9 @@ const perTableMonth = (p: { price: number; tables: number }) =>
 
 /**
  * The demo restaurant's "Not at a table" link: the real guest menu, to look
- * through, with no waiter to send to. Same tag on the live site and in the
- * seed data (seed/dev.sql).
+ * through, with no waiter to send to.
  */
-const DEMO_PATH = "/t/h3nd6vya";
+const DEMO_PATH = `/t/${DEMO_TAG}`;
 const DEMO_URL = `https://tapndine.online${DEMO_PATH}`;
 
 const BLOB =
