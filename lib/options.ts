@@ -40,6 +40,22 @@ export function resolvePicks(d: Pickable, ids: readonly string[]): DishOption[] 
   return want.size === 0 ? picks : null;
 }
 
+/** What a picker starts on: the first size when the guest needn't pick one, else nothing. */
+export const startPicks = (d: Pickable) => new Set((resolvePicks(d, []) ?? []).map((o) => o.id));
+
+/** Tapping o: sizes and spice one at a time (spice can be un-picked), add-ons toggle. */
+export function togglePick(d: Pickable, picked: ReadonlySet<string>, o: DishOption): Set<string> {
+  const next = new Set(picked);
+  if (o.kind === "addon") {
+    if (!next.delete(o.id)) next.add(o.id);
+    return next;
+  }
+  const was = next.has(o.id);
+  for (const x of offered(d, o.kind)) next.delete(x.id);
+  if (!was || o.kind === "size") next.add(o.id);
+  return next;
+}
+
 /** "Sharing · Extra egg", or null for none. */
 export const optionsLabel = (picks: DishOption[]) => picks.map((p) => p.name).join(" · ") || null;
 

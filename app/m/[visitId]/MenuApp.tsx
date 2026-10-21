@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Dish, Menu } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
@@ -15,6 +15,8 @@ import {
   optionsLabel,
   parseLineKey,
   resolvePicks,
+  startPicks,
+  togglePick,
   type DishOption,
 } from "@/lib/options";
 import Expired from "@/app/components/Expired";
@@ -88,8 +90,8 @@ function orderLines(menu: Menu, order: Order): OrderLine[] {
     const picks = dish && resolvePicks(dish, optionIds);
     if (dish && picks) lines.push({ key, dish, picks, label: optionsLabel(picks), unitCents: dish.priceCents + extraCents(picks), qty });
   }
-  const at = (l: OrderLine) => menu.dishOrder.indexOf(l.dish.id);
-  return lines.sort((a, b) => at(a) - at(b));
+  const at = new Map(menu.dishOrder.map((id, i) => [id, i]));
+  return lines.sort((a, b) => at.get(a.dish.id)! - at.get(b.dish.id)!);
 }
 
 function useOrder(visitId: string) {
@@ -273,14 +275,18 @@ export default function MenuApp({
   menu,
   expiresAt,
   canSend,
+  demo,
 }: {
   visitId: string;
   menu: Menu;
   expiresAt: number;
   /** False for a tag not placed at a table: there is no waiter to send to. */
   canSend: boolean;
+  /** The homepage's demo menu: says ordering is in the real thing. */
+  demo: boolean;
 }) {
   const params = useSearchParams();
+  const router = useRouter();
   const view = params.get("v") === "menu" ? "menu" : "home";
   const dishId = params.get("d");
   const orderOpen = params.get("o") === "1";
@@ -349,6 +355,16 @@ export default function MenuApp({
     setToast({ key: Date.now(), title: "Added to order", detail: n > 1 ? `${n}× ${name}` : name });
   };
 
+  // A line the menu no longer offers as picked (a size made required, a
+  // choice removed) comes out of the order, with a word why, instead of
+  // silently vanishing or blocking the send.
+  useEffect(() => {
+    const gone = Object.keys(order).filter((k) => !lines.some((l) => l.key === k));
+    if (!gone.length) return;
+    gone.forEach((k) => setQty(k, 0));
+    setToast({ key: Date.now(), title: "Your order changed", detail: "The menu changed. Add those dishes again." });
+  }, [order, lines, setQty]);
+
   // One key per list sent, so a double tap or a retry cannot send it twice.
   // Changing the list makes it a different send.
   const sendKey = useRef<string | null>(null);
@@ -377,6 +393,12 @@ export default function MenuApp({
         }),
       });
       if (r.status === 410) return expire();
+      if (r.status === 422) {
+        // The menu changed since this page loaded (a dish sold out, a choice
+        // removed): load it again, which takes out what can't be ordered.
+        router.refresh();
+        throw new Error("The menu just changed. Check your order, then send again.");
+      }
       const j = (await r.json().catch(() => ({}))) as { sent?: GuestOrders | null; error?: string };
       if (!r.ok) throw new Error(j.error ?? "Could not send. Try again.");
       setSent(j.sent ?? null);
@@ -512,6 +534,7 @@ export default function MenuApp({
           setNote={setNote}
           sent={sent}
           canSend={canSend}
+          demo={demo}
           sending={sending}
           sendError={sendError}
           onSend={trySend}
@@ -1299,28 +1322,14 @@ function DishDetails({
   const addons = offered(dish, "addon");
   const spices = offered(dish, "spice");
   const hasOptions = sizes.length + addons.length + spices.length > 0;
-  // A size the guest doesn't have to pick starts on the first one.
-  const fresh = () => new Set(!dish.sizeRequired && sizes[0] ? [sizes[0].id] : []);
   // How many the next Add puts in, and with what; back to the start after each add.
   const [n, setN] = useState(1);
-  const [picked, setPicked] = useState(fresh);
+  const [picked, setPicked] = useState(() => startPicks(dish));
   const picks = resolvePicks(dish, [...picked]);
   const ready = dish.available && picks !== null;
   const unit = dish.priceCents + extraCents(picks ?? []);
 
-  /** Sizes and spice: one at a time (spice can be un-picked). Add-ons: toggled. */
-  const pick = (o: DishOption) =>
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (o.kind === "addon") {
-        if (!next.delete(o.id)) next.add(o.id);
-        return next;
-      }
-      const was = next.has(o.id);
-      for (const x of o.kind === "size" ? sizes : spices) next.delete(x.id);
-      if (!was || o.kind === "size") next.add(o.id);
-      return next;
-    });
+  const pick = (o: DishOption) => setPicked((prev) => togglePick(dish, prev, o));
 
   const addRow = (
     <>
@@ -1356,7 +1365,7 @@ function DishDetails({
           onClick={() => {
             onAdd(n, picks!);
             setN(1);
-            setPicked(fresh());
+            setPicked(startPicks(dish));
           }}
           className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-leaf px-3 text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
         >
@@ -1559,6 +1568,7 @@ function OrderList({
   setNote,
   sent,
   canSend,
+  demo,
   sending,
   sendError,
   onSend,
@@ -1572,6 +1582,7 @@ function OrderList({
   setNote: (id: string, text: string) => void;
   sent: GuestOrders | null;
   canSend: boolean;
+  demo: boolean;
   sending: boolean;
   sendError: string;
   onSend: () => void;
@@ -1666,6 +1677,11 @@ function OrderList({
                       </p>
                     )}
                   </>
+                ) : demo ? (
+                  <p className="mt-2 text-sm text-muted">
+                    This is a demo menu. In a restaurant with tapndine, Send to waiter goes right here and your order lands
+                    on the waiter&apos;s phone.
+                  </p>
                 ) : (
                   <p className="mt-2 text-sm text-muted">
                     This list stays on your phone. Show it to your waiter when you&apos;re ready to order.

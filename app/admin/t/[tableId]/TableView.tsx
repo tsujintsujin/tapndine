@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Additional, Call, GuestOrders, Line, TableOrders, WaiterDish } from "@/lib/orders";
-import { extraCents, offered, OPTION_KINDS, resolvePicks, type DishOption, type OptionKind } from "@/lib/options";
+import { extraCents, offered, OPTION_KINDS, resolvePicks, startPicks, togglePick, type DishOption, type OptionKind } from "@/lib/options";
 import { ago, formatPrice, formatTime } from "@/lib/format";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CloseIcon, MinusIcon, PlusIcon } from "@/app/components/Icons";
@@ -89,7 +89,7 @@ export default function TableView({
     if (
       qty === 0 &&
       !(await confirm({
-        title: `Remove ${line.name}?`,
+        title: `Remove ${line.name}${line.options ? ` (${line.options})` : ""}?`,
         body: "It comes off this table's order and the guest's bill.",
         confirmLabel: "Remove",
         danger: true,
@@ -557,6 +557,13 @@ function PickOptions({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  // A newly opened dish starts on its default picks in the same render, so
+  // the last dish's picks never show for a frame.
+  const [pickedFor, setPickedFor] = useState<WaiterDish | null>(null);
+  if (dish && dish !== pickedFor) {
+    setPickedFor(dish);
+    setPicked(startPicks(dish));
+  }
   // Keep the dish up while it closes, after the parent has dropped it.
   const last = useRef(dish);
   if (dish) last.current = dish;
@@ -565,27 +572,12 @@ function PickOptions({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (dish && !el.open) {
-      // A size the guest doesn't have to pick starts on the first one, as on the guest's phone.
-      const first = offered(dish, "size")[0];
-      setPicked(new Set(!dish.sizeRequired && first ? [first.id] : []));
-      el.showModal();
-    } else if (!dish && el.open) el.close();
+    if (dish && !el.open) el.showModal();
+    else if (!dish && el.open) el.close();
   }, [dish]);
 
   const picks = d && resolvePicks(d, [...picked]);
-  const pick = (o: DishOption) =>
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (o.kind === "addon") {
-        if (!next.delete(o.id)) next.add(o.id);
-        return next;
-      }
-      const was = next.has(o.id);
-      for (const x of offered(d!, o.kind)) next.delete(x.id);
-      if (!was || o.kind === "size") next.add(o.id);
-      return next;
-    });
+  const pick = (o: DishOption) => setPicked((prev) => togglePick(d!, prev, o));
 
   return (
     <dialog

@@ -774,8 +774,10 @@ function OptionsCard({
                     label={set.title}
                     onChange={() => {
                       onOn({ ...on, [kind]: !on[kind] });
-                      // Switching on an empty set starts it with a row to type in.
+                      // Switching on an empty set starts it with a row to type in;
+                      // switching off drops rows left empty, so nothing counts as changed.
                       if (!on[kind] && mine.length === 0) add();
+                      if (on[kind]) onRows(rows.filter((r) => r.kind !== kind || r.name.trim()));
                     }}
                   />
                 </span>

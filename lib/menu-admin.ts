@@ -217,7 +217,8 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
   // An id that is new, or not this dish's, gets a fresh one.
   const mine = await d.prepare("SELECT id FROM dish_options WHERE dish_id = ?").bind(id).all<{ id: string }>();
   const keep = new Set(mine.results.map((o) => o.id));
-  const options = x.options.map((o) => ({ ...o, id: keep.has(o.id) ? o.id : "o_" + randomId() }));
+  // Each kept id is used once, so a doubled id can't collide on insert.
+  const options = x.options.map((o) => ({ ...o, id: keep.delete(o.id) ? o.id : "o_" + randomId() }));
 
   const values = [
     x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, x.spiceLevel,

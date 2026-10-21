@@ -33,6 +33,7 @@ const fingerprint = () =>
       (SELECT group_concat(id || label || COALESCE(removed_at, '') || sort, '|') FROM (SELECT * FROM tables WHERE business_id = '${HIKAY}' ORDER BY id)) AS tables,
       (SELECT group_concat(id || COALESCE(table_id, '') || COALESCE(removed_at, ''), '|') FROM (SELECT * FROM tags WHERE business_id = '${HIKAY}' ORDER BY id)) AS tags,
       (SELECT group_concat(id || name || available || COALESCE(removed_at, '') || sort || featured || price_cents, '|') FROM (SELECT * FROM dishes WHERE business_id = '${HIKAY}' ORDER BY id)) AS dishes,
+      (SELECT group_concat(o.id || o.dish_id || o.kind || o.name || o.price_cents || o.sort, '|') FROM (SELECT o.* FROM dish_options o JOIN dishes x ON x.id = o.dish_id WHERE x.business_id = '${HIKAY}' ORDER BY o.id) o) AS options,
       (SELECT group_concat(id || name || sort, '|') FROM (SELECT * FROM categories WHERE business_id = '${HIKAY}' ORDER BY id)) AS categories,
       (SELECT COUNT(*) || '-' || SUM(dc.sort) FROM dish_categories dc JOIN categories c ON c.id = dc.category_id WHERE c.business_id = '${HIKAY}') AS links,
       (SELECT COUNT(*) || '-' || COUNT(closed_at) FROM sittings WHERE business_id = '${HIKAY}') AS sittings,
@@ -75,6 +76,7 @@ const openItem = sql(
   `SELECT i.id FROM batch_items i JOIN batches b ON b.id = i.batch_id JOIN sittings s ON s.id = b.sitting_id
    WHERE s.business_id = '${HIKAY}' AND s.closed_at IS NULL LIMIT 1`
 )?.id;
+const kusinaDish = sql(`SELECT id FROM dishes WHERE business_id = 'biz_kusina' AND removed_at IS NULL AND available = 1 LIMIT 1`).id;
 const hikayDishes = sql(`SELECT json_group_array(id) AS ids FROM dishes WHERE business_id = '${HIKAY}' AND removed_at IS NULL`).ids;
 
 // --- Kusina's manager, against Hikay ---------------------------------------
@@ -101,6 +103,8 @@ const attacks = [
   ["POST", "/api/staff/tables/tbl_hikay_2/items", { dishId: "d_sisig", qty: 1 }],
   ["POST", "/api/staff/tables/tbl_kusina_1/items", { dishId: "d_sisig", qty: 1 }],
   ["POST", `/api/staff/items/${openItem}`, { qty: 0 }],
+  // Kusina's own dish, with one of Hikay's options picked.
+  ["POST", "/api/staff/tables/tbl_kusina_1/items", { dishId: kusinaDish, qty: 1, options: ["o_sisig_sharing"] }],
   ["PUT", "/api/staff/menu/dishes/d_sisig", {
     name: "Hacked", shortDescription: "x", description: "", priceCents: 1, imageUrl: null, spiceLevel: 0,
     servesMin: 1, servesMax: 1, available: true, featured: false, bestSeller: false, isNew: false, categoryIds: [], ingredients: [],
@@ -121,8 +125,10 @@ for (const [method, path, body] of attacks) {
 
 // Clear and Disable answer ok even when there is nothing to do (a double tap
 // is not an error), so these two are judged by what happened, not the answer.
+const openOn2 = () => sql(`SELECT COUNT(*) AS n FROM sittings WHERE table_id = 'tbl_hikay_2' AND closed_at IS NULL`).n;
+const open2 = openOn2();
 await kusina("/api/staff/tables/tbl_hikay_2/clear", { method: "POST", body: {} });
-check(sql(`SELECT COUNT(*) AS n FROM sittings WHERE table_id = 'tbl_hikay_2' AND closed_at IS NULL`).n === 1, "Clearing Hikay's table 2 did nothing");
+check(openOn2() === open2, "Clearing Hikay's table 2 did nothing");
 await kusina("/api/staff/waiters/stf_ana/disable", { method: "POST", body: {} });
 check(sql(`SELECT disabled_at FROM staff WHERE id = 'stf_ana'`).disabled_at === null, "Disabling Hikay's waiter did nothing");
 
@@ -139,6 +145,17 @@ if (sneak.status === 200) {
   const id = JSON.parse(sneak.text).id;
   const linked = sql(`SELECT COUNT(*) AS n FROM dish_categories WHERE dish_id = '${id}'`).n;
   check(linked === 0, "...but it is not put in Hikay's category");
+  // Saving it again with Hikay's option ids: Kusina gets options of its own, Hikay's stay put.
+  const steal = await kusina(`/api/staff/menu/dishes/${id}`, {
+    method: "PUT",
+    body: {
+      name: "Sneaky", shortDescription: "x", description: "", priceCents: 100, imageUrl: null, spiceLevel: 0,
+      servesMin: 1, servesMax: 1, available: true, featured: false, bestSeller: false, isNew: false, categoryIds: [], ingredients: [],
+      sizeRequired: true, options: [{ id: "o_sisig_solo", kind: "size", name: "Mine", priceCents: 0 }, { id: "o_sisig_solo", kind: "size", name: "Twice", priceCents: 0 }],
+    },
+  });
+  check(steal.status === 200, "Kusina saves its dish with Hikay's option ids sent along");
+  check(sql(`SELECT COUNT(*) AS n FROM dish_options WHERE dish_id = '${id}' AND id NOT LIKE 'o_sisig%'`).n === 2, "...and gets two options of its own instead");
   await kusina(`/api/staff/menu/dishes/${id}`, { method: "DELETE" });
 }
 
@@ -173,6 +190,11 @@ const bad = await guest(`/api/visits/${visit}/order`, {
   body: { key: "aaaaaaaaaaaaaaaaaaaaaa", items: [{ dishId: "d_sisig", qty: 1 }] },
 });
 check(bad.status === 422, `Ordering Hikay's dish from Kusina's table refused (${bad.status})`);
+const badPick = await guest(`/api/visits/${visit}/order`, {
+  method: "POST",
+  body: { key: "aaaaaaaaaaaaaaaaaaaaab", items: [{ dishId: kusinaDish, qty: 1, options: ["o_sisig_sharing"] }] },
+});
+check(badPick.status === 422, `Ordering Kusina's dish with Hikay's option refused (${badPick.status})`);
 
 const after = fingerprint();
 check(after === before, "Hikay's data is unchanged after all of it");
