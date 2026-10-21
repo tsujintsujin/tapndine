@@ -18,7 +18,6 @@ const lanAddresses = Object.values(networkInterfaces())
 const nextConfig: NextConfig = {
   allowedDevOrigins: lanAddresses,
   basePath: BASE_PATH,
-  eslint: { ignoreDuringBuilds: true },
   // The workspace root holds other projects; stop the bundler walking up into them.
   outputFileTracingRoot: __dirname,
   poweredByHeader: false,
