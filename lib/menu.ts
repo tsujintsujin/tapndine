@@ -59,8 +59,29 @@ type DishRow = {
   size_required: number;
 };
 
-export type OptionRow = { id: string; dish_id: string; kind: OptionKind; name: string; price_cents: number };
-export const toOption = (o: OptionRow): DishOption => ({ id: o.id, kind: o.kind, name: o.name, priceCents: o.price_cents });
+export type OptionRow = {
+  id: string;
+  dish_id: string;
+  kind: OptionKind;
+  group_name: string | null;
+  ref_dish_id: string | null;
+  name: string;
+  price_cents: number;
+};
+export const toOption = (o: OptionRow): DishOption => ({
+  id: o.id,
+  kind: o.kind,
+  group: o.group_name,
+  ref: o.ref_dish_id,
+  name: o.name,
+  priceCents: o.price_cents,
+});
+
+/**
+ * A set meal choice shows only while its dish is on the menu today: sold out
+ * or removed, it drops out of the list. Use with "LEFT JOIN dishes r ON r.id = o.ref_dish_id".
+ */
+export const CHOICE_ON_MENU = "(o.ref_dish_id IS NULL OR (r.available = 1 AND r.removed_at IS NULL))";
 
 /** Everything the menu screens need, for the business the visit belongs to. */
 export async function loadMenu(visit: Visit): Promise<Menu | null> {
@@ -94,9 +115,11 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       .bind(visit.business_id),
     d
       .prepare(
-        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+`SELECT o.id, o.dish_id, o.kind, o.group_name, o.ref_dish_id, COALESCE(r.name, o.name) AS name, o.price_cents
+         FROM dish_options o
+         LEFT JOIN dishes r ON r.id = o.ref_dish_id
          JOIN dishes x ON x.id = o.dish_id
-         WHERE x.business_id = ? ORDER BY o.sort`
+         WHERE x.business_id = ? AND ${CHOICE_ON_MENU} ORDER BY o.sort`
       )
       .bind(visit.business_id),
   ]);

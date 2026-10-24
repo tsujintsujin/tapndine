@@ -76,9 +76,11 @@ export async function loadMenuAdmin(businessId: string) {
       .bind(businessId),
     d
       .prepare(
-        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+`SELECT o.id, o.dish_id, o.kind, o.group_name, o.ref_dish_id, COALESCE(r.name, o.name) AS name, o.price_cents
+         FROM dish_options o
+         LEFT JOIN dishes r ON r.id = o.ref_dish_id
          JOIN dishes x ON x.id = o.dish_id
-         WHERE x.business_id = ? AND x.removed_at IS NULL ORDER BY o.sort`
+         WHERE x.business_id = ? AND x.removed_at IS NULL AND (o.ref_dish_id IS NULL OR r.removed_at IS NULL) ORDER BY o.sort`
       )
       .bind(businessId),
   ]);
@@ -165,8 +167,14 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     if (!(cents >= 0 && cents <= 10_000_000)) return `Check the price of ${n}.`;
     // An id the editor got from loadMenuAdmin; saveDish keeps it only if it is this dish's.
     const id = typeof o?.id === "string" && /^o_[\w-]{1,40}$/.test(o.id) ? o.id : "";
-    options.push({ id, kind, name: n, priceCents: cents });
+    // A set meal choice is a dish from the menu, in a named list ("Drink"); the other kinds have neither.
+    const group = kind === "choice" ? str(o?.group) : null;
+    if (group !== null && (!group || group.length > 30)) return "Name each set meal list (up to 30 characters).";
+    const ref = kind === "choice" ? str(o?.ref) : null;
+    if (ref !== null && !/^d_[\w-]{1,40}$/.test(ref)) return "Pick each set meal choice from the menu.";
+    options.push({ id, kind, group, ref, name: n, priceCents: cents });
   }
+  if (new Set(options.filter((o) => o.kind === "choice").map((o) => o.group)).size > 5) return "Up to 5 choose-one lists.";
   if (OPTION_KINDS.some((k) => options.filter((o) => o.kind === k).length > 20)) return "Up to 20 choices of each kind.";
   return {
     name,
@@ -219,6 +227,17 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
   const keep = new Set(mine.results.map((o) => o.id));
   // Each kept id is used once, so a doubled id can't collide on insert.
   const options = x.options.map((o) => ({ ...o, id: keep.delete(o.id) ? o.id : "o_" + randomId() }));
+  // Set meal choices only from this restaurant's own menu, never the dish itself; the name is the dish's.
+  const refs = options.filter((o) => o.ref).map((o) => o.ref!);
+  if (refs.length) {
+    const menu = await d
+      .prepare("SELECT id, name FROM dishes WHERE business_id = ? AND removed_at IS NULL AND id IN (SELECT value FROM json_each(?))")
+      .bind(businessId, JSON.stringify(refs))
+      .all<{ id: string; name: string }>();
+    const names = new Map(menu.results.map((m) => [m.id, m.name]));
+    if (refs.some((r) => r === id || !names.has(r))) return null;
+    for (const o of options) if (o.ref) o.name = names.get(o.ref)!;
+  }
 
   const values = [
     x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, x.spiceLevel,
@@ -252,8 +271,10 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
     d.prepare("DELETE FROM dish_options WHERE dish_id = ?").bind(id),
     ...options.map((o, n) =>
       d
-        .prepare("INSERT INTO dish_options (id, dish_id, kind, name, price_cents, sort) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(o.id, id, o.kind, o.name, o.priceCents, n + 1)
+        .prepare(
+          "INSERT INTO dish_options (id, dish_id, kind, group_name, ref_dish_id, name, price_cents, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(o.id, id, o.kind, o.group, o.ref ?? null, o.name, o.priceCents, n + 1)
     ),
   ]);
   return id;

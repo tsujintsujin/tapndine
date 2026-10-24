@@ -246,6 +246,12 @@ INSERT INTO dish_options (id, dish_id, kind, name, price_cents, sort) VALUES
   ('o_shake_large',   'd_mangoshake', 'size', 'Large',    4000, 2);
 UPDATE dishes SET size_required = 0 WHERE id = 'd_mangoshake';
 
+-- A set meal: Chicken Inasal comes with a drink from the menu, one of them.
+INSERT INTO dish_options (id, dish_id, kind, group_name, ref_dish_id, name, price_cents, sort) VALUES
+  ('o_inasal_calamansi', 'd_inasal', 'choice', 'Drink', 'd_calamansi',  'Calamansi Juice',    0, 1),
+  ('o_inasal_buko',      'd_inasal', 'choice', 'Drink', 'd_buko',       'Buko Juice',         0, 2),
+  ('o_inasal_shake',     'd_inasal', 'choice', 'Drink', 'd_mangoshake', 'Mango Shake',     3000, 3);
+
 -- Staff logins for local testing only (test passwords, not used anywhere real).
 -- Log in at http://localhost:3300/login
 --   hikay-manager  /  menu-manager-1   (sees Tables and Staff)

@@ -101,7 +101,7 @@ went live 2026-10-21 that way.
 | # | Build | What it touches | Size | Status |
 |---|---|---|---|---|
 | 1 | Dish options: sizes, add-ons, "less spicy", with prices | New option tables; menu editor, guest dish sheet, cart, waiter view, waiter "add items" | Large | Live 2026-10-21 (PR #56) |
-| 2 | Combos / set meals ("Meal A + choose a drink") | Mostly a "choose one" option group from #1 | Small | Not started |
+| 2 | Combos / set meals ("Meal A + choose a drink") | Set meal lists of menu dishes, one pick each, with combo prices | Small | Built locally (branch `claude/stage1-combos`), waiting for Justin's OK |
 | 3 | Mark served + live status for guests (Sent → Seen → Served) | A status per order line; waiter marks each item served, one by one; guest phone shows it | Medium | Not started |
 | 4 | Running bill on the guest's phone, per guest and table total | Read-only, from existing orders | Small | Not started |
 | 5 | Waiter sections: assign tables to waiters | Staff–table link; waiter sees their tables first | Small | Not started |
