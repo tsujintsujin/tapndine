@@ -11,22 +11,23 @@ import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 import { DEMO_TAG } from "@/lib/visits";
 
-// The tapndine homepage: what it is, for restaurant owners. The product screens
-// are real captures of a test run at the sample restaurant (public/landing/);
-// the round "plates" are doodles (Doodles.tsx), not photos. The moving pictures
-// (hero, menu, waiter) are HyperFrames compositions: source in videos/, served
-// from public/anim/ (see Anim below).
+// The tapndine homepage, for restaurant owners: tapndine ends the idle waiting
+// at the table (for the menu, for a waiter, for answers about a dish). The plan
+// is REMODEL.md. The phone screens in "How it works" are real captures of a test
+// run at the sample restaurant (public/landing/); the round "plates" are doodles
+// (Doodles.tsx). The moving pictures (hero, the two tables, menu, waiter) are
+// HyperFrames compositions in the stock flat art: source in videos/, served from
+// public/anim/ (see Anim below).
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
 // Search terms this page is written for: digital menu, online menu, table ordering
-// system, QR code menu (tapndine is the no-scan alternative), restaurants and cafes
-// in the Philippines. Keep them in the description, the H1 line and the body copy.
+// system, QR code menu, restaurants and cafes in the Philippines. Keep them in the description, the H1 line and the body copy.
 // The title is the brand alone, like any site's home page: it is what the browser
 // tab, bookmarks, home-screen icon and share card show.
 const TITLE = "tapndine";
 const DESCRIPTION =
-  `Digital menu and table ordering for Philippine restaurants and cafes. Guests tap the table, order on their phone, and it reaches your waiter. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
+  `Digital menu and table ordering for Philippine restaurants and cafes. Guests see every dish and order from the table, so nobody waits for a menu or a waiter. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -42,15 +43,17 @@ const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
 const STATS_V = "2";
 /** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
-const ANIM_V = "2";
+const ANIM_V = "3";
 
 const EVERY_PLAN = [
-  "An NFC tag on every table",
   "Menu with photos, online",
   "Orders straight to the waiter",
+  "A QR code for every table",
   "Waiter and manager logins",
   "Sales and busy-hour statistics",
 ];
+/** Where restaurants get NFC tags for their tables free (Justin, 2026-10-25). */
+const NFC_AREA = "Davao City, Davao del Sur, Davao del Norte and Davao de Oro";
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
 /** A plan's yearly price per table per month: ₱5,000 for 10 tables is ₱41.67. */
 const perTableMonth = (p: { price: number; tables: number }) =>
@@ -145,7 +148,7 @@ function Plate({ Dish, className = "" }: { Dish: typeof Bowl; className?: string
 const ICON = "h-6 w-6";
 const FACTS = [
   {
-    text: "Nothing to download",
+    text: "Menu in one tap or scan",
     icon: (
       <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
         <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
@@ -154,34 +157,46 @@ const FACTS = [
     ),
   },
   {
-    text: "Works on iPhone and Android",
+    text: "Questions answered on the dish",
     icon: (
-      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
-        <path d="M6 8a8 8 0 0 1 0 8M10 5.5a12 12 0 0 1 0 13M14 3a16 16 0 0 1 0 18" />
+      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M4 5h16v11H9l-5 4z" />
+        <path d="M9 10.5l2 2 4-4" />
       </svg>
     ),
   },
   {
-    text: "Menu link closes after 2 hours",
+    text: "Order when they're ready",
     icon: (
-      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
+      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5 8h14l-1.3 12H6.3z" />
+        <path d="M9 11V6.5a3 3 0 0 1 6 0V11" />
       </svg>
     ),
   },
   {
-    text: "Light on mobile data",
+    text: "Call the waiter with a tap",
     icon: (
-      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
-        <path d="M5 19v-3M10 19v-6M15 19v-9M20 19V6" />
+      <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+        <path d="M10 20.5a2 2 0 0 0 4 0" />
       </svg>
     ),
   },
 ];
 
+// The five waits tapndine takes away (REMODEL.md, agreed 2026-10-25): what the
+// table waits for, and what it has instead. Only what the product does today.
+const WAITS = [
+  { wait: "Waiting for the menu", now: "It opens on their phone with a tap or a scan." },
+  { wait: "Waiting for a waiter to take the order", now: "They send it from the table, when they're ready." },
+  { wait: "Waiting to ask what's in a dish, how spicy, how big", now: "Photo, spice, how many it feeds, sizes and price are on the dish." },
+  { wait: "Waiting for the menu again, to order more", now: "The menu stays on their phone. They send another round." },
+  { wait: "Waving for the bill", now: "They tap Ask for the bill, and the waiter sees it." },
+];
+
 const STEPS = [
-  { src: "m-home", title: "Tap the tag", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone opened at Table 1, showing today's pick, Kare-Kare, with its price and an Add to order button" },
+  { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone opened at Table 1, showing today's pick, Kare-Kare, with its price and an Add to order button" },
   { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, filtered by Seafood, Chicken, Pork and Beef" },
   { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter and the total so far" },
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
@@ -194,11 +209,15 @@ const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,
 const FAQ = [
   {
     q: "What is tapndine?",
-    a: "tapndine is a digital menu and table ordering system for restaurants and cafes in the Philippines. Guests tap the NFC tag on their table with their phone, browse your online menu with photos, and send their order straight to your waiter.",
+    a: "tapndine ends the idle waiting at the table for restaurants and cafes in the Philippines. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
+  },
+  {
+    q: "Will guests still talk to my waiters?",
+    a: "Only as much as they want to. The waiter greets the table, confirms the order and brings the food. Nobody has to flag a waiter down for a menu, a question about a dish or another round, and guests can call the waiter from the menu whenever they need one.",
   },
   {
     q: "How is it different from a QR code menu?",
-    a: "Guests tap the tag instead of opening the camera to scan, and the menu opens already set to their table. And it is more than a menu to look at: orders go to the waiter's phone, sorted by guest, and every order counts toward your sales statistics. If you want a printed QR code on the table too, each table's link can be downloaded as one.",
+    a: `A QR menu only shows the menu. With tapndine, guests also order from it: each order goes to your waiter's phone, sorted by guest, and counts toward your sales statistics. The menu opens already set to their table. Guests scan the table's QR code, and restaurants in ${NFC_AREA} also get NFC tags free, so guests can just tap.`,
   },
   {
     q: "Do guests need to download an app?",
@@ -206,7 +225,7 @@ const FAQ = [
   },
   {
     q: "What if a guest's phone can't tap NFC?",
-    a: "Most phones from the last few years read NFC tags; on some Android phones NFC has to be switched on in settings. A guest who can't tap can scan the table's QR code if you print one, order on a friend's phone at the same table, or tell the waiter, who adds the dishes to the table's order from their own phone.",
+    a: "Every table has a QR code, so any phone with a camera can open the menu. Where there is an NFC tag, most phones from the last few years can tap it; on some Android phones NFC has to be switched on in settings. A guest without a phone can order on a friend's phone at the same table, or tell the waiter, who adds the dishes to the table's order from their own phone.",
   },
   {
     q: "Can someone order from outside the restaurant?",
@@ -218,11 +237,11 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `One yearly price by number of tables: ${PLAN_LIST}. Extra tables on any plan are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Every plan includes an NFC tag for each table, waiter and manager logins, and sales statistics. Renew at the same rate to keep your menu online.`,
+    a: `One yearly price by number of tables: ${PLAN_LIST}. Extra tables on any plan are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Every plan includes a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
-    a: "Yes. You get one week free with the full system: your menu online, orders to your waiters' phones, and the statistics. The trial uses QR codes instead of NFC tags: print each table's code from your manager login and put it on the table. NFC tags come with a paid plan.",
+    a: `Yes. You get one week free with the full system: your menu online, orders to your waiters' phones, and the statistics. Print each table's QR code from your manager login and put it on the table. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
   },
   {
     q: "Does tapndine replace my POS?",
@@ -275,6 +294,8 @@ const JSON_LD = {
 };
 
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
+/** The light blue the flat illustrations are drawn on (videos/wait-race). */
+const ART_BLUE = "text-[#d6e6fd]";
 const PILL = "inline-block rounded-full px-6 py-3 font-semibold transition";
 
 export default async function Home() {
@@ -309,13 +330,13 @@ export default async function Home() {
               <span className="mb-4 block text-balance text-sm font-bold uppercase tracking-wider text-home-cocoa/70">
                 Digital menu &amp; table ordering in the Philippines
               </span>
-              <span className="block max-w-[14ch] text-balance text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
-                The whole menu, in your hands.
+              <span className="block max-w-[13ch] text-balance text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
+                No more idle waiting at the table.
               </span>
             </h1>
             <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
-              Every guest sees every dish on their own phone: photo, price, how many it feeds. No waiting for the menu
-              booklet, no guessing what a dish looks like. Orders go straight to the waiter.
+              Guests tap or scan the table and the whole menu is on their phone: photos, prices, spice, sizes, how many
+              each dish feeds. They order when they&apos;re ready, and it goes straight to your waiter.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
@@ -329,16 +350,16 @@ export default async function Home() {
 
           <div className="relative mx-auto aspect-square w-full max-w-[520px]">
             <div className="absolute -right-8 -top-6 h-[80%] w-[80%] rounded-full bg-home-orange md:hidden" aria-hidden />
-            <Plate Dish={Bowl} className="absolute right-0 top-[2%] w-[64%]" />
-            {/* The phone and the table's tap tag: one dinner, start to finish, looping */}
+            <Blob className={`inset-0 m-auto h-[96%] w-[96%] ${ART_BLUE}`} />
+            {/* One table with tapndine: tap, the dish answers, the order goes, the food comes (videos/table-hero) */}
             <Anim
-              name="hero-loop"
-              canvas={[1400, 1200]}
-              box={[200, 60, 1080, 1080]}
+              name="table-hero"
+              canvas={[1080, 1080]}
+              box={[0, 0, 1080, 1080]}
               eager
-              label="A guest taps the table tag, orders on their phone, and the order arrives on the waiter's phone."
+              label="A couple at a table: he taps the table stand, the Pork Sisig card shows its photo, spice, how many it feeds and price, the order goes to the waiter, and the food arrives."
             />
-            <div className="absolute bottom-[10%] right-[4%] grid h-28 w-28 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-32 sm:w-32">
+            <div className="absolute -left-2 top-0 grid h-24 w-24 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-28 sm:w-28">
               <p className="text-xs font-semibold leading-tight">
                 From
                 <span className="block text-xl font-extrabold sm:text-2xl">{peso(PLANS[0].price)}</span>a year
@@ -361,31 +382,84 @@ export default async function Home() {
         ))}
       </ul>
 
+      {/* The two tables: the same couple, with and without tapndine (videos/wait-race) */}
+      <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-20 sm:px-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:gap-14 md:pb-24 md:pt-28">
+        <div className="md:order-2">
+          <h2 className={H2}>Same table. Same kitchen.</h2>
+          <p className="mt-5 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
+            One table waits for a menu, a waiter and answers about the dish. The other is already eating.
+          </p>
+          <p className="mt-4 max-w-md font-medium leading-relaxed text-home-cocoa/75">
+            The kitchen is just as fast for both. With tapndine the order simply gets there sooner, because nobody at the
+            table had to wait to place it.
+          </p>
+        </div>
+        <figure className="md:order-1">
+          <div className="relative mx-auto aspect-square w-full max-w-[600px] overflow-hidden rounded-[2rem] bg-white shadow-[0_30px_70px_-30px_rgb(59_46_37/0.45)] ring-1 ring-home-cream">
+            <Anim
+              name="wait-race"
+              canvas={[1080, 1080]}
+              box={[0, 0, 1080, 1080]}
+              label="The same couple at two tables. Without tapndine they wait for a waiter, the menu and answers, and are still waiting at 13 minutes. With tapndine they tap the table, send their order, the waiter reads it back, and they are eating."
+            />
+          </div>
+          <figcaption className="mx-auto mt-3 max-w-[600px] text-center text-sm font-medium text-home-cocoa/60">
+            Illustration, not measured times.
+          </figcaption>
+        </figure>
+      </section>
+
+      {/* The five waits, and what each table has instead */}
+      <section className="relative bg-home-shell">
+        <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6 md:py-24">
+          <h2 className={`${H2} text-center`}>Every wait, gone.</h2>
+          <p className="mx-auto mt-4 max-w-lg text-center font-medium leading-relaxed text-home-cocoa/75">
+            Five times a table sits and waits for a waiter, and what tapndine puts there instead.
+          </p>
+          <ul className="mt-12 divide-y divide-home-cream overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_-24px_rgb(59_46_37/0.35)]">
+            {WAITS.map((w) => (
+              <li key={w.wait} className="grid gap-2 px-5 py-5 sm:grid-cols-2 sm:items-center sm:gap-8 sm:px-8">
+                <p className="flex items-start gap-3 font-semibold text-home-cocoa/60">
+                  <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  <span><span className="sr-only">Before: </span>{w.wait}</span>
+                </p>
+                <p className="flex items-start gap-3 font-bold">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-sage text-white">
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <span><span className="sr-only">With tapndine: </span>{w.now}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       {/* Feature: the menu */}
       <section className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
-        <div className="relative mx-auto aspect-[420/520] w-full max-w-[420px]">
-          <Blob className="inset-0 m-auto h-full w-full scale-110 text-home-butter" />
-          <Bowl className="absolute -left-2 top-2 w-14 text-home-cocoa/30" />
-          <Shrimp className="absolute -right-2 bottom-4 w-14 text-home-cocoa/30" />
-          {/* A thick paper menu flips through its pages and turns into one phone; plays once */}
+        <div className="relative mx-auto aspect-square w-full max-w-[500px]">
+          <Blob className={`inset-0 m-auto h-full w-full ${ART_BLUE}`} />
+          {/* One paper menu and three questions, then each guest's own dish card (videos/table-menu) */}
           <Anim
-            name="menu-booklet"
-            canvas={[1300, 1550]}
-            box={[125, 125, 1050, 1300]}
-            label="A thick paper menu folds shut and becomes a phone showing the whole menu, filtered to Seafood."
+            name="table-menu"
+            canvas={[1080, 1080]}
+            box={[0, 0, 1080, 1080]}
+            label="Three friends share one paper menu and ask: is it spicy, how big is it, what does it look like. Then each has the menu on their own phone, and a dish card answers each question."
           />
         </div>
         <div>
-          <h2 className={H2}>Your whole menu, on every phone at the table.</h2>
+          <h2 className={H2}>Every question, answered on the dish.</h2>
           <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-            Your digital menu gives every dish a photo, its price and how many people it feeds. Guests search,
-            filter by Seafood or Pork, and see what&apos;s sold out today before they ask for it.
+            Every dish shows its photo, price, how spicy it is and how many people it feeds, with sizes and add-ons
+            where you offer them. Guests search, filter by Seafood or Pork, and see what&apos;s sold out before they ask.
           </p>
-          <div className="mt-8 grid max-w-sm grid-cols-3 gap-3">
+          <div className="mt-8 grid max-w-[16rem] grid-cols-2 gap-3">
             {[
-              ["1", "tap to open"],
+              ["1", "tap or scan to open"],
               ["0", "apps to install"],
-              ["2 h", "then the link closes"],
             ].map(([v, l]) => (
               <div key={l} className="rounded-2xl bg-home-shell px-3 py-4 text-center ring-1 ring-home-cream">
                 <p className="text-2xl font-extrabold text-home-orange">{v}</p>
@@ -401,23 +475,23 @@ export default async function Home() {
         <Fish className="absolute right-[48%] top-12 hidden w-16 text-home-cocoa/25 md:block" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <div className="md:order-2">
-            <div className="relative mx-auto aspect-[1050/1368] w-full max-w-[420px]">
-              <div className="absolute -right-10 -top-6 h-64 w-64 rounded-full bg-home-butter" aria-hidden />
-              {/* Each guest's order flies into the waiter's phone as its own card; then the table is cleared */}
+            <div className="relative mx-auto aspect-square w-full max-w-[500px]">
+              <Blob className="inset-0 m-auto h-full w-full text-white" />
+              {/* Bea, Paolo and Mia each send; each order lands on the waiter's screen under their name (videos/table-waiter) */}
               <Anim
-                name="waiter-orders"
-                canvas={[1350, 1620]}
-                box={[150, 100, 1050, 1368]}
-                label="Bea, Paolo and Mia each send an order; each lands on the waiter's phone as its own card and the table total adds up."
+                name="table-waiter"
+                canvas={[1080, 1080]}
+                box={[0, 0, 1080, 1080]}
+                label="Paolo, Bea and Mia each send their order from their phone; each lands on the waiter's screen as its own row, sorted by guest, and the total adds up. The waiter goes to key it into the POS."
               />
             </div>
           </div>
           <div className="md:order-1">
-            <h2 className={H2}>Orders reach the waiter, sorted by guest.</h2>
+            <h2 className={H2}>Your waiters stop answering and start serving.</h2>
             <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-              Table ordering without the wait: each phone at the table shows up as its own guest, with the name they
-              chose. Your waiter reads the order back, fixes a quantity, adds what was asked for out loud, and clears
-              the table once it&apos;s paid.
+              Each guest&apos;s order arrives on the waiter&apos;s phone under the name they chose, sorted by guest.
+              Your waiter reads it back, keys it into your POS and brings the food, instead of walking back and forth
+              for menus and questions.
             </p>
             <ul className="mt-6 flex flex-wrap gap-2">
               {["Guest names", "Order rounds", "Read-back fixes", "Waiter-added items", "Table totals", "Clear table", "Waiter logins"].map((t) => (
@@ -458,9 +532,9 @@ export default async function Home() {
           />
         </div>
         <div>
-          <h2 className={H2}>See what sells, and when you&apos;re busy.</h2>
+          <h2 className={H2}>A bonus: see what sells, and when you&apos;re busy.</h2>
           <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-            Every order is counted, so the manager can see sales by day, the busiest hours of the week, which dishes
+            On top of the orders, every one is counted, so the manager can see sales by day, the busiest hours of the week, which dishes
             lead and which nobody orders, how long groups stay, and which tables earn the most.
           </p>
           <ul className="mt-6 space-y-3 text-sm font-semibold">
@@ -484,11 +558,11 @@ export default async function Home() {
         <Cutlery className="absolute right-[12%] top-24 hidden w-14 rotate-12 text-home-cocoa/30 md:block" />
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-20 text-center sm:px-6 md:pt-28">
           <h2 className="mx-auto max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.6rem]">
-            From the tap to the table, in four steps.
+            From sitting down to ordering, in four steps.
           </h2>
           <p className="mx-auto mt-5 max-w-xl font-medium leading-relaxed text-home-cocoa/80">
-            Put a tag on each table. Guests do the rest from their own phones, and your waiters see every order the
-            moment it&apos;s sent.
+            Put each table&apos;s QR code on it. Guests do the rest from their own phones, and your waiters see every
+            order the moment it&apos;s sent.
           </p>
           <ol className="mt-16 grid grid-cols-2 gap-x-5 gap-y-12 text-left lg:grid-cols-4">
             {STEPS.map((s, i) => (
@@ -597,6 +671,9 @@ export default async function Home() {
               ))}
             </ul>
           </div>
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-center text-sm font-semibold text-home-cocoa/75">
+            Free NFC tags for restaurants in {NFC_AREA}: guests just tap the table instead of scanning.
+          </p>
         </div>
       </section>
 

@@ -39,7 +39,7 @@
       .wstage { position: absolute; left: 790px; top: 463px; width: 200px; height: 428px; transform: scale(1.241); transform-origin: 0 0; }
       .waiter { position: absolute; left: 0; top: 0; width: 200px; height: 428px; }
       .waiter img { position: absolute; left: 0; top: 0; width: 200px; height: 428px; display: block; }
-      #wphone { left: 141px; top: 98px; width: 18px; height: 30px; }
+      #wphone { left: 108px; top: 97px; width: 18px; height: 30px; } /* held in his right hand's fingers */
 
       /* the waiter's screen, big */
       #panel { position: absolute; left: 420px; top: 40px; width: 620px; padding: 26px 28px 20px; border-radius: 34px; background: #fff; box-shadow: 0 30px 60px -24px rgba(35, 56, 98, 0.5); }
@@ -80,7 +80,7 @@
           <img src="assets/art/t-chand2.svg" alt="" />
           <img src="assets/art/t-lchair.svg" alt="" />
           <img src="assets/art/t-rchair.svg" alt="" />
-          <img src="assets/art/t-rdrink.svg" alt="" />
+          <img src="assets/art/t-rdrink.svg" alt="" id="drink-mia" />
           <img src="assets/art/t-rarm0.svg" alt="" />
           <img src="assets/art/t-rhairb.svg" alt="" class="mia-head" />
           <img src="assets/art/t-rlegs.svg" alt="" />
@@ -88,17 +88,18 @@
           <img src="assets/art/t-rbody.svg" alt="" />
           <img src="assets/art/t-rface.svg" alt="" class="mia-head" />
           <img src="assets/art/t-rarms.svg" alt="" />
-          <img src="assets/art/t-ldrink.svg" alt="" />
+          <img src="assets/art/t-ldrink.svg" alt="" id="drink-paolo" />
           <img src="assets/art/t-lbody1.svg" alt="" />
           <img src="assets/art/t-lneck.svg" alt="" />
           <img src="assets/art/t-lbody1b.svg" alt="" />
           <img src="assets/art/t-lface.svg" alt="" id="paolo-head" />
           <img src="assets/art/t-lbody2.svg" alt="" />
           <img src="assets/art/t-table.svg" alt="" />
-          <!-- each guest's phone, at their hands (source - [190, 1100]) x 0.886 -->
-          <div class="phone" id="ph-paolo" style="left: 176px; top: 150px"></div>
-          <div class="phone" id="ph-bea" style="left: 330px; top: 150px"></div>
-          <div class="phone" id="ph-mia" style="left: 520px; top: 158px"></div>
+          <!-- each phone in the hand that was holding something: Paolo's and Mia's drinks
+               are put down while they use the phone, Bea's is where the menu was -->
+          <div class="phone" id="ph-paolo" style="left: 211px; top: 116px"></div>
+          <div class="phone" id="ph-bea" style="left: 314px; top: 150px"></div>
+          <div class="phone" id="ph-mia" style="left: 527px; top: 142px"></div>
         </div>
         <div class="tag" id="tag-paolo" style="left: 70px; top: 556px">Paolo</div>
         <div class="tag" id="tag-bea" style="left: 300px; top: 548px">Bea</div>
@@ -186,6 +187,7 @@
       tl.to("#ph-bea", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.5);
       tl.to("#ph-paolo", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.6);
       tl.to("#ph-mia", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.7);
+      tl.to(["#drink-paolo", "#drink-mia"], { opacity: 0, duration: 0.15 }, 0.55);
       tl.to(["#paolo-head", ".bea-head", ".mia-head"], { rotation: (i) => [-4, 5, 5][i] ?? 5, duration: 0.4, ease: "power2.inOut" }, 0.6);
 
       // 1.0 Bea, 2.3 Paolo, 3.6 Mia: each order is its own row
@@ -197,6 +199,7 @@
       send("mia", ".mia-head", 655, 528, 2, 3.6);
       sum(3, 4.85);
       tl.to(".trio .phone", { scale: 0, duration: 0.2, ease: "power2.in", stagger: 0.08 }, 5.0);
+      tl.to(["#drink-paolo", "#drink-mia"], { opacity: 1, duration: 0.15 }, 5.15);
       tl.to(["#paolo-head", ".bea-head", ".mia-head"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, 5.0);
 
       // 5.4  the waiter has it all; off to the POS, and back

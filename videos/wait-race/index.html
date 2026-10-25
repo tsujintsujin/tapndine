@@ -72,16 +72,16 @@
       /* small props, in scene px */
       .phone { position: absolute; width: 16px; height: 26px; border-radius: 4px; background: #1b2a4a; box-shadow: inset 0 0 0 2px #1b2a4a; }
       .phone::after { content: ""; position: absolute; left: 2px; top: 3px; right: 2px; bottom: 4px; border-radius: 2px; background: #d6e6fd; }
-      #r-tent { position: absolute; left: 282px; top: 141px; width: 26px; height: 34px; }
-      .ring { position: absolute; left: 280px; top: 137px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--orange); opacity: 0; }
+      #r-tent { position: absolute; left: 240px; top: 141px; width: 26px; height: 34px; }
+      .ring { position: absolute; left: 238px; top: 137px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--orange); opacity: 0; }
       #l-menu { position: absolute; left: 2px; top: 35px; width: 70px; height: 49px; }
       .plate { position: absolute; width: 96px; height: 44px; }
       .plate svg.p { position: absolute; left: 0; top: 0; width: 96px; height: 44px; }
       .steam { position: absolute; left: 22px; top: -40px; width: 52px; height: 44px; }
       .steam path { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; opacity: 0; }
-      #l-pad { position: absolute; left: 18px; top: 104px; width: 36px; height: 46px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 2px #c4d6ef; opacity: 0; }
+      #l-pad { position: absolute; left: 32px; top: 110px; width: 36px; height: 46px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 2px #c4d6ef; opacity: 0; }
       #l-pad::before { content: ""; position: absolute; left: 6px; right: 6px; top: 10px; height: 20px; background: repeating-linear-gradient(#8cb4f4 0 2px, transparent 2px 8px); }
-      #l-pen { position: absolute; left: 142px; top: 86px; width: 6px; height: 34px; border-radius: 3px; background: var(--ink); opacity: 0; }
+      #l-pen { position: absolute; left: 115px; top: 94px; width: 6px; height: 34px; border-radius: 3px; background: var(--ink); opacity: 0; }
 
       .caption { position: absolute; left: 0; top: 978px; width: 540px; height: 44px; }
       .caption span { position: absolute; left: 0; top: 0; width: 540px; text-align: center; font-size: 32px; font-weight: 700; white-space: nowrap; opacity: 0; }
@@ -205,7 +205,7 @@
               <img src="assets/art/w-back.svg" alt="" />
               <img src="assets/art/w-head.svg" alt="" id="r-whd" />
               <img src="assets/art/w-body.svg" alt="" />
-              <div class="phone" id="r-wphone" style="left: 141px; top: 98px; width: 18px; height: 30px"></div>
+              <div class="phone" id="r-wphone" style="left: 108px; top: 97px; width: 18px; height: 30px"></div>
               <img src="assets/art/w-hands.svg" alt="" />
             </div>
             <img src="assets/art/c-wchair.svg" alt="" id="r-wchair" />
@@ -228,7 +228,7 @@
             <img src="assets/art/c-mbody2.svg" alt="" class="seated" />
             <div class="armw seated" id="r-armw">
               <img src="assets/art/c-marm.svg" alt="" />
-              <div class="phone" id="r-phone" style="left: 262px; top: 94px"></div>
+              <div class="phone" id="r-phone" style="left: 258px; top: 86px"></div>
             </div>
             <img src="assets/art/c-mcollar.svg" alt="" class="seated" />
             <img src="assets/art/c-mchair.svg" alt="" id="r-mchair" />
@@ -571,8 +571,8 @@
       tl.to("#r-phone", { scale: 0, duration: 0.2, ease: "power2.in" }, r + 0.1);
       tl.to(["#r-whead", "#r-weye", "#r-mhead"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
       waiterWalk("r", 560, 145, r, 0.7, ["#r-plateA", "#r-plateB"]);
-      tl.to("#r-plateA", { x: 123, y: 94, duration: 0.35, ease: "power2.inOut" }, r + 0.75);
-      tl.to("#r-plateB", { x: 108, y: 115, duration: 0.35, ease: "power2.inOut" }, r + 0.8);
+      tl.to("#r-plateA", { x: 117, y: 94, duration: 0.35, ease: "power2.inOut" }, r + 0.75);
+      tl.to("#r-plateB", { x: 176, y: 115, duration: 0.35, ease: "power2.inOut" }, r + 0.8); // in front of him, clear of the table stand
       tl.to("#chip", { opacity: 0, scale: 0.8, duration: 0.2, ease: "power2.in" }, r + 0.9);
       waiterWalk("r", 145, 560, r + 1.2, 0.6);
       steam("#r-plateA", r + 1.15, END - (r + 1.15));
