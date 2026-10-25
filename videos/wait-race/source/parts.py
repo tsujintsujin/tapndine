@@ -94,3 +94,41 @@ write("s-mlegR", [], SVB, sleg(1580, 1100, "#233862", "#0f2549", -1, False))
 # the plant by the bar, as decor that slides in
 write("plant", r(710, 783), "2715 1280 285 260")
 print("done")
+
+# The three-person table (the other table in the art), for the waiter and menu
+# animations. Same rules: one viewBox for every layer, paint order kept. Heads
+# are split where the art paints hair behind the body and face in front.
+TVB = "190 1100 790 445"
+TRIO = [
+    ("t-cchair", r(878, 884)),                    # Bea's chair (middle)
+    ("t-chairb", [885, 886]),                     # Bea's hair, behind her
+    ("t-clegs", r(887, 894)),
+    ("t-cface", [895, 896, 897]),
+    ("t-cbody", [898, 900, 901]),
+    ("t-cmenu", [902, 903, 904]),                 # the red menu she holds
+    ("t-chand", [905]),
+    ("t-chair", r(906, 909) + [899]),             # her fringe and smile
+    ("t-chand2", [910]),
+    ("t-lchair", r(911, 917)),                    # Paolo's chair (left)
+    ("t-rchair", r(918, 923)),                    # Mia's chair (right)
+    ("t-rdrink", r(924, 927)),
+    ("t-rarm0", [928]),
+    ("t-rhairb", [929]),
+    ("t-rlegs", r(930, 935)),
+    ("t-rneck", [936]),
+    ("t-rbody", [937]),
+    ("t-rface", r(938, 941) + [948]),
+    ("t-rarms", r(942, 947)),
+    ("t-ldrink", r(949, 952)),
+    ("t-lbody1", [953, 954]),
+    ("t-lneck", [955]),
+    ("t-lbody1b", r(956, 960)),
+    ("t-lface", [961, 962, 963, 971]),
+    ("t-lbody2", r(964, 967)),
+    ("t-table", r(968, 970)),
+]
+tused = sorted(i for _, ids in TRIO for i in ids)
+assert tused == r(878, 971), sorted(set(r(878, 971)) - set(tused))
+for name, ids in TRIO:
+    write(name, ids, TVB)
+print(len(TRIO), "trio parts")
