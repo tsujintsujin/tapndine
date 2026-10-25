@@ -6,11 +6,11 @@ import { LegalPage, type LegalSection } from "@/app/components/LegalPage";
 
 export const metadata: Metadata = {
   title: "Terms of Service · tapndine",
-  description: "The terms for restaurants using tapndine: plans, payment, renewal, NFC tags, your data and your guests.",
+  description: "The terms for restaurants using tapndine: plans, payment, renewal, table QR codes and NFC tags, your data and your guests.",
   alternates: { canonical: "/terms" },
 };
 
-const UPDATED = "October 13, 2026";
+const UPDATED = "October 25, 2026";
 const EMAIL = "justin.masiga.94@gmail.com";
 
 const SECTIONS: LegalSection[] = [
@@ -33,8 +33,9 @@ const SECTIONS: LegalSection[] = [
     title: "What tapndine is",
     body: (
       <p>
-        tapndine puts an NFC tag on each of your tables. A guest taps the tag with their phone, your menu opens in their
-        browser, and the orders they send go to your waiters&apos; phones. Managers also get sales and busy-hour
+        Each of your tables gets its own QR code, and restaurants in Davao City, Davao del Sur, Davao del Norte and
+        Davao de Oro also get an NFC tag for each table. A guest scans the code or taps the tag with their phone, your
+        menu opens in their browser, and the orders they send go to your waiters&apos; phones. Managers also get sales and busy-hour
         statistics. Guests do not install an app or make an account.
       </p>
     ),
@@ -64,8 +65,8 @@ const SECTIONS: LegalSection[] = [
     title: "Refunds",
     body: (
       <p>
-        Before your tags are installed, you can cancel and get your payment back in full. Once the tags are installed and
-        your menu is live, payments are not refunded, including for the unused part of a year.
+        Before your menu goes live, you can cancel and get your payment back in full. Once your menu is live, payments
+        are not refunded, including for the unused part of a year.
       </p>
     ),
   },
@@ -73,7 +74,9 @@ const SECTIONS: LegalSection[] = [
     title: "NFC tags",
     body: (
       <p>
-        Your plan includes one NFC tag per table. If a tag stops working because it is faulty, we replace it for free.
+        Restaurants in Davao City, Davao del Sur, Davao del Norte and Davao de Oro get one NFC tag per table, free,
+        with a paid plan; everywhere else, guests scan the table&apos;s QR code. If a tag stops working because it is
+        faulty, we replace it for free.
         Tags that are lost, broken or taken by a guest can be replaced for a small fee. Please keep the tags where
         guests can tap them and away from metal surfaces, which can block them.
       </p>

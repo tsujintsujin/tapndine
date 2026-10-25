@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" data-resolution="square">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1080" />
+    <script src="assets/vendor/gsap.min.js"></script>
+    <!--
+      tapndine homepage, "Your waiters stop answering and start serving": the
+      three-person table from Justin's stock art (Paolo, Bea, Mia). Each sends
+      their own order from their phone; it lands on the waiter's screen (the
+      panel) as its own row, sorted by guest, and the total adds up. He heads
+      off to key it into the POS and comes back, and it starts again.
+      See-through background. Layers: videos/wait-race/source/parts.py (TRIO,
+      WAITER). The dishes and prices are the sample restaurant's.
+
+      On the homepage (#embed) it scales to its frame and loops while on
+      screen; reduced motion shows one still (5.4 s, all three rows in).
+    -->
+    <style>
+      @font-face {
+        font-family: "Montserrat";
+        src: url("assets/fonts/montserrat-latin.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      :root { --ink: #233862; --orange: #f19a33; --cocoa: #3b2e25; --price: #b8650f; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1080px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Montserrat", sans-serif; color: var(--ink); }
+
+      /* the table: 790x445 of the source at 0.886 = 700x394 */
+      .trio { position: absolute; left: 24px; top: 600px; width: 700px; height: 394px; }
+      .trio > img { position: absolute; left: 0; top: 0; width: 700px; height: 394px; display: block; }
+      #shadow { position: absolute; left: 20px; top: 984px; width: 1020px; height: 22px; border-radius: 50%; background: rgba(35, 56, 98, 0.16); }
+      .phone { position: absolute; width: 20px; height: 32px; border-radius: 5px; background: #1b2a4a; }
+      .phone::after { content: ""; position: absolute; left: 2.5px; top: 4px; right: 2.5px; bottom: 5px; border-radius: 2px; background: #d6e6fd; }
+      .tag { position: absolute; padding: 6px 16px; border-radius: 20px; background: #fff; font-size: 28px; font-weight: 800; white-space: nowrap; box-shadow: 0 10px 24px -12px rgba(35, 56, 98, 0.5); }
+
+      /* the waiter, at the wait-race scale (200x428 px), drawn 1.241x to match */
+      .wstage { position: absolute; left: 790px; top: 463px; width: 200px; height: 428px; transform: scale(1.241); transform-origin: 0 0; }
+      .waiter { position: absolute; left: 0; top: 0; width: 200px; height: 428px; }
+      .waiter img { position: absolute; left: 0; top: 0; width: 200px; height: 428px; display: block; }
+      #wphone { left: 108px; top: 97px; width: 18px; height: 30px; } /* held in his right hand's fingers */
+
+      /* the waiter's screen, big */
+      #panel { position: absolute; left: 420px; top: 40px; width: 620px; padding: 26px 28px 20px; border-radius: 34px; background: #fff; box-shadow: 0 30px 60px -24px rgba(35, 56, 98, 0.5); }
+      #panel::after { content: ""; position: absolute; left: 520px; bottom: -22px; border: 20px solid transparent; border-top: 22px solid #fff; border-bottom: 0; }
+      #panel .hd { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 14px; border-bottom: 3px solid #e6eef9; }
+      #panel .t { font-size: 40px; font-weight: 800; }
+      #panel .sum { position: relative; width: 300px; height: 40px; }
+      #panel .sum span { position: absolute; right: 0; top: 0; font-size: 28px; font-weight: 700; white-space: nowrap; opacity: 0; }
+      #panel .rows { position: relative; height: 270px; }
+      .rowg { position: absolute; left: 0; right: 0; height: 84px; display: flex; align-items: center; gap: 18px; opacity: 0; }
+      .rowg .av { flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: var(--cocoa); }
+      .rowg .who { font-size: 32px; font-weight: 800; width: 120px; }
+      .rowg .dish { flex: 1; font-size: 30px; font-weight: 700; white-space: nowrap; }
+      .rowg .pr { font-size: 30px; font-weight: 800; color: var(--price); }
+      .glow { position: absolute; left: -10px; right: -10px; height: 84px; border-radius: 20px; box-shadow: 0 0 0 4px #f19a33; opacity: 0; }
+      #empty { position: absolute; left: 0; top: 104px; width: 100%; text-align: center; font-size: 30px; font-weight: 700; opacity: 0.55; }
+
+      /* an order on its way: the homepage's orange blob with a bag */
+      .blob { position: absolute; left: 0; top: 0; width: 96px; height: 96px; margin: -48px 0 0 -48px; opacity: 0; }
+      .blob svg.b { position: absolute; inset: -6px; width: 108px; height: 108px; filter: drop-shadow(0 12px 14px rgba(35, 56, 98, 0.3)); }
+      .blob .bag { position: absolute; left: 30px; top: 27px; width: 36px; height: 40px; }
+      .bub { position: absolute; padding: 14px 24px; border-radius: 26px; background: #fff; font-size: 32px; font-weight: 800; white-space: nowrap; box-shadow: 0 14px 30px -14px rgba(35, 56, 98, 0.45); opacity: 0; }
+      .bub::after { content: ""; position: absolute; bottom: -16px; right: 26px; border: 12px solid transparent; border-top: 16px solid #fff; border-bottom: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="9" data-width="1080" data-height="1080">
+      <div id="scene" class="clip" data-start="0" data-duration="9" data-track-index="0" style="position: absolute; inset: 0">
+        <div id="shadow"></div>
+        <div class="trio">
+          <img src="assets/art/t-cchair.svg" alt="" />
+          <img src="assets/art/t-chairb.svg" alt="" class="bea-head" />
+          <img src="assets/art/t-clegs.svg" alt="" />
+          <img src="assets/art/t-cface.svg" alt="" class="bea-head" />
+          <img src="assets/art/t-cbody.svg" alt="" />
+          <img src="assets/art/t-chand.svg" alt="" />
+          <img src="assets/art/t-chair.svg" alt="" class="bea-head" />
+          <img src="assets/art/t-chand2.svg" alt="" />
+          <img src="assets/art/t-lchair.svg" alt="" />
+          <img src="assets/art/t-rchair.svg" alt="" />
+          <img src="assets/art/t-rdrink.svg" alt="" id="drink-mia" />
+          <img src="assets/art/t-rarm0.svg" alt="" />
+          <img src="assets/art/t-rhairb.svg" alt="" class="mia-head" />
+          <img src="assets/art/t-rlegs.svg" alt="" />
+          <img src="assets/art/t-rneck.svg" alt="" />
+          <img src="assets/art/t-rbody.svg" alt="" />
+          <img src="assets/art/t-rface.svg" alt="" class="mia-head" />
+          <img src="assets/art/t-rarms.svg" alt="" />
+          <img src="assets/art/t-ldrink.svg" alt="" id="drink-paolo" />
+          <img src="assets/art/t-lbody1.svg" alt="" />
+          <img src="assets/art/t-lneck.svg" alt="" />
+          <img src="assets/art/t-lbody1b.svg" alt="" />
+          <img src="assets/art/t-lface.svg" alt="" id="paolo-head" />
+          <img src="assets/art/t-lbody2.svg" alt="" />
+          <img src="assets/art/t-table.svg" alt="" />
+          <!-- each phone in the hand that was holding something: Paolo's and Mia's drinks
+               are put down while they use the phone, Bea's is where the menu was -->
+          <div class="phone" id="ph-paolo" style="left: 211px; top: 116px"></div>
+          <div class="phone" id="ph-bea" style="left: 314px; top: 150px"></div>
+          <div class="phone" id="ph-mia" style="left: 527px; top: 142px"></div>
+        </div>
+        <div class="tag" id="tag-paolo" style="left: 70px; top: 556px">Paolo</div>
+        <div class="tag" id="tag-bea" style="left: 300px; top: 548px">Bea</div>
+        <div class="tag" id="tag-mia" style="left: 620px; top: 556px">Mia</div>
+
+        <div class="wstage">
+          <div class="waiter" id="waiter">
+            <img src="assets/art/w-legR.svg" alt="" id="wlegR" />
+            <img src="assets/art/w-legL.svg" alt="" id="wlegL" />
+            <img src="assets/art/w-back.svg" alt="" />
+            <img src="assets/art/w-head.svg" alt="" id="whd" />
+            <img src="assets/art/w-body.svg" alt="" />
+            <div class="phone" id="wphone"></div>
+            <img src="assets/art/w-hands.svg" alt="" />
+          </div>
+        </div>
+
+        <div id="panel">
+          <div class="hd">
+            <span class="t">Table 3</span>
+            <div class="sum"><span id="s0" style="opacity: 1">Waiting for orders</span><span id="s1">1 guest · ₱320</span><span id="s2">2 guests · ₱815</span><span id="s3">3 guests · ₱1,060</span></div>
+          </div>
+          <div class="rows">
+            <div id="empty">No orders yet</div>
+            <div class="glow" id="g-bea" style="top: 10px"></div>
+            <div class="rowg" id="r-bea" style="top: 10px"><span class="av" style="background: #f19a33">B</span><span class="who">Bea</span><span class="dish">Pork Sisig</span><span class="pr">₱320</span></div>
+            <div class="glow" id="g-paolo" style="top: 96px"></div>
+            <div class="rowg" id="r-paolo" style="top: 96px"><span class="av" style="background: #85a55e">P</span><span class="who">Paolo</span><span class="dish">Kare-Kare</span><span class="pr">₱495</span></div>
+            <div class="glow" id="g-mia" style="top: 182px"></div>
+            <div class="rowg" id="r-mia" style="top: 182px"><span class="av" style="background: #e0a92c">M</span><span class="who">Mia</span><span class="dish">Chicken Inasal</span><span class="pr">₱245</span></div>
+          </div>
+        </div>
+
+        <div class="blob" id="o-bea"><svg class="b" viewBox="0 0 200 200"><path transform="translate(100 100)" fill="#F19A33" d="M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z" /></svg><svg class="bag" viewBox="0 0 24 26" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h16l-1.2 15H5.2z" /><path d="M8.5 11V6.5a3.5 3.5 0 0 1 7 0V11" /></svg></div>
+        <div class="blob" id="o-paolo"><svg class="b" viewBox="0 0 200 200"><path transform="translate(100 100)" fill="#F19A33" d="M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z" /></svg><svg class="bag" viewBox="0 0 24 26" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h16l-1.2 15H5.2z" /><path d="M8.5 11V6.5a3.5 3.5 0 0 1 7 0V11" /></svg></div>
+        <div class="blob" id="o-mia"><svg class="b" viewBox="0 0 200 200"><path transform="translate(100 100)" fill="#F19A33" d="M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z" /></svg><svg class="bag" viewBox="0 0 24 26" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h16l-1.2 15H5.2z" /><path d="M8.5 11V6.5a3.5 3.5 0 0 1 7 0V11" /></svg></div>
+
+        <div class="bub" id="b-ok" style="left: 640px; top: 476px">Got it!</div>
+      </div>
+    </div>
+
+    <script>
+      if (location.hash === "#embed" || new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("embed");
+      const tl = gsap.timeline({ paused: true });
+
+      // pivots, in trio px: (source - [190, 1100]) x 0.886
+      gsap.set("#paolo-head", { transformOrigin: "93px 102px" });
+      gsap.set(".bea-head", { transformOrigin: "310px 93px" });
+      gsap.set(".mia-head", { transformOrigin: "623px 102px" });
+      gsap.set("#wlegL", { transformOrigin: "69px 207px" });
+      gsap.set("#wlegR", { transformOrigin: "106px 207px" });
+      gsap.set("#whd", { transformOrigin: "100px 80px" });
+      gsap.set(".trio .phone", { scale: 0, transformOrigin: "50% 100%" });
+      gsap.set(".rowg", { y: 14 });
+      gsap.set("#b-ok", { scale: 0.6, transformOrigin: "90% 120%" });
+
+      function walk(rig, legs, from, to, t, dur) {
+        tl.fromTo(rig, { x: from }, { x: to, duration: dur, ease: "power1.inOut", immediateRender: false }, t);
+        const n = Math.max(2, Math.round(dur / 0.22));
+        for (let i = 0; i < n; i++) {
+          const a = i % 2 ? -14 : 14;
+          tl.to(legs[0], { rotation: a, duration: dur / n, ease: "sine.inOut" }, t + (i * dur) / n);
+          tl.to(legs[1], { rotation: -a, duration: dur / n, ease: "sine.inOut" }, t + (i * dur) / n);
+        }
+        tl.to(legs, { rotation: 0, duration: 0.14, ease: "sine.out" }, t + dur);
+      }
+      // the panel's header line moves to n guests
+      function sum(n, t) {
+        tl.to(`#s${n - 1}`, { opacity: 0, y: -10, duration: 0.2, ease: "power2.in" }, t);
+        tl.fromTo(`#s${n}`, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, t + 0.15);
+      }
+      // a guest sends: head nods, the blob pops over their head and arcs into the panel row
+      function send(who, head, sx, sy, row, t) {
+        tl.to(head, { rotation: who === "paolo" ? -6 : 6, duration: 0.18, ease: "sine.inOut", yoyo: true, repeat: 1 }, t);
+        const ex = 470 + 300, ey = 40 + 26 + 60 + 10 + row * 86 + 42;
+        tl.fromTo(`#o-${who}`, { x: sx, y: sy, scale: 0, opacity: 1 }, { x: sx, y: sy, scale: 1, opacity: 1, duration: 0.28, ease: "back.out(2.2)", immediateRender: false }, t + 0.15);
+        tl.to(`#o-${who}`, { keyframes: [{ x: (sx + ex) / 2, y: Math.min(sy, ey) - 120, duration: 0.4, ease: "power1.out" }, { x: ex, y: ey, duration: 0.4, ease: "power1.in" }] }, t + 0.45);
+        tl.to(`#o-${who}`, { scale: 0.3, opacity: 0, duration: 0.2, ease: "power2.in" }, t + 1.25);
+        tl.to(`#r-${who}`, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(1.6)" }, t + 1.25);
+        tl.to(`#g-${who}`, { opacity: 1, duration: 0.2, ease: "power2.out" }, t + 1.3);
+        tl.to(`#g-${who}`, { opacity: 0, duration: 0.6, ease: "power2.in" }, t + 1.8);
+      }
+
+      // 0.5  each picks up their phone
+      tl.to("#ph-bea", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.5);
+      tl.to("#ph-paolo", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.6);
+      tl.to("#ph-mia", { scale: 1, duration: 0.25, ease: "back.out(2)" }, 0.7);
+      tl.to(["#drink-paolo", "#drink-mia"], { opacity: 0, duration: 0.15 }, 0.55);
+      tl.to(["#paolo-head", ".bea-head", ".mia-head"], { rotation: (i) => [-4, 5, 5][i] ?? 5, duration: 0.4, ease: "power2.inOut" }, 0.6);
+
+      // 1.0 Bea, 2.3 Paolo, 3.6 Mia: each order is its own row
+      tl.to("#empty", { opacity: 0, duration: 0.25 }, 2.2);
+      send("bea", ".bea-head", 340, 520, 0, 1.0);
+      sum(1, 2.25);
+      send("paolo", "#paolo-head", 110, 528, 1, 2.3);
+      sum(2, 3.55);
+      send("mia", ".mia-head", 655, 528, 2, 3.6);
+      sum(3, 4.85);
+      tl.to(".trio .phone", { scale: 0, duration: 0.2, ease: "power2.in", stagger: 0.08 }, 5.0);
+      tl.to(["#drink-paolo", "#drink-mia"], { opacity: 1, duration: 0.15 }, 5.15);
+      tl.to(["#paolo-head", ".bea-head", ".mia-head"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, 5.0);
+
+      // 5.4  the waiter has it all; off to the POS, and back
+      tl.to("#whd", { rotation: 6, duration: 0.25, ease: "sine.inOut", yoyo: true, repeat: 1 }, 5.3);
+      tl.to("#b-ok", { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.2)" }, 5.5);
+      tl.to("#b-ok", { opacity: 0, scale: 0.85, duration: 0.18, ease: "power2.in" }, 6.4);
+      walk("#waiter", ["#wlegL", "#wlegR"], 0, 260, 6.5, 0.6);
+      tl.to("#panel", { opacity: 0, y: -20, duration: 0.3, ease: "power2.in" }, 6.6);
+      // the screen is cleared for the next table while he is away
+      tl.set([".rowg", ".glow"], { opacity: 0 }, 7.0);
+      tl.set(".rowg", { y: 14 }, 7.0);
+      tl.set(["#s3"], { opacity: 0 }, 7.0);
+      tl.set("#s0", { opacity: 1, y: 0 }, 7.0);
+      tl.set("#empty", { opacity: 0.55 }, 7.0);
+      tl.to(["#paolo-head", ".mia-head"], { rotation: 4, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 1 }, 7.0);
+      tl.to(".bea-head", { rotation: -4, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 1 }, 7.2);
+      walk("#waiter", ["#wlegL", "#wlegR"], 260, 0, 7.6, 0.6);
+      tl.to("#panel", { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 8.2);
+      tl.set({}, {}, 9);
+
+      window.__timelines = window.__timelines || {};
+      if (document.documentElement.classList.contains("embed")) {
+        const root = document.getElementById("root");
+        const fit = () => {
+          document.body.style.transformOrigin = "0 0";
+          document.body.style.transform = `scale(${innerWidth / Number(root.dataset.width)})`;
+        };
+        fit();
+        addEventListener("resize", fit);
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          tl.seek(5.4);
+        } else {
+          tl.repeat(-1);
+          let started = false;
+          new IntersectionObserver(([e]) => {
+            if (e.isIntersecting) { tl.play(); started = true; }
+            else if (started) tl.pause();
+          }).observe(document.documentElement);
+        }
+      }
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

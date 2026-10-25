@@ -33,7 +33,7 @@ waiting. The kitchen takes the same time; the order just gets there sooner.
 | 19.4 | 10 | Waiter takes the menu and leaves · *Orders sent to kitchen* | Steam, nods, his hand to the plate · *Eating* |
 | 21.0 | 12 | Empty table, they wait · *Waiting, with nothing* | "+ Mango Shake" flies to the waiter · *Adding a second round* |
 | 22.8 | 13 | *Still waiting* | *Already eating* |
-| 24.8–28 | | Closing frame: "No more waiting at the table." + tapndine wordmark | |
+| 24.8–28 | | Closing frame: "No more idle waiting at the table." + tapndine wordmark (not on the homepage loop, which ends at 24.6 s; for the social cut) | |
 
 Dish data from the sample restaurant (seed/dev.sql): Pork Sisig ₱320, spice 3,
 2–3 people; Kare-Kare ₱495, not spicy, 2–4; Chicken Inasal ₱245, not spicy, 1;

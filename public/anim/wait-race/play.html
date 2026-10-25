@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en" data-resolution="square">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1080" />
+    <script src="assets/vendor/gsap.min.js"></script>
+    <!--
+      tapndine homepage, "the wait" (SPEC.md): the same couple at two tables.
+      Left, without tapndine, they wait for a waiter, the menu and answers, and
+      are still waiting at the end. Right, with tapndine, they tap the table
+      stand, pick three dishes and send them; the waiter reads the order back,
+      the kitchen cooks, and they are eating. A closing frame ends it. The
+      clocks are an illustration, not measured times.
+
+      The people and furniture are Justin's stock flat illustration (source/),
+      cut into layers by source/parts.py. Every couple layer shares one
+      viewBox, so stacked in order they rebuild the picture; the scene is that
+      viewBox at 0.714 (500x357 px). The waiter (200x428 px) and the standing
+      poses (500x536 px) have their own boxes on the same scale. The dishes are
+      the sample restaurant's (seed/dev.sql) with their real photos.
+
+      On the homepage (#embed) it scales to its frame and loops while on
+      screen; reduced motion shows one still (24.5 s). Studio and renders
+      never set #embed.
+    -->
+    <style>
+      @font-face {
+        font-family: "Montserrat";
+        src: url("assets/fonts/montserrat-latin.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      :root {
+        --ink: #233862;
+        --orange: #f19a33;
+        --cocoa: #3b2e25;
+        --price: #b8650f;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1080px; overflow: hidden; background: #fff; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Montserrat", sans-serif; color: var(--ink); }
+
+      .half { position: absolute; top: 0; width: 540px; height: 1080px; overflow: hidden; }
+      #h-without { left: 0; }
+      #h-with { left: 540px; }
+      .blob { position: absolute; left: -40px; top: 210px; width: 620px; height: 760px; }
+      #divider { position: absolute; left: 538px; top: 48px; width: 4px; height: 984px; border-radius: 2px; background: var(--ink); opacity: 0.18; }
+
+      .label { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); white-space: nowrap; padding: 14px 30px; border-radius: 40px; font-size: 36px; font-weight: 800; letter-spacing: -0.01em; }
+      #h-without .label { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 3px rgba(35, 56, 98, 0.35); }
+      #h-with .label { background: var(--orange); color: var(--cocoa); }
+
+      .clock { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; }
+      .clock .face { position: relative; width: 62px; height: 62px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 6px #8cb4f4; }
+      .clock .hand { position: absolute; left: 29px; top: 12px; width: 4px; height: 20px; border-radius: 2px; background: var(--ink); transform-origin: 2px 19px; }
+      .clock .hub { position: absolute; left: 27px; top: 27px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+      .clock .t { position: relative; width: 200px; height: 56px; font-size: 46px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .clock .t span { position: absolute; left: 0; top: 0; white-space: nowrap; opacity: 0; }
+      .clock .t span.on { opacity: 1; }
+
+      /* the table: 700x500 of the source at 0.714 = 500x357 */
+      .scene { position: absolute; left: 20px; top: 588px; width: 500px; height: 357px; }
+      .scene > img, .armw { position: absolute; left: 0; top: 0; width: 500px; height: 357px; display: block; }
+      .armw img { position: absolute; left: 0; top: 0; width: 500px; height: 357px; display: block; }
+      .stand { position: absolute; left: 0; top: -179px; width: 500px; height: 536px; }
+      .stand img { position: absolute; left: 0; top: 0; width: 500px; height: 536px; display: block; }
+      .waiter { position: absolute; left: 0; top: -71px; width: 200px; height: 428px; }
+      .waiter img { position: absolute; left: 0; top: 0; width: 200px; height: 428px; display: block; }
+      .seated { opacity: 0; }
+      .floor { position: absolute; left: 0; top: 944px; width: 540px; height: 4px; background: var(--ink); }
+      .plant { position: absolute; left: 424px; top: 838px; width: 120px; height: 109px; }
+
+      /* small props, in scene px */
+      .phone { position: absolute; width: 16px; height: 26px; border-radius: 4px; background: #1b2a4a; box-shadow: inset 0 0 0 2px #1b2a4a; }
+      .phone::after { content: ""; position: absolute; left: 2px; top: 3px; right: 2px; bottom: 4px; border-radius: 2px; background: #d6e6fd; }
+      #r-tent { position: absolute; left: 240px; top: 141px; width: 26px; height: 34px; }
+      .ring { position: absolute; left: 238px; top: 137px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--orange); opacity: 0; }
+      #l-menu { position: absolute; left: 2px; top: 35px; width: 70px; height: 49px; }
+      .plate { position: absolute; width: 96px; height: 44px; }
+      .plate svg.p { position: absolute; left: 0; top: 0; width: 96px; height: 44px; }
+      .steam { position: absolute; left: 22px; top: -40px; width: 52px; height: 44px; }
+      .steam path { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; opacity: 0; }
+      #l-pad { position: absolute; left: 32px; top: 110px; width: 36px; height: 46px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 2px #c4d6ef; opacity: 0; }
+      #l-pad::before { content: ""; position: absolute; left: 6px; right: 6px; top: 10px; height: 20px; background: repeating-linear-gradient(#8cb4f4 0 2px, transparent 2px 8px); }
+      #l-pen { position: absolute; left: 115px; top: 94px; width: 6px; height: 34px; border-radius: 3px; background: var(--ink); opacity: 0; }
+
+      .caption { position: absolute; left: 0; top: 978px; width: 540px; height: 44px; }
+      .caption span { position: absolute; left: 0; top: 0; width: 540px; text-align: center; font-size: 32px; font-weight: 700; white-space: nowrap; opacity: 0; }
+
+      .bub { position: absolute; padding: 16px 24px; border-radius: 28px; background: #fff; font-size: 30px; font-weight: 800; line-height: 1.25; white-space: nowrap; box-shadow: 0 14px 30px -14px rgba(35, 56, 98, 0.45); opacity: 0; }
+      .bub::after { content: ""; position: absolute; bottom: -16px; border: 12px solid transparent; border-top: 16px solid #fff; border-bottom: 0; }
+      .bub.tl::after { left: 40px; }
+      .bub.tc::after { left: calc(50% - 12px); }
+      .bub.tr::after { right: 44px; }
+
+      /* with: the dish cards, the order and the kitchen */
+      .card { position: absolute; left: 34px; top: 286px; width: 472px; padding: 18px; border-radius: 28px; background: #fff; display: flex; gap: 18px; box-shadow: 0 26px 50px -22px rgba(35, 56, 98, 0.55); opacity: 0; }
+      .card .ph { flex: none; width: 150px; height: 150px; border-radius: 18px; object-fit: cover; display: block; }
+      .card .info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+      .card .nm { font-size: 31px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+      .card .row { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 700; white-space: nowrap; }
+      .card .chili { width: 20px; height: 28px; }
+      .card .buy { display: flex; align-items: center; justify-content: space-between; }
+      .card .price { font-size: 32px; font-weight: 800; color: var(--price); }
+      .card .add { position: relative; width: 140px; height: 50px; border-radius: 25px; background: var(--orange); color: var(--cocoa); font-size: 28px; font-weight: 800; }
+      .card .add span { position: absolute; inset: 0; display: grid; place-items: center; white-space: nowrap; }
+      .card .add .done { opacity: 0; }
+      #cartw { position: absolute; left: 50%; top: 228px; transform: translateX(-50%); }
+      #cart { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 18px; border-radius: 32px; background: #fff; box-shadow: 0 14px 30px -14px rgba(35, 56, 98, 0.45); font-size: 26px; font-weight: 800; white-space: nowrap; opacity: 0; }
+      #cart .bag { width: 26px; height: 28px; }
+      #cart .n { position: relative; width: 22px; height: 32px; }
+      #cart .n span { position: absolute; left: 0; top: 0; opacity: 0; }
+      #cart .send { padding: 8px 18px; border-radius: 24px; background: var(--orange); color: var(--cocoa); }
+      #chipw { position: absolute; left: 50%; top: 300px; transform: translateX(-50%); }
+      #chip { display: flex; align-items: center; gap: 14px; padding: 12px 26px 12px 16px; border-radius: 34px; background: #fff; box-shadow: 0 14px 30px -14px rgba(35, 56, 98, 0.45); font-size: 28px; font-weight: 800; white-space: nowrap; opacity: 0; }
+      #chip .pan { position: relative; width: 58px; height: 52px; }
+      #chip .pan svg.b { position: absolute; left: 0; bottom: 0; width: 58px; height: 24px; }
+      #chip .steam { left: 10px; top: -10px; width: 34px; height: 30px; }
+      #chip .steam path { stroke: #8cb4f4; stroke-width: 3.5; }
+      #more { position: absolute; left: 120px; top: 470px; padding: 12px 22px; border-radius: 30px; background: #fff; box-shadow: 0 14px 30px -14px rgba(35, 56, 98, 0.45); font-size: 28px; font-weight: 800; white-space: nowrap; opacity: 0; }
+      #more b { color: var(--price); }
+
+      /* the closing frame */
+      #end { position: absolute; inset: 0; z-index: 50; background: #fff9e7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 56px; color: var(--cocoa); }
+      #end .line { font-size: 76px; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; text-align: center; }
+      #end .line span { display: block; }
+      #end .mark { width: 560px; height: auto; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="28" data-width="1080" data-height="1080">
+      <div id="scene" class="clip" data-start="0" data-duration="28" data-track-index="0" style="position: absolute; inset: 0">
+        <!-- ===================== Without tapndine ===================== -->
+        <div class="half" id="h-without">
+          <svg class="blob" id="l-blob" viewBox="0 0 200 200" aria-hidden="true"><path transform="translate(100 100)" fill="#e6eaf1" d="M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z" /></svg>
+          <div class="label">Without tapndine</div>
+          <div class="clock">
+            <div class="face"><div class="hand" id="l-hand"></div><div class="hub"></div></div>
+            <div class="t"><span id="l-t0" class="on">0 min</span><span id="l-t1">1 min</span><span id="l-t2">3 min</span><span id="l-t3">4 min</span><span id="l-t4">6 min</span><span id="l-t5">7 min</span><span id="l-t6">8 min</span><span id="l-t7">10 min</span><span id="l-t8">12 min</span><span id="l-t9">13 min</span></div>
+          </div>
+          <img class="plant" id="l-plant" src="assets/art/plant.svg" alt="" />
+
+          <div class="scene" id="l-scene">
+            <img src="assets/art/c-back.svg" alt="" class="seated" />
+            <div class="waiter" id="l-waiter">
+              <img src="assets/art/w-legR.svg" alt="" id="l-wlegR" />
+              <img src="assets/art/w-legL.svg" alt="" id="l-wlegL" />
+              <img src="assets/art/w-back.svg" alt="" />
+              <img src="assets/art/w-head.svg" alt="" id="l-whd" />
+              <img src="assets/art/w-body.svg" alt="" />
+              <img src="assets/art/w-hands.svg" alt="" />
+              <div id="l-pad"></div>
+              <div id="l-pen"></div>
+            </div>
+            <img src="assets/art/c-wchair.svg" alt="" id="l-wchair" />
+            <div class="stand" id="l-sw">
+              <img src="assets/art/s-wlegR.svg" alt="" id="l-swlR" />
+              <img src="assets/art/s-wlegL.svg" alt="" id="l-swlL" />
+              <img src="assets/art/s-wbody.svg" alt="" />
+            </div>
+            <img src="assets/art/c-wbody1.svg" alt="" class="seated" />
+            <img src="assets/art/c-whead.svg" alt="" class="seated" id="l-whead" />
+            <img src="assets/art/c-wbody2.svg" alt="" class="seated" />
+            <img src="assets/art/c-table.svg" alt="" id="l-table" />
+            <div class="stand" id="l-sm">
+              <img src="assets/art/s-mlegR.svg" alt="" id="l-smlR" />
+              <img src="assets/art/s-mlegL.svg" alt="" id="l-smlL" />
+              <img src="assets/art/s-mbody.svg" alt="" />
+            </div>
+            <img src="assets/art/c-mbody1.svg" alt="" class="seated" />
+            <img src="assets/art/c-mhead.svg" alt="" class="seated" id="l-mhead" />
+            <img src="assets/art/c-mbody2.svg" alt="" class="seated" />
+            <div class="armw seated" id="l-armw"><img src="assets/art/c-marm.svg" alt="" /></div>
+            <img src="assets/art/c-mcollar.svg" alt="" class="seated" />
+            <img src="assets/art/c-mchair.svg" alt="" id="l-mchair" />
+            <img src="assets/art/c-props.svg" alt="" class="seated" />
+            <img src="assets/art/c-weye.svg" alt="" class="seated" id="l-weye" />
+            <img src="assets/art/menu.svg" alt="" id="l-menu" />
+          </div>
+          <div class="floor"></div>
+
+          <div class="bub tr" id="l-b-excuse" style="left: 92px; top: 452px">Excuse me!</div>
+          <div class="bub tc" id="l-b-call" style="left: 70px; top: 384px">Call me when you’re<br />ready to order.</div>
+          <div class="bub tl" id="l-b-ask" style="left: 18px; top: 470px">Is this spicy?<br />How big is it?</div>
+          <div class="bub tc" id="l-b-answer" style="left: 70px; top: 384px">Quite spicy. Good<br />for two to three.</div>
+          <div class="bub tr" id="l-b-kare" style="left: 150px; top: 486px">And the Kare-Kare?</div>
+
+          <div class="caption" id="l-cap"><span id="l-c0" style="opacity: 1"></span><span id="l-c1">Looking for a waiter</span><span id="l-c2">Here’s the menu</span><span id="l-c3">Calling the waiter</span><span id="l-c4">Asking about a dish</span><span id="l-c5">Back and forth</span><span id="l-c6">Still taking the order</span><span id="l-c7">Orders sent to kitchen</span><span id="l-c8">Waiting, with nothing</span><span id="l-c9">Still waiting</span></div>
+        </div>
+
+        <!-- ===================== With tapndine ===================== -->
+        <div class="half" id="h-with">
+          <svg class="blob" id="r-blob" viewBox="0 0 200 200" aria-hidden="true"><path transform="translate(100 100)" fill="#d6e6fd" d="M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z" /></svg>
+          <div class="label">With tapndine</div>
+          <div class="clock">
+            <div class="face"><div class="hand" id="r-hand"></div><div class="hub"></div></div>
+            <div class="t"><span id="r-t0" class="on">0 min</span><span id="r-t1">1 min</span><span id="r-t2">3 min</span><span id="r-t3">4 min</span><span id="r-t4">6 min</span><span id="r-t5">7 min</span><span id="r-t6">8 min</span><span id="r-t7">10 min</span><span id="r-t8">12 min</span><span id="r-t9">13 min</span></div>
+          </div>
+          <img class="plant" id="r-plant" src="assets/art/plant.svg" alt="" />
+
+          <div class="scene" id="r-scene">
+            <img src="assets/art/c-back.svg" alt="" class="seated" />
+            <div class="waiter" id="r-waiter">
+              <img src="assets/art/w-legR.svg" alt="" id="r-wlegR" />
+              <img src="assets/art/w-legL.svg" alt="" id="r-wlegL" />
+              <img src="assets/art/w-back.svg" alt="" />
+              <img src="assets/art/w-head.svg" alt="" id="r-whd" />
+              <img src="assets/art/w-body.svg" alt="" />
+              <div class="phone" id="r-wphone" style="left: 108px; top: 97px; width: 18px; height: 30px"></div>
+              <img src="assets/art/w-hands.svg" alt="" />
+            </div>
+            <img src="assets/art/c-wchair.svg" alt="" id="r-wchair" />
+            <div class="stand" id="r-sw">
+              <img src="assets/art/s-wlegR.svg" alt="" id="r-swlR" />
+              <img src="assets/art/s-wlegL.svg" alt="" id="r-swlL" />
+              <img src="assets/art/s-wbody.svg" alt="" />
+            </div>
+            <img src="assets/art/c-wbody1.svg" alt="" class="seated" />
+            <img src="assets/art/c-whead.svg" alt="" class="seated" id="r-whead" />
+            <img src="assets/art/c-wbody2.svg" alt="" class="seated" />
+            <img src="assets/art/c-table.svg" alt="" id="r-table" />
+            <div class="stand" id="r-sm">
+              <img src="assets/art/s-mlegR.svg" alt="" id="r-smlR" />
+              <img src="assets/art/s-mlegL.svg" alt="" id="r-smlL" />
+              <img src="assets/art/s-mbody.svg" alt="" />
+            </div>
+            <img src="assets/art/c-mbody1.svg" alt="" class="seated" />
+            <img src="assets/art/c-mhead.svg" alt="" class="seated" id="r-mhead" />
+            <img src="assets/art/c-mbody2.svg" alt="" class="seated" />
+            <div class="armw seated" id="r-armw">
+              <img src="assets/art/c-marm.svg" alt="" />
+              <div class="phone" id="r-phone" style="left: 258px; top: 86px"></div>
+            </div>
+            <img src="assets/art/c-mcollar.svg" alt="" class="seated" />
+            <img src="assets/art/c-mchair.svg" alt="" id="r-mchair" />
+            <img src="assets/art/c-props.svg" alt="" class="seated" />
+            <img src="assets/art/c-weye.svg" alt="" class="seated" id="r-weye" />
+            <!-- the table stand guests tap -->
+            <svg id="r-tent" viewBox="0 0 26 34" aria-hidden="true"><path d="M4 34 L9 0 H17 L22 34 Z" fill="#3b2e25" /><path d="M8.5 15 a6 6 0 0 1 9 0" stroke="#f19a33" stroke-width="2.4" fill="none" stroke-linecap="round" /><circle cx="13" cy="20" r="2.2" fill="#f19a33" /></svg>
+            <div class="ring" id="r-ring1"></div>
+            <div class="ring" id="r-ring2"></div>
+            <!-- the food, carried in on the waiter's hands -->
+            <div class="plate" id="r-plateA" style="left: -11px; top: 41px">
+              <svg class="p" viewBox="0 0 96 44"><ellipse cx="48" cy="34" rx="46" ry="9" fill="#a0332d" /><ellipse cx="48" cy="29" rx="38" ry="9" fill="#233862" /><ellipse cx="48" cy="24" rx="28" ry="8" fill="#c8743a" /><circle cx="36" cy="22" r="3" fill="#7a3b1f" /><circle cx="60" cy="25" r="3" fill="#f99746" /><circle cx="48" cy="20" r="8" fill="#fff" /><circle cx="48" cy="20" r="4.5" fill="#ffb93e" /></svg>
+              <svg class="steam" viewBox="0 0 52 44"><path class="w1" d="M12 40 C4 30 20 22 12 8" /><path class="w2" d="M26 40 C18 30 34 22 26 6" /><path class="w3" d="M40 40 C32 30 48 22 40 8" /></svg>
+            </div>
+            <div class="plate" id="r-plateB" style="left: 102px; top: 20px">
+              <svg class="p" viewBox="0 0 96 44"><ellipse cx="48" cy="38" rx="30" ry="5" fill="#73a2e5" /><path d="M10 20 Q48 56 86 20 Z" fill="#8cb4f4" /><ellipse cx="48" cy="20" rx="38" ry="8" fill="#d6781f" /><circle cx="34" cy="18" r="4" fill="#85a55e" /><circle cx="58" cy="21" r="4" fill="#85a55e" /><circle cx="48" cy="17" r="3" fill="#7a3b1f" /></svg>
+              <svg class="steam" viewBox="0 0 52 44"><path class="w1" d="M12 40 C4 30 20 22 12 8" /><path class="w2" d="M26 40 C18 30 34 22 26 6" /><path class="w3" d="M40 40 C32 30 48 22 40 8" /></svg>
+            </div>
+          </div>
+          <div class="floor"></div>
+
+          <!-- the three dishes, each added to the order -->
+          <div class="card" id="card1">
+            <img class="ph" src="assets/photos/pork-sisig.webp" alt="" />
+            <div class="info">
+              <div class="nm">Pork Sisig</div>
+              <div class="row">
+                <svg class="chili" viewBox="0 0 22 30"><path d="M11 6c6 3 7 12 1 22-2 1-3 0-3-2 1-7-3-12-2-17 1-2 2-3 4-3z" fill="#e0533d" /><path d="M11 7c0-3 2-5 4-6" stroke="#85a55e" stroke-width="3" fill="none" stroke-linecap="round" /></svg>
+                <svg class="chili" viewBox="0 0 22 30"><path d="M11 6c6 3 7 12 1 22-2 1-3 0-3-2 1-7-3-12-2-17 1-2 2-3 4-3z" fill="#e0533d" /><path d="M11 7c0-3 2-5 4-6" stroke="#85a55e" stroke-width="3" fill="none" stroke-linecap="round" /></svg>
+                <svg class="chili" viewBox="0 0 22 30"><path d="M11 6c6 3 7 12 1 22-2 1-3 0-3-2 1-7-3-12-2-17 1-2 2-3 4-3z" fill="#e0533d" /><path d="M11 7c0-3 2-5 4-6" stroke="#85a55e" stroke-width="3" fill="none" stroke-linecap="round" /></svg>
+                <span>Spicy</span>
+              </div>
+              <div class="row">Feeds 2–3</div>
+              <div class="buy"><span class="price">₱320</span><div class="add" id="add1"><span>+ Add</span><span class="done">Added</span></div></div>
+            </div>
+          </div>
+          <div class="card" id="card2">
+            <img class="ph" src="assets/photos/kare-kare.webp" alt="" />
+            <div class="info">
+              <div class="nm">Kare-Kare</div>
+              <div class="row">Not spicy</div>
+              <div class="row">Feeds 2–4</div>
+              <div class="buy"><span class="price">₱495</span><div class="add" id="add2"><span>+ Add</span><span class="done">Added</span></div></div>
+            </div>
+          </div>
+          <div class="card" id="card3">
+            <img class="ph" src="assets/photos/chicken-inasal.webp" alt="" />
+            <div class="info">
+              <div class="nm">Chicken Inasal</div>
+              <div class="row">Not spicy</div>
+              <div class="row">Feeds 1</div>
+              <div class="buy"><span class="price">₱245</span><div class="add" id="add3"><span>+ Add</span><span class="done">Added</span></div></div>
+            </div>
+          </div>
+          <div id="cartw">
+            <div id="cart">
+              <svg class="bag" viewBox="0 0 24 26" fill="none" stroke="#233862" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h16l-1.2 15H5.2z" /><path d="M8.5 11V6.5a3.5 3.5 0 0 1 7 0V11" /></svg>
+              <span>Order</span>
+              <div class="n"><span id="n1">1</span><span id="n2">2</span><span id="n3">3</span></div>
+              <span class="send" id="send">Send</span>
+            </div>
+          </div>
+          <div id="chipw">
+            <div id="chip">
+              <div class="pan">
+                <svg class="steam" viewBox="0 0 52 44"><path class="w1" d="M12 40 C4 30 20 22 12 8" /><path class="w2" d="M26 40 C18 30 34 22 26 6" /><path class="w3" d="M40 40 C32 30 48 22 40 8" /></svg>
+                <svg class="b" viewBox="0 0 58 24"><path d="M2 6 H44 Q44 22 23 22 Q2 22 2 6 Z" fill="#233862" /><path d="M42 9 H57" stroke="#233862" stroke-width="5" stroke-linecap="round" /></svg>
+              </div>
+              <span>Cooking · 3 dishes</span>
+            </div>
+          </div>
+          <div id="more">+ Mango Shake · <b>₱135</b></div>
+
+          <div class="bub tc" id="r-b-read" style="left: 84px; top: 384px">Sisig, Kare-Kare<br />and Inasal?</div>
+          <div class="bub tl" id="r-b-yes" style="left: 20px; top: 512px">Yes!</div>
+
+          <div class="caption" id="r-cap"><span id="r-c0" style="opacity: 1"></span><span id="r-c1">Tap, pick, send</span><span id="r-c2">The waiter reads it back</span><span id="r-c3">Sent to the kitchen</span><span id="r-c4">The kitchen is cooking</span><span id="r-c5">Browsing for more</span><span id="r-c6">Food’s here</span><span id="r-c7">Eating</span><span id="r-c8">Adding a second round</span><span id="r-c9">Already eating</span></div>
+        </div>
+
+        <div id="divider"></div>
+
+        <!-- ===================== Closing frame ===================== -->
+        <div id="end">
+          <div class="line"><span id="end-1">No more idle waiting</span><span id="end-2">at the table.</span></div>
+          <svg class="mark" id="end-mark" viewBox="0 -185 4895 1205" role="img" aria-label="tapndine"><path fill="#3B2E25" d="M303 829Q199 829 141 777.5Q83 726 83 622V157H273V620Q273 649 289 665.5Q305 682 330 682Q364 682 388 665L435 798Q411 814 376 821.5Q341 829 303 829ZM4 419V278H397V419ZM797 820V719L784 694V508Q784 463 756.5 438.5Q729 414 669 414Q630 414 590 426.5Q550 439 522 461L458 332Q504 302 568.5 285.5Q633 269 697 269Q829 269 901.5 329.5Q974 390 974 519V820ZM637 829Q572 829 527 807Q482 785 458.5 747Q435 709 435 662Q435 612 460.5 575.5Q486 539 539 519.5Q592 500 676 500H804V599H702Q656 599 637.5 614Q619 629 619 654Q619 679 638 694Q657 709 690 709Q721 709 746.5 693.5Q772 678 784 646L810 716Q795 772 751.5 800.5Q708 829 637 829ZM1410 829Q1341 829 1292 798.5Q1243 768 1217.5 706.5Q1192 645 1192 549Q1192 452 1216 390.5Q1240 329 1288.5 299Q1337 269 1410 269Q1484 269 1544.5 303.5Q1605 338 1640.5 400.5Q1676 463 1676 549Q1676 635 1640.5 698Q1605 761 1544.5 795Q1484 829 1410 829ZM1069 1014V278H1250V370L1249 549L1259 729V1014ZM1370 678Q1402 678 1427.5 663Q1453 648 1468.5 619Q1484 590 1484 549Q1484 508 1468.5 479Q1453 450 1427.5 435Q1402 420 1370 420Q1338 420 1312.5 435Q1287 450 1271.5 479Q1256 508 1256 549Q1256 590 1271.5 619Q1287 648 1312.5 663Q1338 678 1370 678ZM1739 820V278H1920V432L1885 387Q1916 328 1970 298.5Q2024 269 2092 269Q2155 269 2206 294.5Q2257 320 2286.5 373Q2316 426 2316 510V820H2126V541Q2126 483 2102.5 456.5Q2079 430 2037 430Q2007 430 1982 443.5Q1957 457 1943 485Q1929 513 1929 558V820ZM2653 829Q2579 829 2518.5 794.5Q2458 760 2422 697.5Q2386 635 2386 548Q2386 462 2422 399.5Q2458 337 2518.5 303Q2579 269 2653 269Q2723 269 2771.5 299Q2820 329 2845 391Q2870 453 2870 548Q2870 645 2846 707Q2822 769 2774 799Q2726 829 2653 829ZM2693 678Q2725 678 2750.5 663Q2776 648 2791 618.5Q2806 589 2806 548Q2806 507 2791 478.5Q2776 450 2750.5 435Q2725 420 2693 420Q2660 420 2634.5 435Q2609 450 2594 478.5Q2579 507 2579 548Q2579 589 2594 618.5Q2609 648 2634.5 663Q2660 678 2693 678ZM2812 820V727L2813 548L2803 369V78H2993V820ZM3090 820V278H3280V820ZM3185 218Q3133 218 3101 189Q3069 160 3069 117Q3069 74 3101 45Q3133 16 3185 16Q3237 16 3269 43.5Q3301 71 3301 114Q3301 159 3269.5 188.5Q3238 218 3185 218ZM3378 820V278H3559V432L3524 387Q3555 328 3609 298.5Q3663 269 3731 269Q3794 269 3845 294.5Q3896 320 3925.5 373Q3955 426 3955 510V820H3765V541Q3765 483 3741.5 456.5Q3718 430 3676 430Q3646 430 3621 443.5Q3596 457 3582 485Q3568 513 3568 558V820ZM4340 829Q4244 829 4172.5 792.5Q4101 756 4061.5 692.5Q4022 629 4022 548Q4022 467 4060.5 403.5Q4099 340 4167 304.5Q4235 269 4320 269Q4400 269 4466 301.5Q4532 334 4571 397Q4610 460 4610 550Q4610 560 4609 573Q4608 586 4607 597H4178V497H4506L4434 525Q4435 488 4420.5 461Q4406 434 4380.5 419Q4355 404 4321 404Q4287 404 4261.5 419Q4236 434 4222 461.5Q4208 489 4208 526V555Q4208 595 4224.5 624Q4241 653 4272 668.5Q4303 684 4346 684Q4386 684 4414.5 672.5Q4443 661 4471 637L4571 741Q4532 784 4475 806.5Q4418 829 4340 829ZM3059.1 -153.1A298 298 0 0 1 3455.1 -8.9A59 59 0 0 1 3348.1 40.9A180 180 0 0 0 3108.9 -46.1A59 59 0 0 1 3059.1 -153.1Z" /><path fill="#F19A33" d="M4753 829Q4705 829 4672 797Q4639 765 4639 716Q4639 665 4672 634.5Q4705 604 4753 604Q4801 604 4834 634.5Q4867 665 4867 716Q4867 765 4834 797Q4801 829 4753 829Z" /></svg>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      if (location.hash === "#embed" || new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("embed");
+      const tl = gsap.timeline({ paused: true });
+
+      // ---- the rows (SPEC.md): start time and the clock both sides show ----
+      const ROW = [0, 2.2, 6.8, 9.8, 11.6, 14.4, 17.4, 19.4, 21.0, 22.8];
+      const END = 24.8;
+
+      // ---- pivots, in each layer's own px (source units x 0.714) ----
+      const WOMAN_NECK = "78px 86px", MAN_NECK = "398px 78px", MAN_SHOULDER = "398px 100px";
+      for (const p of ["l", "r"]) {
+        gsap.set([`#${p}-whead`, `#${p}-weye`], { transformOrigin: WOMAN_NECK });
+        gsap.set(`#${p}-mhead`, { transformOrigin: MAN_NECK });
+        gsap.set(`#${p}-armw`, { transformOrigin: MAN_SHOULDER });
+        gsap.set(`#${p}-wlegL`, { transformOrigin: "69px 207px" });
+        gsap.set(`#${p}-wlegR`, { transformOrigin: "106px 207px" });
+        gsap.set(`#${p}-whd`, { transformOrigin: "100px 80px" });
+        gsap.set(`#${p}-swlL`, { transformOrigin: "66px 241px" });
+        gsap.set(`#${p}-swlR`, { transformOrigin: "94px 241px" });
+        gsap.set(`#${p}-smlL`, { transformOrigin: "387px 221px" });
+        gsap.set(`#${p}-smlR`, { transformOrigin: "421px 221px" });
+        gsap.set(`#${p}-waiter`, { x: 560 });
+        gsap.set(`#${p}-blob`, { scale: 0, transformOrigin: "50% 60%" });
+        gsap.set(`#${p}-table`, { x: 560 });
+        gsap.set(`#${p}-wchair`, { x: -340 });
+        gsap.set(`#${p}-mchair`, { x: 340 });
+        gsap.set(`#${p}-plant`, { x: 200 });
+        gsap.set(`#${p}-sw`, { x: -330 });
+        gsap.set(`#${p}-sm`, { x: 330 });
+      }
+      gsap.set("#r-tent", { x: 560 });
+      gsap.set(["#l-menu", "#r-plateA", "#r-plateB"], { x: 560 });
+      gsap.set(".bub", { scale: 0.6 });
+      gsap.set("#l-b-excuse", { transformOrigin: "80% 120%" });
+      gsap.set(["#l-b-call", "#l-b-answer", "#r-b-read"], { transformOrigin: "50% 120%" });
+      gsap.set(["#l-b-ask", "#r-b-yes"], { transformOrigin: "15% 120%" });
+      gsap.set("#l-b-kare", { transformOrigin: "80% 120%" });
+      gsap.set(".card", { scale: 0.7, transformOrigin: "50% 50%" });
+      gsap.set("#cart", { scale: 0.6 });
+      gsap.set("#chip", { scale: 0.6 });
+      gsap.set("#more", { scale: 0.6, transformOrigin: "30% 50%" });
+      gsap.set(["#r-phone", "#r-wphone"], { scale: 0, transformOrigin: "50% 100%" });
+      gsap.set("#l-pen", { transformOrigin: "50% 100%", rotation: 20 });
+      gsap.set("#end", { yPercent: 100 });
+      gsap.set(["#end-1", "#end-2", "#end-mark"], { opacity: 0, y: 40 });
+
+      // ---- helpers ----
+      // a walk: the rig (and what it carries) slides, the legs swing in steps
+      function walk(rig, legs, from, to, t, dur, carried = []) {
+        tl.fromTo([rig, ...carried], { x: from }, { x: to, duration: dur, ease: "power1.inOut", immediateRender: false }, t);
+        const n = Math.max(2, Math.round(dur / 0.22));
+        for (let i = 0; i < n; i++) {
+          const a = i % 2 ? -14 : 14;
+          tl.to(legs[0], { rotation: a, duration: dur / n, ease: "sine.inOut" }, t + (i * dur) / n);
+          tl.to(legs[1], { rotation: -a, duration: dur / n, ease: "sine.inOut" }, t + (i * dur) / n);
+        }
+        tl.to(legs, { rotation: 0, duration: 0.14, ease: "sine.out" }, t + dur);
+      }
+      const waiterWalk = (p, from, to, t, dur, carried) => walk(`#${p}-waiter`, [`#${p}-wlegL`, `#${p}-wlegR`], from, to, t, dur, carried);
+      // a speech bubble pops in and later goes
+      function say(id, t, out) {
+        tl.to(id, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.2)" }, t);
+        tl.to(id, { opacity: 0, scale: 0.85, duration: 0.18, ease: "power2.in" }, out);
+      }
+      // the caption under a table moves to line n
+      function caption(p, n, t) {
+        tl.to(`#${p}-c${n - 1}`, { opacity: 0, y: -14, duration: 0.2, ease: "power2.in" }, t);
+        tl.fromTo(`#${p}-c${n}`, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.32, ease: "power3.out", immediateRender: false }, t + 0.15);
+      }
+      // steam that rises from t for dur seconds, wisps staggered
+      function steam(scope, t, dur) {
+        ["w1", "w2", "w3"].forEach((w, i) => {
+          const reps = Math.floor((dur - i * 0.3) / 1.2);
+          tl.fromTo(`${scope} .${w}`, { opacity: 0, y: 8 }, { keyframes: [{ opacity: 0.95, y: 0, duration: 0.4 }, { opacity: 0, y: -12, duration: 0.8 }], ease: "none", repeat: reps, immediateRender: false }, t + i * 0.3);
+        });
+      }
+      // a small back-and-forth on a head or arm, n times
+      function sway(target, a, t, each, n) {
+        tl.to(target, { rotation: a, duration: each, ease: "sine.inOut", yoyo: true, repeat: n * 2 - 1 }, t);
+      }
+
+      // ---- clocks: both tables always show the same minute ----
+      ROW.forEach((t, i) => {
+        if (i === 0) return;
+        for (const p of ["l", "r"]) {
+          tl.to(`#${p}-t${i - 1}`, { opacity: 0, y: -16, duration: 0.18, ease: "power2.in" }, t);
+          tl.fromTo(`#${p}-t${i}`, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.26, ease: "power3.out", immediateRender: false }, t + 0.12);
+        }
+        const mins = [0, 1, 3, 4, 6, 7, 8, 10, 12, 13][i];
+        tl.to(["#l-hand", "#r-hand"], { rotation: mins * 26, duration: 0.45, ease: "back.out(1.6)" }, t);
+      });
+
+      // ===== Row 0 (both): they walk in standing, the room slides in, they sit =====
+      for (const p of ["l", "r"]) {
+        tl.to(`#${p}-blob`, { scale: 1, duration: 0.6, ease: "back.out(1.4)" }, 0);
+        walk(`#${p}-sw`, [`#${p}-swlL`, `#${p}-swlR`], -330, 0, 0, 0.95);
+        walk(`#${p}-sm`, [`#${p}-smlL`, `#${p}-smlR`], 330, 0, 0.05, 0.95);
+        tl.to(`#${p}-table`, { x: 0, duration: 0.5, ease: "power3.out" }, 0.55);
+        tl.to(`#${p}-wchair`, { x: 0, duration: 0.45, ease: "power3.out" }, 0.65);
+        tl.to(`#${p}-mchair`, { x: 0, duration: 0.45, ease: "power3.out" }, 0.7);
+        tl.to(`#${p}-plant`, { x: 0, duration: 0.45, ease: "power3.out" }, 0.8);
+        // sit: the upper body drops onto the seated art while the legs fold, then the swap
+        tl.to(`#${p}-sw`, { y: 107, duration: 0.3, ease: "power2.in" }, 1.35);
+        tl.to([`#${p}-swlL`, `#${p}-swlR`], { scaleY: 0.63, duration: 0.3, ease: "power2.in" }, 1.35);
+        tl.to(`#${p}-sm`, { y: 151, duration: 0.3, ease: "power2.in" }, 1.4);
+        tl.to([`#${p}-smlL`, `#${p}-smlR`], { scaleY: 0.52, duration: 0.3, ease: "power2.in" }, 1.4);
+        tl.set([`#${p}-sw`, `#${p}-sm`], { opacity: 0 }, 1.7);
+        tl.set(`#${p}-scene .seated`, { opacity: 1 }, 1.7);
+      }
+      tl.to("#r-tent", { x: 0, duration: 0.5, ease: "power3.out" }, 0.55);
+
+      // ===================== Without tapndine =====================
+      // Row 1: looking round for a waiter
+      let r = ROW[1];
+      caption("l", 1, r);
+      tl.to(["#l-whead", "#l-weye"], { rotation: -9, duration: 0.5, ease: "power2.inOut" }, r + 0.1);
+      tl.to(["#l-whead", "#l-weye"], { rotation: 6, duration: 0.7, ease: "power2.inOut" }, r + 0.9);
+      tl.to(["#l-whead", "#l-weye"], { rotation: -5, duration: 0.7, ease: "power2.inOut" }, r + 2.0);
+      tl.to("#l-mhead", { rotation: -7, duration: 0.55, ease: "power2.inOut" }, r + 0.3);
+      tl.to("#l-mhead", { rotation: 4, duration: 0.6, ease: "power2.inOut" }, r + 1.3);
+      tl.to("#l-mhead", { rotation: -4, duration: 0.6, ease: "power2.inOut" }, r + 2.5);
+      sway("#l-armw", -4, r + 3.0, 0.15, 3);
+      tl.to(["#l-whead", "#l-weye", "#l-mhead"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 4.0);
+
+      // Row 2: the menu, and "call me when you're ready"
+      r = ROW[2];
+      caption("l", 2, r + 0.6);
+      waiterWalk("l", 560, 145, r, 0.7, ["#l-menu"]);
+      tl.to("#l-menu", { x: 68, y: 77, rotation: -10, duration: 0.4, ease: "power2.inOut" }, r + 0.8);
+      say("#l-b-call", r + 0.75, r + 2.65);
+      tl.to(["#l-whead", "#l-weye"], { rotation: 5, duration: 0.4, ease: "power2.inOut" }, r + 1.2);
+      waiterWalk("l", 145, 560, r + 2.4, 0.6);
+
+      // Row 3: calling the waiter back
+      r = ROW[3];
+      caption("l", 3, r);
+      tl.to("#l-armw", { rotation: 38, duration: 0.45, ease: "back.out(1.6)" }, r + 0.1);
+      sway("#l-armw", 30, r + 0.55, 0.18, 3);
+      say("#l-b-excuse", r + 0.25, r + 2.0);
+      tl.to("#l-mhead", { rotation: -6, duration: 0.4, ease: "power2.inOut" }, r + 0.2);
+
+      // Row 4: the waiter comes; she asks about a dish
+      r = ROW[4];
+      caption("l", 4, r);
+      waiterWalk("l", 560, 145, r, 0.7);
+      tl.to("#l-armw", { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.4);
+      tl.to("#l-mhead", { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.4);
+      tl.to(["#l-whead", "#l-weye"], { rotation: -4, duration: 0.35, ease: "power2.inOut" }, r + 0.65);
+      say("#l-b-ask", r + 0.75, r + 2.75);
+
+      // Row 5: back and forth
+      r = ROW[5];
+      caption("l", 5, r);
+      say("#l-b-answer", r + 0.05, r + 1.7);
+      tl.to("#l-whd", { rotation: -5, duration: 0.3, ease: "sine.inOut", yoyo: true, repeat: 1 }, r + 0.1);
+      say("#l-b-kare", r + 1.75, r + 2.95);
+      tl.to("#l-armw", { rotation: 12, duration: 0.3, ease: "power2.out", yoyo: true, repeat: 1, repeatDelay: 0.3 }, r + 1.75);
+
+      // Row 6: still taking the order (notepad)
+      r = ROW[6];
+      caption("l", 6, r);
+      tl.to(["#l-pad", "#l-pen"], { opacity: 1, duration: 0.2, ease: "power1.out" }, r + 0.05);
+      tl.fromTo("#l-pad", { scale: 0.4 }, { scale: 1, duration: 0.3, ease: "back.out(2)", immediateRender: false }, r + 0.05);
+      tl.to("#l-whd", { rotation: 6, duration: 0.3, ease: "power2.inOut" }, r + 0.1);
+      sway("#l-pen", 34, r + 0.3, 0.12, 7);
+      tl.to(["#l-whead", "#l-weye"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.4);
+
+      // Row 7: the waiter takes the menu and goes to the POS
+      r = ROW[7];
+      caption("l", 7, r);
+      tl.to("#l-whd", { rotation: 0, duration: 0.25, ease: "power2.inOut" }, r);
+      tl.to("#l-menu", { x: 145, y: 0, rotation: 0, duration: 0.35, ease: "power2.inOut" }, r);
+      waiterWalk("l", 145, 560, r + 0.4, 0.65, ["#l-menu"]);
+
+      // Row 8: waiting, with nothing
+      r = ROW[8];
+      caption("l", 8, r);
+      tl.to("#l-mhead", { rotation: -8, duration: 0.6, ease: "power2.inOut" }, r + 0.1);
+      tl.to(["#l-whead", "#l-weye"], { rotation: 7, duration: 0.7, ease: "power2.inOut" }, r + 0.3);
+      sway("#l-armw", -4, r + 0.5, 0.15, 3);
+      tl.to("#l-mhead", { rotation: 3, duration: 0.6, ease: "power2.inOut" }, r + 1.2);
+
+      // Row 9
+      caption("l", 9, ROW[9]);
+
+      // ===================== With tapndine =====================
+      // Row 1: tap the stand, add three dishes, send
+      r = ROW[1];
+      caption("r", 1, r);
+      tl.to("#r-phone", { scale: 1, duration: 0.25, ease: "back.out(2)" }, r + 0.05);
+      tl.to("#r-armw", { rotation: -12, duration: 0.35, ease: "power2.inOut" }, r + 0.1);
+      tl.to(["#r-whead", "#r-weye"], { rotation: 5, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      tl.to("#r-mhead", { rotation: -5, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      tl.fromTo("#r-ring1", { scale: 0.6, opacity: 1 }, { scale: 2.6, opacity: 0, duration: 0.55, ease: "power2.out", immediateRender: false }, r + 0.45);
+      tl.fromTo("#r-ring2", { scale: 0.6, opacity: 1 }, { scale: 2.6, opacity: 0, duration: 0.55, ease: "power2.out", immediateRender: false }, r + 0.6);
+      tl.to("#r-armw", { rotation: 4, duration: 0.35, ease: "power2.inOut" }, r + 0.65);
+      tl.to("#cart", { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, r + 0.75);
+      [1, 2, 3].forEach((c, i) => {
+        const t = r + 0.75 + i * 1.1;
+        tl.to(`#card${c}`, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(1.6)" }, t);
+        tl.to(`#add${c}`, { scale: 0.9, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, t + 0.8);
+        tl.to(`#add${c} span:first-child`, { opacity: 0, duration: 0.06 }, t + 0.83);
+        tl.to(`#add${c} .done`, { opacity: 1, duration: 0.06 }, t + 0.83);
+        tl.to(`#card${c}`, { scale: 0.12, y: -130, opacity: 0, duration: 0.22, ease: "power2.in" }, t + 0.92);
+        tl.to(`#n${c}`, { opacity: 1, duration: 0.05 }, t + 1.12);
+        if (c > 1) tl.to(`#n${c - 1}`, { opacity: 0, duration: 0.05 }, t + 1.12);
+        tl.fromTo("#cart", { scale: 1 }, { scale: 1.1, duration: 0.09, ease: "power2.out", yoyo: true, repeat: 1, immediateRender: false }, t + 1.12);
+      });
+      tl.to("#send", { scale: 0.88, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, r + 4.15);
+      tl.to("#cart", { x: 420, scale: 0.5, opacity: 0, duration: 0.3, ease: "power2.in" }, r + 4.27);
+
+      // Row 2: the waiter reads it back
+      r = ROW[2];
+      caption("r", 2, r + 0.1);
+      tl.to("#r-armw", { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      tl.to(["#r-whead", "#r-weye", "#r-mhead"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      tl.to("#r-wphone", { scale: 1, duration: 0.01 }, r);
+      waiterWalk("r", 560, 145, r, 0.7);
+      say("#r-b-read", r + 0.8, r + 2.5);
+      say("#r-b-yes", r + 2.4, r + 3.2);
+      tl.to(["#r-whead", "#r-weye"], { rotation: -3, duration: 0.15, ease: "sine.inOut", yoyo: true, repeat: 1 }, r + 2.45);
+
+      // Row 3: sent to the kitchen
+      r = ROW[3];
+      caption("r", 3, r);
+      waiterWalk("r", 145, 560, r + 0.3, 0.6);
+      tl.to("#r-wphone", { scale: 0, duration: 0.01 }, r + 1.0);
+
+      // Row 4: the kitchen is cooking; they chat
+      r = ROW[4];
+      caption("r", 4, r);
+      tl.to("#chip", { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, r + 0.05);
+      steam("#chip", r + 0.2, ROW[6] + 0.9 - (r + 0.2));
+      sway(["#r-whead", "#r-weye"], 5, r + 0.2, 0.35, 3);
+      sway("#r-armw", 9, r + 0.4, 0.3, 3);
+      sway("#r-mhead", -4, r + 0.8, 0.3, 2);
+
+      // Row 5: browsing for more
+      r = ROW[5];
+      caption("r", 5, r);
+      tl.to("#r-armw", { rotation: 14, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      tl.to(["#r-whead", "#r-weye"], { rotation: -6, duration: 0.4, ease: "power2.inOut" }, r + 0.2);
+      tl.to("#r-mhead", { rotation: -6, duration: 0.4, ease: "power2.inOut" }, r + 0.25);
+      sway("#r-mhead", -2, r + 0.9, 0.3, 2);
+      sway(["#r-whead", "#r-weye"], -2, r + 1.4, 0.3, 1);
+
+      // Row 6: food's here
+      r = ROW[6];
+      caption("r", 6, r + 0.6);
+      tl.to("#r-armw", { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.05);
+      tl.to("#r-phone", { scale: 0, duration: 0.2, ease: "power2.in" }, r + 0.1);
+      tl.to(["#r-whead", "#r-weye", "#r-mhead"], { rotation: 0, duration: 0.4, ease: "power2.inOut" }, r + 0.1);
+      waiterWalk("r", 560, 145, r, 0.7, ["#r-plateA", "#r-plateB"]);
+      tl.to("#r-plateA", { x: 117, y: 94, duration: 0.35, ease: "power2.inOut" }, r + 0.75);
+      tl.to("#r-plateB", { x: 176, y: 115, duration: 0.35, ease: "power2.inOut" }, r + 0.8); // in front of him, clear of the table stand
+      tl.to("#chip", { opacity: 0, scale: 0.8, duration: 0.2, ease: "power2.in" }, r + 0.9);
+      waiterWalk("r", 145, 560, r + 1.2, 0.6);
+      steam("#r-plateA", r + 1.15, END - (r + 1.15));
+      steam("#r-plateB", r + 1.3, END - (r + 1.3));
+
+      // Row 7: eating
+      r = ROW[7];
+      caption("r", 7, r);
+      sway("#r-armw", -9, r + 0.1, 0.3, 2);
+      sway(["#r-whead", "#r-weye"], 6, r + 0.2, 0.3, 2);
+      sway("#r-mhead", -5, r + 0.4, 0.3, 2);
+
+      // Row 8: a second round from the menu
+      r = ROW[8];
+      caption("r", 8, r);
+      tl.to("#r-phone", { scale: 1, duration: 0.2, ease: "back.out(2)" }, r + 0.05);
+      tl.to("#r-armw", { rotation: 12, duration: 0.35, ease: "power2.inOut" }, r + 0.05);
+      tl.to("#more", { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, r + 0.2);
+      tl.to("#more", { x: 420, scale: 0.5, opacity: 0, duration: 0.32, ease: "power2.in" }, r + 1.5);
+      tl.to("#r-armw", { rotation: 0, duration: 0.35, ease: "power2.inOut" }, r + 1.6);
+      tl.to("#r-phone", { scale: 0, duration: 0.2, ease: "power2.in" }, r + 1.7);
+
+      // Row 9: already eating
+      r = ROW[9];
+      caption("r", 9, r);
+      sway("#r-armw", -9, r + 0.1, 0.3, 3);
+      sway(["#r-whead", "#r-weye"], 6, r + 0.2, 0.3, 3);
+
+      // ===================== Closing frame =====================
+      tl.to("#end", { yPercent: 0, duration: 0.6, ease: "power3.inOut" }, END);
+      tl.to("#end-1", { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, END + 0.5);
+      tl.to("#end-2", { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, END + 0.75);
+      tl.to("#end-mark", { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, END + 1.2);
+      tl.set({}, {}, 28);
+
+      // On the homepage (#embed): scale the canvas to the frame and loop the
+      // two tables while on screen, without the closing frame (the page's
+      // headline is right above it; the closing frame is for the social cut).
+      // Reduced motion gets one still: both tables' last lines (24.5 s).
+      window.__timelines = window.__timelines || {};
+      if (document.documentElement.classList.contains("embed")) {
+        const root = document.getElementById("root");
+        const fit = () => {
+          document.body.style.transformOrigin = "0 0";
+          document.body.style.transform = `scale(${innerWidth / Number(root.dataset.width)})`;
+        };
+        fit();
+        addEventListener("resize", fit);
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          tl.seek(24.5);
+        } else {
+          const loop = gsap.timeline({ paused: true, repeat: -1, repeatDelay: 0.4 });
+          loop.add(tl.tweenFromTo(0, END - 0.2, { ease: "none" }));
+          let started = false;
+          new IntersectionObserver(([e]) => {
+            if (e.isIntersecting) { loop.play(); started = true; }
+            else if (started) loop.pause();
+          }).observe(document.documentElement);
+        }
+      }
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
