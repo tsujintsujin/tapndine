@@ -69,7 +69,7 @@ export default function Sheet({
 
   const panel =
     from === "bottom"
-      ? "absolute inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px]"
+      ? "absolute inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px] md:h-[min(620px,88dvh)] md:w-[min(920px,calc(100%-48px))]"
       : from === "left"
         ? "absolute inset-y-0 left-0 w-[min(320px,86vw)]"
         : "absolute inset-y-0 right-0 w-[min(400px,92vw)]";
