@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish, DishInput } from "@/lib/menu-admin";
+import { randomId } from "@/lib/ids";
 import { OPTION_KINDS, type DishOption, type OptionKind } from "@/lib/options";
 import { formatPrice, servesLabel } from "@/lib/format";
 import {
@@ -51,11 +52,14 @@ export default function DishEditor({
   dish,
   categories,
   currentHero,
+  menu,
 }: {
   dish: AdminDish | null;
   categories: AdminCategory[];
   /** Another dish that is the hero now, which picking this one would replace. */
   currentHero: string | null;
+  /** Every dish on the menu, for set meal choices. */
+  menu: MenuPick[];
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
@@ -72,7 +76,15 @@ export default function DishEditor({
   const set = <K extends keyof DishInput>(k: K, v: DishInput[K]) => setX((p) => ({ ...p, [k]: v }));
   // Options as typed; x.options is only filled in on Save.
   const startOpts = useRef({
-    rows: (dish?.options ?? []).map<OptRow>((o) => ({ id: o.id, kind: o.kind, name: o.name, price: o.priceCents ? String(o.priceCents / 100) : "" })),
+    rows: (dish?.options ?? []).map<OptRow>((o) => ({
+      id: o.id,
+      kind: o.kind,
+      gid: o.group ?? "",
+      ref: o.ref ?? "",
+      group: o.group ?? "",
+      name: o.name,
+      price: o.priceCents ? String(o.priceCents / 100) : "",
+    })),
     on: Object.fromEntries(OPTION_KINDS.map((k) => [k, !!dish?.options.some((o) => o.kind === k)])) as OptsOn,
   });
   const [optRows, setOptRows] = useState(startOpts.current.rows);
@@ -125,10 +137,12 @@ export default function DishEditor({
     // A set switched off saves no options; a row without a name is skipped.
     const options: DishOption[] = [];
     for (const r of optRows) {
-      if (!optOn[r.kind] || !r.name.trim()) continue;
+      if (!optOn[r.kind] || !r.name.trim() || (r.kind === "choice" && !r.ref)) continue;
       const add = r.price.trim() === "" ? 0 : Number(r.price.replace(/[₱,\s]/g, ""));
       if (!Number.isFinite(add) || add < 0) return setError(`Check the price of ${r.name.trim()}.`);
-      options.push({ id: r.id, kind: r.kind, name: r.name, priceCents: Math.round(add * 100) });
+      const group = r.kind === "choice" ? r.group.trim() : null;
+      if (group === "") return setError(`Give the list with ${r.name.trim()} a name, like Drink.`);
+      options.push({ id: r.id, kind: r.kind, group, ref: r.kind === "choice" ? r.ref : null, name: r.name, priceCents: Math.round(add * 100) });
     }
     setBusy(true);
     setError("");
@@ -349,6 +363,7 @@ export default function DishEditor({
             onRows={setOptRows}
             onOn={setOptOn}
             onSizeRequired={(v) => set("sizeRequired", v)}
+            menu={menu.filter((m) => m.id !== dish?.id)}
           />
 
           <section className={card}>
@@ -640,6 +655,11 @@ function Stepper({
 /** The dish as a guest sees it in the menu grid, updating as you type, with its options under it. */
 function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow[] }) {
   const sizes = rows.filter((r) => r.kind === "size");
+  const lists = [...new Set(rows.filter((r) => r.kind === "choice").map((r) => r.gid))].map((gid) => {
+    const items = rows.filter((r) => r.kind === "choice" && r.gid === gid);
+    return { gid, name: items[0].group.trim() || "List", items };
+  });
+  const locked = (sizes.length > 0 && x.sizeRequired) || lists.length > 0;
   const extras = rows.filter((r) => r.kind === "addon" || (r.kind === "spice" && (x.spiceLevel ?? 0) > 0));
   const extrasTitle = [
     rows.some((r) => r.kind === "addon") && "Add-ons",
@@ -673,7 +693,7 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
           <span className="text-muted">{servesLabel(x.servesMin, x.servesMax)}</span>
         </p>
       </div>
-      {sizes.length + extras.length > 0 && (
+      {sizes.length + lists.length + extras.length > 0 && (
         <div className="theme-warm mt-4 rounded-2xl bg-paper p-3 text-[14px] text-ink">
           {sizes.length > 0 && (
             <>
@@ -695,6 +715,23 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
               </ul>
             </>
           )}
+          {lists.map((l) => (
+            <div key={l.gid} className="mt-2">
+              <p className="flex items-center justify-between font-bold">
+                {l.name}
+                <span className="rounded-full bg-mango px-2 py-0.5 text-[11px] text-forest">Required</span>
+              </p>
+              <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
+                {l.items.map((r, i) => (
+                  <li key={i} className="flex items-center gap-2 px-2.5 py-2">
+                    <span className="h-4 w-4 shrink-0 rounded-full border-2 border-muted/50" />
+                    <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                    {r.price && Number(r.price) > 0 && <span className="text-muted">+₱{r.price}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
           {extras.length > 0 && (
             <p className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-white px-2.5 py-2 font-semibold">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-leaf-tint">
@@ -705,10 +742,10 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
           )}
           <p
             className={`mt-2 grid h-10 place-items-center rounded-lg font-semibold ${
-              sizes.length && x.sizeRequired ? "bg-wash text-muted" : "bg-leaf text-white"
+              locked ? "bg-wash text-muted" : "bg-leaf text-white"
             }`}
           >
-            {sizes.length && x.sizeRequired ? "Choose a size" : "Add to order"}
+            {!locked ? "Add to order" : sizes.length && x.sizeRequired ? "Choose a size" : `Choose a ${lists[0].name.toLowerCase()}`}
           </p>
         </div>
       )}
@@ -716,17 +753,30 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
   );
 }
 
-/** An option row as typed: the price stays text until Save, so "1." or "" don't jump around. */
-type OptRow = { id: string; kind: OptionKind; name: string; price: string };
+/**
+ * An option row as typed: the price stays text until Save, so "1." or "" don't jump around.
+ * For a choose-one list, gid ties a row to its list while the list's name is retyped.
+ */
+type OptRow = { id: string; kind: OptionKind; gid: string; group: string; ref: string; name: string; price: string };
+/** A menu dish offered as a set meal choice. */
+type MenuPick = { id: string; name: string; priceCents: number; available: boolean };
 type OptsOn = Record<OptionKind, boolean>;
 
 const SETS: Record<OptionKind, { title: string; help: string; add: string; placeholder: string }> = {
   size: { title: "Sizes", help: "Guest picks one size.", add: "Add size", placeholder: "Sharing" },
+  choice: {
+    title: "Set meal choices",
+    help: "Lists of dishes from your menu; the guest picks one from each, like a drink with the meal.",
+    add: "Add choice",
+    placeholder: "Iced tea",
+  },
   addon: { title: "Add-ons", help: "Extras the guest can tick, as many as they like.", add: "Add add-on", placeholder: "Extra egg" },
   spice: { title: "Spice choices", help: "Less or extra spicy. Only shown on dishes with a spice level.", add: "Add choice", placeholder: "Less spicy" },
 };
 
-/** Sizes, add-ons and spice choices for this dish: each switched on only when the dish needs it. */
+const MAX_LISTS = 5;
+
+/** Sizes, set meal lists, add-ons and spice choices for this dish: each switched on only when the dish needs it. */
 function OptionsCard({
   rows,
   on,
@@ -735,6 +785,7 @@ function OptionsCard({
   onRows,
   onOn,
   onSizeRequired,
+  menu,
 }: {
   rows: OptRow[];
   on: OptsOn;
@@ -743,11 +794,86 @@ function OptionsCard({
   onRows: (rows: OptRow[]) => void;
   onOn: (on: OptsOn) => void;
   onSizeRequired: (v: boolean) => void;
+  menu: MenuPick[];
 }) {
   const seg = (active: boolean) =>
     `flex h-9 min-w-[52px] items-center justify-center rounded-full px-3.5 text-[14px] font-semibold ${
       active ? "bg-forest text-white" : "text-muted hover:text-ink"
     }`;
+  const update = (row: OptRow, patch: Partial<OptRow>) => onRows(rows.map((r) => (r === row ? { ...r, ...patch } : r)));
+  const newRow = (kind: OptionKind, gid = "", group = ""): OptRow => ({ id: "", kind, gid, group, ref: "", name: "", price: "" });
+  const newList = () => newRow("choice", randomId(), "");
+
+  /** Name, "+₱" price and remove, one line per choice. */
+  const rowList = (mine: OptRow[], placeholder: string, label: string) => (
+    <ul className="mt-3 space-y-2">
+      {mine.map((r, i) => (
+        // On a phone a set meal choice's dish gets the whole line, its price under it.
+        <li key={i} className={`flex items-center gap-1.5 sm:gap-2 ${r.kind === "choice" ? "flex-wrap sm:flex-nowrap" : ""}`}>
+          <label className={`min-w-0 flex-1 ${r.kind === "choice" ? "basis-full sm:basis-0" : ""}`}>
+            <span className="sr-only">{label}: {r.kind === "choice" ? "dish" : "name"}</span>
+            {r.kind === "choice" ? (
+              // A set meal choice is a dish already on the menu; the price beside it is the combo price.
+              <select
+                value={r.ref}
+                onChange={(e) => update(r, { ref: e.target.value, name: menu.find((m) => m.id === e.target.value)?.name ?? "" })}
+                autoFocus={!r.id && !r.ref && i === mine.length - 1 && !!r.group}
+                className={`${field} mt-0 h-11 pr-8 ${r.ref ? "" : "text-muted"}`}
+              >
+                <option value="">Pick a dish</option>
+                {menu.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} · {formatPrice(m.priceCents)}
+                    {m.available ? "" : " (sold out today)"}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                maxLength={40}
+                value={r.name}
+                onChange={(e) => update(r, { name: e.target.value })}
+                placeholder={placeholder}
+                // A row just added is ready to type in.
+                autoFocus={!r.id && !r.name && i === mine.length - 1}
+                className={`${field} mt-0 h-11`}
+              />
+            )}
+          </label>
+          <label className="relative block w-[84px] shrink-0 sm:w-36">
+            <span className="sr-only">{r.name || label}: adds to the price</span>
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[15px] text-muted">+₱</span>
+            <input
+              inputMode="decimal"
+              value={r.price}
+              onChange={(e) => update(r, { price: e.target.value })}
+              placeholder="0"
+              className={`${field} mt-0 h-11 pl-8 pr-2 tabular-nums`}
+            />
+          </label>
+          <button
+            type="button"
+            aria-label={`Remove ${r.name || "choice"}`}
+            onClick={() => onRows(rows.filter((x) => x !== r))}
+            className="-mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted hover:bg-chili/10 hover:text-chili sm:mr-0"
+          >
+            <CloseIcon width={18} height={18} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+  const addButton = (text: string, onClick: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-leaf hover:bg-leaf-tint"
+    >
+      <PlusIcon width={18} height={18} />
+      {text}
+    </button>
+  );
+
   return (
     <section className={card}>
       <h2 className="font-display text-[19px] font-bold">Options</h2>
@@ -758,8 +884,7 @@ function OptionsCard({
         {OPTION_KINDS.map((kind) => {
           const set = SETS[kind];
           const mine = rows.filter((r) => r.kind === kind);
-          const update = (row: OptRow, patch: Partial<OptRow>) => onRows(rows.map((r) => (r === row ? { ...r, ...patch } : r)));
-          const add = () => onRows([...rows, { id: "", kind, name: "", price: "" }]);
+          const lists = [...new Set(mine.map((r) => r.gid))];
           return (
             <div key={kind} className="rounded-2xl border border-line bg-paper p-3.5">
               <div className="flex items-center justify-between gap-3">
@@ -776,13 +901,40 @@ function OptionsCard({
                       onOn({ ...on, [kind]: !on[kind] });
                       // Switching on an empty set starts it with a row to type in;
                       // switching off drops rows left empty, so nothing counts as changed.
-                      if (!on[kind] && mine.length === 0) add();
+                      if (!on[kind] && mine.length === 0) onRows([...rows, kind === "choice" ? newList() : newRow(kind)]);
                       if (on[kind]) onRows(rows.filter((r) => r.kind !== kind || r.name.trim()));
                     }}
                   />
                 </span>
               </div>
-              {on[kind] && (
+              {on[kind] && kind === "choice" && (
+                <>
+                  {lists.map((gid) => {
+                    const items = mine.filter((r) => r.gid === gid);
+                    const name = items[0]?.group ?? "";
+                    return (
+                      <div key={gid} className="mt-3 rounded-xl bg-white p-3">
+                        <label className="block text-[14px] font-semibold">
+                          List name
+                          <input
+                            maxLength={30}
+                            value={name}
+                            onChange={(e) => onRows(rows.map((r) => (r.gid === gid && r.kind === "choice" ? { ...r, group: e.target.value } : r)))}
+                            placeholder="Drink"
+                            autoFocus={!name && items.every((r) => !r.id && !r.name)}
+                            className={`${field} h-11`}
+                          />
+                        </label>
+                        <p className="mt-1 text-[13px] text-muted">The guest must pick one. The price beside each is what it adds in this meal.</p>
+                        {rowList(items, set.placeholder, name || "Choice")}
+                        {items.length < 20 && addButton(set.add, () => onRows([...rows, newRow("choice", gid, name)]))}
+                      </div>
+                    );
+                  })}
+                  {lists.length < MAX_LISTS && addButton("Add another list", () => onRows([...rows, newList()]))}
+                </>
+              )}
+              {on[kind] && kind !== "choice" && (
                 <>
                   {kind === "spice" && !spiceLevel && (
                     <p className="mt-3 rounded-xl bg-mango-soft px-3 py-2 text-[13px]">
@@ -807,51 +959,8 @@ function OptionsCard({
                       </span>
                     </div>
                   )}
-                  <ul className="mt-3 space-y-2">
-                    {mine.map((r, i) => (
-                      <li key={i} className="flex items-center gap-1.5 sm:gap-2">
-                        <label className="min-w-0 flex-1">
-                          <span className="sr-only">{set.title}: name</span>
-                          <input
-                            maxLength={40}
-                            value={r.name}
-                            onChange={(e) => update(r, { name: e.target.value })}
-                            placeholder={set.placeholder}
-                            className={`${field} mt-0 h-11`}
-                          />
-                        </label>
-                        <label className="relative block w-[84px] shrink-0 sm:w-36">
-                          <span className="sr-only">{r.name || set.title}: adds to the price</span>
-                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[15px] text-muted">+₱</span>
-                          <input
-                            inputMode="decimal"
-                            value={r.price}
-                            onChange={(e) => update(r, { price: e.target.value })}
-                            placeholder="0"
-                            className={`${field} mt-0 h-11 pl-8 pr-2 tabular-nums`}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          aria-label={`Remove ${r.name || "choice"}`}
-                          onClick={() => onRows(rows.filter((x) => x !== r))}
-                          className="-mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted hover:bg-chili/10 hover:text-chili sm:mr-0"
-                        >
-                          <CloseIcon width={18} height={18} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  {mine.length < 20 && (
-                    <button
-                      type="button"
-                      onClick={add}
-                      className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-leaf hover:bg-leaf-tint"
-                    >
-                      <PlusIcon width={18} height={18} />
-                      {set.add}
-                    </button>
-                  )}
+                  {rowList(mine, set.placeholder, set.title)}
+                  {mine.length < 20 && addButton(set.add, () => onRows([...rows, newRow(kind)]))}
                 </>
               )}
             </div>

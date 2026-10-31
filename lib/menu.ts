@@ -34,6 +34,8 @@ export type Menu = {
   businessName: string;
   /** The restaurant's own logo (Cloudinary URL), or null for name only. */
   logoUrl: string | null;
+  /** The colour scheme the manager picked (lib/palettes.ts), or null for the design's own. */
+  palette: string | null;
   tableLabel: string | null;
   categories: Category[];
   /** Keyed by id; categories and the home sections refer to dishes by id. */
@@ -59,14 +61,35 @@ type DishRow = {
   size_required: number;
 };
 
-export type OptionRow = { id: string; dish_id: string; kind: OptionKind; name: string; price_cents: number };
-export const toOption = (o: OptionRow): DishOption => ({ id: o.id, kind: o.kind, name: o.name, priceCents: o.price_cents });
+export type OptionRow = {
+  id: string;
+  dish_id: string;
+  kind: OptionKind;
+  group_name: string | null;
+  ref_dish_id: string | null;
+  name: string;
+  price_cents: number;
+};
+export const toOption = (o: OptionRow): DishOption => ({
+  id: o.id,
+  kind: o.kind,
+  group: o.group_name,
+  ref: o.ref_dish_id,
+  name: o.name,
+  priceCents: o.price_cents,
+});
+
+/**
+ * A set meal choice shows only while its dish is on the menu today: sold out
+ * or removed, it drops out of the list. Use with "LEFT JOIN dishes r ON r.id = o.ref_dish_id".
+ */
+export const CHOICE_ON_MENU = "(o.ref_dish_id IS NULL OR (r.available = 1 AND r.removed_at IS NULL))";
 
 /** Everything the menu screens need, for the business the visit belongs to. */
 export async function loadMenu(visit: Visit): Promise<Menu | null> {
   const d = db();
   const [biz, table, cats, dishes, links, ingredients, options] = await d.batch([
-    d.prepare("SELECT name, logo_url FROM businesses WHERE id = ?").bind(visit.business_id),
+    d.prepare("SELECT name, logo_url, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
       .prepare("SELECT id, name FROM categories WHERE business_id = ? ORDER BY sort, name")
@@ -94,14 +117,16 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       .bind(visit.business_id),
     d
       .prepare(
-        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
+`SELECT o.id, o.dish_id, o.kind, o.group_name, o.ref_dish_id, COALESCE(r.name, o.name) AS name, o.price_cents
+         FROM dish_options o
+         LEFT JOIN dishes r ON r.id = o.ref_dish_id
          JOIN dishes x ON x.id = o.dish_id
-         WHERE x.business_id = ? ORDER BY o.sort`
+         WHERE x.business_id = ? AND ${CHOICE_ON_MENU} ORDER BY o.sort`
       )
       .bind(visit.business_id),
   ]);
 
-  const business = (biz.results as { name: string; logo_url: string | null }[])[0];
+  const business = (biz.results as { name: string; logo_url: string | null; menu_palette: string | null }[])[0];
   if (!business) return null;
 
   const byId: Record<string, Dish> = {};
@@ -148,6 +173,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
   return {
     businessName: business.name,
     logoUrl: business.logo_url,
+    palette: business.menu_palette,
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.
     categories: categories.filter((c) => c.dishIds.length > 0),

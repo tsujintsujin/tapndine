@@ -3,7 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Additional, Call, GuestOrders, Line, TableOrders, WaiterDish } from "@/lib/orders";
-import { extraCents, offered, OPTION_KINDS, resolvePicks, startPicks, togglePick, type DishOption, type OptionKind } from "@/lib/options";
+import {
+  choiceLists,
+  extraCents,
+  missingPick,
+  offered,
+  OPTION_KINDS,
+  resolvePicks,
+  startPicks,
+  togglePick,
+  type DishOption,
+  type Pickable,
+} from "@/lib/options";
 import { ago, formatPrice, formatTime } from "@/lib/format";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CloseIcon, MinusIcon, PlusIcon } from "@/app/components/Icons";
@@ -569,7 +580,15 @@ function AddDish({ dishes, busy, onAdd }: { dishes: WaiterDish[]; busy: boolean;
   );
 }
 
-const KIND_TITLES: Record<OptionKind, string> = { size: "Size", addon: "Add-ons", spice: "Spice" };
+/** The picker's sections in order: Size, each set-meal list ("Drink"), Add-ons, Spice. */
+function pickSections(d: Pickable) {
+  return [
+    { title: "Size", list: offered(d, "size"), required: d.sizeRequired, many: false },
+    ...choiceLists(d).map((l) => ({ title: l.name, list: l.options, required: true, many: false })),
+    { title: "Add-ons", list: offered(d, "addon"), required: false, many: true },
+    { title: "Spice", list: offered(d, "spice"), required: false, many: false },
+  ].filter((s) => s.list.length > 0);
+}
 
 /** The waiter's option picker: tap buttons per kind, then Add to table. A dialog, so Back and Esc close it. */
 function PickOptions({
@@ -637,20 +656,18 @@ function PickOptions({
               <CloseIcon width={20} height={20} />
             </button>
           </div>
-          {OPTION_KINDS.map((kind) => {
-            const list = offered(d, kind);
-            if (!list.length) return null;
-            const needed = kind === "size" && d.sizeRequired && !list.some((o) => picked.has(o.id));
+          {pickSections(d).map(({ title, list, required, many }) => {
+            const needed = required && !list.some((o) => picked.has(o.id));
             return (
-              <div key={kind} role="group" aria-label={KIND_TITLES[kind]} className="mt-4">
+              <div key={title} role="group" aria-label={title} className="mt-4">
                 <p className="flex items-center gap-2 text-[14px] font-bold">
-                  {KIND_TITLES[kind]}
+                  {title}
                   <span
                     className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
                       needed ? "bg-mango text-forest" : "bg-wash text-muted"
                     }`}
                   >
-                    {needed ? "Required" : kind === "addon" ? "Choose any" : "Choose 1"}
+                    {needed ? "Required" : many ? "Choose any" : "Choose 1"}
                   </span>
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -681,7 +698,9 @@ function PickOptions({
             onClick={() => picks && onAdd(d, picks)}
             className="mt-5 h-[52px] w-full rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:bg-wash disabled:text-muted"
           >
-            {picks ? `Add to table · ${formatPrice(d.priceCents + extraCents(picks))}` : "Pick a size first"}
+            {picks
+              ? `Add to table · ${formatPrice(d.priceCents + extraCents(picks))}`
+              : `Pick a ${missingPick(d, picked) ?? "size"} first`}
           </button>
         </div>
       )}

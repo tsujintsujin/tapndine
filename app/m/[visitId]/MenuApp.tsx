@@ -8,8 +8,10 @@ import type { CallKind, GuestOrders } from "@/lib/orders";
 import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
 import {
+  choiceLists,
   extraCents,
   lineKey,
+  missingPick,
   mustPick,
   offered,
   optionsLabel,
@@ -1395,7 +1397,8 @@ function DishDetails({
   const sizes = offered(dish, "size");
   const addons = offered(dish, "addon");
   const spices = offered(dish, "spice");
-  const hasOptions = sizes.length + addons.length + spices.length > 0;
+  const lists = choiceLists(dish);
+  const hasOptions = sizes.length + lists.length + addons.length + spices.length > 0;
   // How many the next Add puts in, and with what; back to the start after each add.
   const [n, setN] = useState(1);
   const [picked, setPicked] = useState(() => startPicks(dish));
@@ -1446,7 +1449,7 @@ function DishDetails({
           {!dish.available ? (
             "Not Available Today"
           ) : !picks ? (
-            "Choose a size"
+            `Choose a ${missingPick(dish, picked) ?? "size"}`
           ) : (
             <>
               <span className="truncate">{n > 1 ? `Add ${n}` : "Add to order"}</span>
@@ -1497,29 +1500,12 @@ function DishDetails({
           <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>
 
           {sizes.length > 0 && (
-            <div role="radiogroup" aria-labelledby={`size-${dish.id}`} className="mt-6">
-              <div className="flex items-center justify-between gap-3">
-                <h3 id={`size-${dish.id}`} className="font-display text-[19px] font-bold">
-                  Size
-                </h3>
-                {dish.sizeRequired && (
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${
-                      picks ? "bg-leaf-tint text-ink" : "bg-mango text-forest"
-                    }`}
-                  >
-                    {picks ? "Picked" : "Required"}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted">Choose 1</p>
-              <div className="mt-2.5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
-                {sizes.map((o) => (
-                  <OptionRow key={o.id} option={o} on={picked.has(o.id)} round onPick={() => pick(o)} />
-                ))}
-              </div>
-            </div>
+            <PickList title="Size" required={dish.sizeRequired} options={sizes} picked={picked} onPick={pick} />
           )}
+          {/* Set meals: one pick from each list ("Drink", "Side"), always required. */}
+          {lists.map((l) => (
+            <PickList key={l.name} title={l.name} required options={l.options} picked={picked} onPick={pick} />
+          ))}
 
           {addons.length + spices.length > 0 && <Extras addons={addons} spices={spices} picked={picked} onPick={pick} />}
 
@@ -1550,6 +1536,41 @@ function DishDetails({
       {hasOptions && (
         <div className="shrink-0 border-t border-line px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-3 md:px-6">{addRow}</div>
       )}
+      </div>
+    </div>
+  );
+}
+
+/** A pick-one section of the dish sheet: Size, or a set meal's list such as "Drink". */
+function PickList({
+  title,
+  required,
+  options,
+  picked,
+  onPick,
+}: {
+  title: string;
+  required: boolean;
+  options: DishOption[];
+  picked: Set<string>;
+  onPick: (o: DishOption) => void;
+}) {
+  const done = options.some((o) => picked.has(o.id));
+  return (
+    <div role="radiogroup" aria-label={title} className="mt-6">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-display text-[19px] font-bold">{title}</h3>
+        {required && (
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${done ? "bg-leaf-tint text-ink" : "bg-mango text-forest"}`}>
+            {done ? "Picked" : "Required"}
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-muted">Choose 1</p>
+      <div className="mt-2.5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+        {options.map((o) => (
+          <OptionRow key={o.id} option={o} on={picked.has(o.id)} round onPick={() => onPick(o)} />
+        ))}
       </div>
     </div>
   );

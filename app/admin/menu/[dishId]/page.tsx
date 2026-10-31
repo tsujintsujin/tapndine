@@ -18,7 +18,12 @@ export default async function DishPage({ params }: { params: Promise<{ dishId: s
   const hero = dishes.find((d) => d.featured && d.id !== dishId);
   return (
     <Shell name={me.name}>
-      <DishEditor dish={dish} categories={categories} currentHero={hero?.name ?? null} />
+      <DishEditor
+        dish={dish}
+        categories={categories}
+        currentHero={hero?.name ?? null}
+        menu={dishes.map((d) => ({ id: d.id, name: d.name, priceCents: d.priceCents, available: d.available }))}
+      />
     </Shell>
   );
 }

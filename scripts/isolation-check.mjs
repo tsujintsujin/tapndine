@@ -156,6 +156,17 @@ if (sneak.status === 200) {
   });
   check(steal.status === 200, "Kusina saves its dish with Hikay's option ids sent along");
   check(sql(`SELECT COUNT(*) AS n FROM dish_options WHERE dish_id = '${id}' AND id NOT LIKE 'o_sisig%'`).n === 2, "...and gets two options of its own instead");
+  // A set meal choice pointing at Hikay's dish: refused, so Kusina can't show Hikay's menu in its own.
+  const borrow = await kusina(`/api/staff/menu/dishes/${id}`, {
+    method: "PUT",
+    body: {
+      name: "Sneaky", shortDescription: "x", description: "", priceCents: 100, imageUrl: null, spiceLevel: 0,
+      servesMin: 1, servesMax: 1, available: true, featured: false, bestSeller: false, isNew: false, categoryIds: [], ingredients: [],
+      sizeRequired: true, options: [{ kind: "choice", group: "Drink", ref: "d_mangoshake", name: "Mango Shake", priceCents: 0 }],
+    },
+  });
+  check(borrow.status >= 400, `A set meal choice from Hikay's menu refused (${borrow.status})`);
+  check(sql(`SELECT COUNT(*) AS n FROM dish_options WHERE ref_dish_id = 'd_mangoshake' AND dish_id = '${id}'`).n === 0, "...and nothing was saved");
   await kusina(`/api/staff/menu/dishes/${id}`, { method: "DELETE" });
 }
 

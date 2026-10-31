@@ -1,6 +1,6 @@
 import { db } from "./cf";
 import { randomId } from "./ids";
-import { toOption, type OptionRow } from "./menu";
+import { CHOICE_ON_MENU, toOption, type OptionRow } from "./menu";
 import { extraCents, optionsLabel, resolvePicks, type DishOption } from "./options";
 import { isVisitId, type Visit } from "./visits";
 
@@ -80,8 +80,10 @@ async function price(businessId: string, items: Requested): Promise<Priced[] | n
       .bind(businessId, ids),
     d
       .prepare(
-        `SELECT id, dish_id, kind, name, price_cents FROM dish_options
-         WHERE dish_id IN (SELECT value FROM json_each(?)) ORDER BY sort`
+`SELECT o.id, o.dish_id, o.kind, o.group_name, o.ref_dish_id, COALESCE(r.name, o.name) AS name, o.price_cents
+         FROM dish_options o
+         LEFT JOIN dishes r ON r.id = o.ref_dish_id
+         WHERE o.dish_id IN (SELECT value FROM json_each(?)) AND ${CHOICE_ON_MENU} ORDER BY o.sort`
       )
       .bind(ids),
   ]);
@@ -599,8 +601,10 @@ export async function dishList(businessId: string) {
       .bind(businessId),
     d
       .prepare(
-        `SELECT o.id, o.dish_id, o.kind, o.name, o.price_cents FROM dish_options o
-         JOIN dishes x ON x.id = o.dish_id WHERE x.business_id = ? ORDER BY o.sort`
+`SELECT o.id, o.dish_id, o.kind, o.group_name, o.ref_dish_id, COALESCE(r.name, o.name) AS name, o.price_cents
+         FROM dish_options o
+         LEFT JOIN dishes r ON r.id = o.ref_dish_id
+         JOIN dishes x ON x.id = o.dish_id WHERE x.business_id = ? AND ${CHOICE_ON_MENU} ORDER BY o.sort`
       )
       .bind(businessId),
   ]);
