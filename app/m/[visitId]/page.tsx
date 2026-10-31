@@ -19,7 +19,7 @@ export default async function MenuPage({ params }: { params: Promise<{ visitId: 
   // A tag not placed at a table has no waiter to send to.
   return (
     <>
-      <WarmBackdrop />
+      {menu.design === "a" && <WarmBackdrop />}
       <MenuApp
         visitId={visitId}
         menu={menu}

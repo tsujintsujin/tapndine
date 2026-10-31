@@ -11,12 +11,15 @@ export function DishImage({
   className = "",
   eager = false,
   onDark = false,
+  soldOutLabel = true,
 }: {
   dish: Dish;
   className?: string;
   eager?: boolean;
   /** On the forest stage the loading box must be dark too, not a pale flash. */
   onDark?: boolean;
+  /** Off where the photo is too small for the label and the text says it instead. */
+  soldOutLabel?: boolean;
 }) {
   return (
     <div className={`relative overflow-hidden ${onDark ? "bg-forest-soft" : "bg-wash"} ${className}`}>
@@ -37,7 +40,7 @@ export function DishImage({
           <PlateIcon width={36} height={36} />
         </div>
       )}
-      {!dish.available && (
+      {!dish.available && soldOutLabel && (
         <span className="absolute left-2 top-2 rounded-full bg-ink/85 px-2.5 py-1 text-xs font-medium text-white">
           Not Available Today
         </span>

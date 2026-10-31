@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
+import type { MenuDesign } from "@/lib/menu";
 import { formatPrice } from "@/lib/format";
 import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
 import { btn, PageHead } from "../kit";
 import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
+import DesignCard from "./DesignCard";
 import LogoCard from "./LogoCard";
 
 /**
@@ -20,11 +22,14 @@ export default function MenuBoard({
   dishes,
   categories,
   logo,
+  design,
 }: {
   dishes: AdminDish[];
   categories: AdminCategory[];
   /** The restaurant's name and logo, for the logo card under the title. */
   logo: { name: string; url: string | null };
+  /** The look of the guests' menu, for the design card. */
+  design: MenuDesign;
 }) {
   const router = useRouter();
   const [list, setList] = useState(dishes);
@@ -109,6 +114,7 @@ export default function MenuBoard({
       </PageHead>
 
       <LogoCard name={logo.name} logoUrl={logo.url} />
+      <DesignCard design={design} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">

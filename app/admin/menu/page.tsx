@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { restaurantLogo, restaurantName } from "@/lib/dev";
+import { restaurantDesign, restaurantLogo, restaurantName } from "@/lib/dev";
 import { loadMenuAdmin } from "@/lib/menu-admin";
 import { requireStaff } from "@/lib/staff";
 import Shell from "../Shell";
@@ -10,14 +10,15 @@ export const metadata: Metadata = { title: "Menu · tapndine", robots: { index: 
 
 export default async function MenuPage() {
   const me = await requireStaff("manager");
-  const [{ dishes, categories }, name, logoUrl] = await Promise.all([
+  const [{ dishes, categories }, name, logoUrl, design] = await Promise.all([
     loadMenuAdmin(me.business_id),
     restaurantName(me.business_id),
     restaurantLogo(me.business_id),
+    restaurantDesign(me.business_id),
   ]);
   return (
     <Shell name={me.name}>
-      <MenuBoard dishes={dishes} categories={categories} logo={{ name: name ?? "", url: logoUrl }} />
+      <MenuBoard dishes={dishes} categories={categories} logo={{ name: name ?? "", url: logoUrl }} design={design} />
     </Shell>
   );
 }

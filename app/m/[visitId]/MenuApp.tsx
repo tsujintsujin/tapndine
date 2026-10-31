@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Dish, Menu } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
-import { formatPrice, formatTime, servesLabel } from "@/lib/format";
+import { fold, formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
 import {
   choiceLists,
@@ -39,6 +39,7 @@ import {
   SearchIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
+import MenuB from "./MenuB";
 import { DishImage, SpiceMeter } from "./parts";
 
 // ---------------------------------------------------------------------------
@@ -75,10 +76,10 @@ function closeParam(key: string) {
 /** Line key (lib/options.ts lineKey: the dish plus its picks) to how many. */
 type Order = Record<string, number>;
 /** The guest's note per line in the list ("no egg"), sent with it. */
-type Notes = Record<string, string>;
+export type Notes = Record<string, string>;
 
 /** A line in the phone's order, priced from today's menu. */
-type OrderLine = { key: string; dish: Dish; picks: DishOption[]; label: string | null; unitCents: number; qty: number };
+export type OrderLine = { key: string; dish: Dish; picks: DishOption[]; label: string | null; unitCents: number; qty: number };
 
 /**
  * The order's lines in menu order. A line whose dish or picks the menu no
@@ -470,6 +471,70 @@ export default function MenuApp({
 
   if (expired) return <Expired />;
 
+  // The two small dialogs and the notice are the same in both designs; under
+  // Design B they take its colours and type from .theme-ube.
+  const shared = (
+    <>
+      <AddedToast toast={toast} onDone={() => setToast(null)} />
+      <NicknamePrompt
+        open={nickOpen}
+        initial={nick || ""}
+        sending={sendAfterNick}
+        onDone={(v) => {
+          saveNick(v);
+          setNickOpen(false);
+          if (sendAfterNick) {
+            setSendAfterNick(false);
+            send(v || null);
+          }
+        }}
+      />
+      <CallPrompt
+        open={callOpen}
+        calls={calls}
+        calling={calling}
+        error={callError}
+        onCall={call}
+        onClose={() => {
+          setCallOpen(false);
+          setCallError("");
+        }}
+      />
+    </>
+  );
+
+  if (menu.design === "b") {
+    return (
+      <MenuB
+        menu={menu}
+        nickname={nick || ""}
+        canSend={canSend}
+        demo={demo}
+        lines={lines}
+        notes={notes}
+        setNote={setNote}
+        setQty={setQty}
+        sent={sent}
+        calling={calls.length > 0}
+        dish={dish}
+        orderOpen={orderOpen}
+        onDish={openDish}
+        onQuickAdd={quickAdd}
+        onAdd={(id, n, picks) => addOne(lineKey(id, picks), n)}
+        onCloseDish={() => closeParam("d")}
+        onOrder={openOrder}
+        onCloseOrder={() => closeParam("o")}
+        onNickname={canSend ? () => setNickOpen(true) : undefined}
+        onCall={canSend ? () => setCallOpen(true) : undefined}
+        sending={sending}
+        sendError={sendError}
+        onSend={trySend}
+      >
+        {shared}
+      </MenuB>
+    );
+  }
+
   return (
     <>
       <Header
@@ -504,8 +569,6 @@ export default function MenuApp({
           )}
         </div>
       </main>
-
-      <AddedToast toast={toast} onDone={() => setToast(null)} />
 
       <BottomNav
         view={view}
@@ -546,31 +609,7 @@ export default function MenuApp({
         />
       </Sheet>
 
-      <NicknamePrompt
-        open={nickOpen}
-        initial={nick || ""}
-        sending={sendAfterNick}
-        onDone={(v) => {
-          saveNick(v);
-          setNickOpen(false);
-          if (sendAfterNick) {
-            setSendAfterNick(false);
-            send(v || null);
-          }
-        }}
-      />
-
-      <CallPrompt
-        open={callOpen}
-        calls={calls}
-        calling={calling}
-        error={callError}
-        onCall={call}
-        onClose={() => {
-          setCallOpen(false);
-          setCallError("");
-        }}
-      />
+      {shared}
     </>
   );
 }
@@ -846,13 +885,6 @@ function CountBadge({ count }: { count: number }) {
 }
 
 // ---------------------------------------------------------------------------
-
-/** Accents and case don't matter: "sinigang" finds "Sinigang", "creme" finds "crème". */
-const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
 
 /**
  * Type and the matching dishes drop down under the box; picking one opens it.
