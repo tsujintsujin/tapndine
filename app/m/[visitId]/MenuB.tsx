@@ -234,7 +234,9 @@ function Picks({ menu, onDish, onAdd }: { menu: Menu; onDish: (id: string) => vo
       <h2 id="picks-title" className="mx-auto max-w-2xl px-5 font-display text-[20px] italic text-white/90">
         The kitchen&apos;s picks
       </h2>
-      <ul className="no-scrollbar mx-auto mt-3 flex max-w-2xl snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto px-5 pb-5">
+      {/* Full width, so on a wide screen the row runs off the edge instead of
+          being cut at the column; the padding lines its start up with the column. */}
+      <ul className="no-scrollbar mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[max(20px,calc(50vw-316px))] pb-5 [scroll-padding-inline:max(20px,calc(50vw-316px))]">
         {picks.map(({ dish: d, tag }) => (
           <li key={d.id} className="w-[min(62vw,232px)] shrink-0 snap-start">
             <article className="relative flex h-full flex-col rounded-[26px] bg-white p-2 shadow-[0_14px_32px_rgb(30_21_48/0.16)]">
@@ -253,7 +255,7 @@ function Picks({ menu, onDish, onAdd }: { menu: Menu; onDish: (id: string) => vo
                     <span className="mt-1 block text-[15px] font-semibold text-forest">{formatPrice(d.priceCents)}</span>
                   </button>
                 </h3>
-                {d.available && <AddButton name={d.name} onAdd={() => onAdd(d.id)} />}
+                {d.available && <AddButton name={d.name} onAdd={() => onAdd(d.id)} className="relative" />}
               </div>
             </article>
           </li>
@@ -263,14 +265,14 @@ function Picks({ menu, onDish, onAdd }: { menu: Menu; onDish: (id: string) => vo
   );
 }
 
-/** The round calamansi +, over everything else in its card or row. */
+/** The round calamansi +, over the card or row's tap area; the caller positions it. */
 function AddButton({ name, onAdd, className = "" }: { name: string; onAdd: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onAdd}
       aria-label={`Add ${name} to order`}
-      className={`relative z-[1] grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mango text-ink shadow-[0_4px_10px_rgb(30_21_48/0.18)] active:brightness-95 ${className}`}
+      className={`z-[1] grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mango text-ink shadow-[0_4px_10px_rgb(30_21_48/0.18)] active:brightness-95 ${className}`}
     >
       <PlusIcon width={22} height={22} strokeWidth={2.4} />
     </button>
