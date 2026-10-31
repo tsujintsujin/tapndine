@@ -9,6 +9,7 @@ import {
   choiceLists,
   extraCents,
   missingPick,
+  mustPick,
   offered,
   resolvePicks,
   startPicks,
@@ -19,32 +20,34 @@ import {
   BagIcon,
   BellIcon,
   CheckIcon,
+  ChevronRight,
   ChiliIcon,
   CloseIcon,
   INGREDIENT_ICONS,
+  MenuIcon,
   MinusIcon,
   PeopleIcon,
   PlusIcon,
   SearchIcon,
 } from "@/app/components/Icons";
+import { closeParam, setParams } from "./history";
 import type { Notes, OrderLine } from "./MenuApp";
 import Sheet from "./Sheet";
 import { DishImage, SpiceMeter } from "./parts";
 
 // ---------------------------------------------------------------------------
-// Design B: ube and calamansi. One long menu instead of a home page and a
-// separate grid: an ube band with the restaurant and its picks to swipe, then
-// every category in turn, one dish per row with its photo on the right. Tabs
-// stick to the top and follow the scroll. The order and the call button sit
-// in a dock at the bottom. Dish names are set in Fraunces.
+// Design B, "plate by plate": the menu is a vertical feed, one dish filling
+// the phone, and a swipe brings the next. It opens on a cover with the
+// restaurant and an index of its categories. A bar over the top holds the
+// index, the call button and the order. Details and choices rise in a half
+// sheet so the dish stays in view above them. Spec: .claude/design-b/SPEC.md.
 //
 // All the ordering logic lives in MenuApp; this file only draws it. The
 // colours are the .theme-ube tokens in globals.css, so the dialogs MenuApp
 // shares with Design A (nickname, call) pick them up too:
-//   forest  ube, the band and the order bar
-//   leaf    ube, pressed things in the shared dialogs
-//   mango   calamansi, the add buttons and Send
-//   wash    lilac, quiet fills
+//   forest  ube, the cover and dishes without a photo
+//   mango   calamansi, Add and Send
+//   wash    lilac, quiet fills in the sheets
 
 const serif = Fraunces({
   subsets: ["latin"],
@@ -54,8 +57,25 @@ const serif = Fraunces({
   display: "swap",
 });
 
-/** The phone's status bar matches the ube band while this design is open. */
+/** The phone's status bar matches the cover while this design is open. */
 const UBE = "#3D2358";
+
+type Section = { id: string; name: string; dishIds: string[] };
+
+/**
+ * The categories in order. A dish in no category still shows, in a last
+ * "More dishes"; a menu with no categories at all is one plain run.
+ */
+function sectionsOf(menu: Menu): Section[] {
+  const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
+  const loose = menu.dishOrder.filter((id) => !placed.has(id));
+  const sections: Section[] = menu.categories.map((c) => ({ id: c.id, name: c.name, dishIds: c.dishIds }));
+  if (loose.length) sections.push({ id: "more", name: sections.length ? "More dishes" : "Menu", dishIds: loose });
+  return sections;
+}
+
+/** One screen of the feed: a dish, the category it is shown under, and where it sits in it. */
+type Slide = { key: string; dish: Dish; section: Section; pos: number };
 
 export default function MenuB({
   menu,
@@ -70,6 +90,7 @@ export default function MenuB({
   calling,
   dish,
   orderOpen,
+  indexOpen,
   onDish,
   onQuickAdd,
   onAdd,
@@ -95,11 +116,13 @@ export default function MenuB({
   sent: GuestOrders | null;
   /** A call from this table is waiting for the waiter. */
   calling: boolean;
-  /** The dish whose sheet is open (?d=). */
+  /** The dish whose details are open (?d=). */
   dish: Dish | undefined;
   orderOpen: boolean;
+  /** The index sheet (?i=1). */
+  indexOpen: boolean;
   onDish: (id: string) => void;
-  /** The + on a row: straight in, or the sheet when a size must be picked. */
+  /** Add on a dish screen: straight in, or the details when a size must be picked. */
   onQuickAdd: (id: string) => void;
   onAdd: (dishId: string, n: number, picks: DishOption[]) => void;
   onCloseDish: () => void;
@@ -124,23 +147,122 @@ export default function MenuB({
     };
   }, []);
 
+  const sections = useMemo(() => sectionsOf(menu), [menu]);
+  const slides = useMemo<Slide[]>(
+    () =>
+      sections.flatMap((s) =>
+        s.dishIds.map((id, i) => ({ key: `${s.id}:${id}`, dish: menu.dishes[id], section: s, pos: i + 1 }))
+      ),
+    [sections, menu]
+  );
+
   const inOrder = (id: string) => lines.reduce((n, l) => n + (l.dish.id === id ? l.qty : 0), 0);
   const count = lines.reduce((a, l) => a + l.qty, 0);
   const total = lines.reduce((a, l) => a + l.unitCents * l.qty, 0);
 
+  const feedRef = useRef<HTMLDivElement>(null);
+  // -1 is the cover; otherwise the slide on screen.
+  const [current, setCurrent] = useState(-1);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (!feed) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setCurrent(Number((e.target as HTMLElement).dataset.i));
+        }
+      },
+      { root: feed, threshold: 0.6 }
+    );
+    feed.querySelectorAll("[data-i]").forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [slides]);
+
+  /**
+   * Bring a slide (or the cover, -1) to the screen. Straight there, not a
+   * smooth scroll: that would flash every dish photo in between.
+   */
+  const jumpTo = (i: number) => {
+    const el = feedRef.current?.querySelector<HTMLElement>(`[data-i="${i}"]`);
+    if (el) feedRef.current!.scrollTo({ top: el.offsetTop });
+  };
+
+  const openIndex = () => setParams((p) => p.set("i", "1"), "push");
+  const pickFromIndex = (i: number) => {
+    closeParam("i");
+    jumpTo(i);
+  };
+
+  // Desktop: arrow keys and Page Up/Down work once the feed has focus.
+  useEffect(() => feedRef.current?.focus({ preventScroll: true }), []);
+
+  // Desktop: one notch of the mouse wheel turns to the next dish (the snap
+  // alone springs back from a small turn). Touch scrolling is left alone.
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (!feed) return;
+    let lockedUntil = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      // ponytail: fixed 650 ms lock per turn; a trackpad's long fling turns one dish, not several.
+      if (Date.now() < lockedUntil || Math.abs(e.deltaY) < 4) return;
+      lockedUntil = Date.now() + 650;
+      feed.scrollBy({ top: Math.sign(e.deltaY) * feed.clientHeight, behavior: "smooth" });
+    };
+    feed.addEventListener("wheel", onWheel, { passive: false });
+    return () => feed.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const slide = current >= 0 ? slides[current] : null;
+
   return (
-    <div className={`${serif.variable} theme-ube min-h-dvh bg-paper text-ink`}>
-      <Band menu={menu} nickname={nickname} onNickname={onNickname} />
-      <Picks menu={menu} onDish={onDish} onAdd={onQuickAdd} />
+    <div className={`${serif.variable} theme-ube fixed inset-0 bg-[#1b1024] text-white`}>
+      <div className="relative mx-auto h-full max-w-[520px]">
+        <div
+          ref={feedRef}
+          tabIndex={-1}
+          aria-label="Menu, one dish per screen"
+          className="no-scrollbar h-full snap-y snap-mandatory overflow-y-auto overscroll-contain outline-none"
+        >
+          <Cover
+            menu={menu}
+            sections={sections}
+            slides={slides}
+            nickname={nickname}
+            onNickname={onNickname}
+            onSearch={openIndex}
+            onJump={jumpTo}
+          />
+          {slides.map((s, i) => (
+            <DishScreen
+              key={s.key}
+              index={i}
+              slide={s}
+              eager={i < 2}
+              count={inOrder(s.dish.id)}
+              onAdd={() => onQuickAdd(s.dish.id)}
+              onDetails={() => onDish(s.dish.id)}
+            />
+          ))}
+          {slides.length > 0 && <EndScreen onTop={() => jumpTo(-1)} onOrder={onOrder} count={count} />}
+        </div>
 
-      {/* Room for the dock; see Design A's main for the 100lvh - 100svh. */}
-      <main className="pb-[calc(104px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)]">
-        <MenuList menu={menu} inOrder={inOrder} onDish={onDish} onAdd={onQuickAdd} />
-      </main>
+        <TopBar
+          slide={slide}
+          of={slide ? slide.section.dishIds.length : 0}
+          count={count}
+          total={total}
+          sent={sent}
+          calling={calling}
+          onIndex={current >= 0 ? openIndex : undefined}
+          onCall={onCall}
+          onOrder={onOrder}
+        />
+      </div>
 
-      <Dock count={count} total={total} sent={sent} calling={calling} onOrder={onOrder} onCall={onCall} />
-
-      <Sheet open={!!dish} onClose={onCloseDish} from="bottom" label={dish?.name ?? "Dish"}>
+      <Sheet open={!!dish} onClose={onCloseDish} from="bottom" half label={dish?.name ?? "Dish"}>
         {dish && (
           <DishSheet
             key={dish.id}
@@ -150,6 +272,10 @@ export default function MenuB({
             onClose={onCloseDish}
           />
         )}
+      </Sheet>
+
+      <Sheet open={indexOpen} onClose={() => closeParam("i")} from="bottom" label="Menu index">
+        <IndexSheet menu={menu} sections={sections} slides={slides} onPick={pickFromIndex} onClose={() => closeParam("i")} />
       </Sheet>
 
       <Sheet open={orderOpen} onClose={onCloseOrder} from="bottom" label="Your order">
@@ -177,451 +303,478 @@ export default function MenuB({
 
 // ---------------------------------------------------------------------------
 
-/** The ube band: logo, name, the table and who is ordering. The picks overlap its foot. */
-function Band({ menu, nickname, onNickname }: { menu: Menu; nickname: string; onNickname?: () => void }) {
+/**
+ * The bar over the top of every screen: where you are on the left (a dish
+ * screen only), then the index, the call button and the order. It stays put
+ * while the dishes slide under it.
+ */
+function TopBar({
+  slide,
+  of,
+  count,
+  total,
+  sent,
+  calling,
+  onIndex,
+  onCall,
+  onOrder,
+}: {
+  slide: Slide | null;
+  of: number;
+  count: number;
+  total: number;
+  sent: GuestOrders | null;
+  calling: boolean;
+  /** Missing on the cover, which is the index. */
+  onIndex?: () => void;
+  onCall?: () => void;
+  onOrder: () => void;
+}) {
+  const hasSent = !!sent && sent.batches.length > 0;
+  const round = "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/35 text-white ring-1 ring-white/25 backdrop-blur-md active:bg-black/50";
   return (
-    <header className="bg-forest pb-[104px] pt-[env(safe-area-inset-top)] text-white">
-      <div className="mx-auto flex max-w-2xl items-center gap-3.5 px-5 pt-6">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 pt-[env(safe-area-inset-top)]">
+      <div className="flex h-16 items-center gap-2 px-4">
+        <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-white [text-shadow:0_1px_6px_rgb(0_0_0/0.6)]" aria-live="polite">
+          {slide && (
+            <>
+              {slide.section.name}
+              <span className="font-normal text-white/75">
+                {" "}
+                {slide.pos} of {of}
+              </span>
+            </>
+          )}
+        </p>
+        <div className="pointer-events-auto flex items-center gap-2">
+          {onIndex && (
+            <button type="button" onClick={onIndex} aria-label="Menu index and search" className={round}>
+              <MenuIcon width={20} height={20} />
+            </button>
+          )}
+          {onCall && (
+            <button
+              type="button"
+              onClick={onCall}
+              aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
+              className={`relative ${round}`}
+            >
+              <BellIcon width={20} height={20} />
+              {calling && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-black/40" aria-hidden />}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onOrder}
+            aria-label={count ? `Your order, ${count} items, ${formatPrice(total)}` : hasSent ? "Your sent orders" : "Your order"}
+            className={
+              count
+                ? "flex h-11 items-center gap-2 rounded-full bg-mango pl-1.5 pr-4 text-ink shadow-[0_6px_18px_rgb(0_0_0/0.35)] active:brightness-95"
+                : round
+            }
+          >
+            {count ? (
+              <>
+                <span className="grid h-8 min-w-8 place-items-center rounded-full bg-ink px-1.5 text-[14px] font-bold text-mango">{count}</span>
+                <span className="text-[15px] font-bold">{formatPrice(total)}</span>
+              </>
+            ) : (
+              <BagIcon width={20} height={20} />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The first screen: the restaurant, who is ordering, a search box, and every
+ * category as a row that jumps to its first dish. It stops a little short of
+ * the bottom so the first dish shows below it, a hint to swipe.
+ */
+function Cover({
+  menu,
+  sections,
+  slides,
+  nickname,
+  onNickname,
+  onSearch,
+  onJump,
+}: {
+  menu: Menu;
+  sections: Section[];
+  slides: Slide[];
+  nickname: string;
+  onNickname?: () => void;
+  onSearch: () => void;
+  onJump: (i: number) => void;
+}) {
+  return (
+    <section data-i={-1} aria-labelledby="cover-name" className="min-h-[calc(100%-88px)] snap-start bg-forest px-5 pb-8 pt-[calc(76px+env(safe-area-inset-top))]">
+      <div className="flex items-center gap-3.5">
         {menu.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={menu.logoUrl} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-white object-contain p-1" />
+          <img src={menu.logoUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl bg-white object-contain p-1" />
         )}
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-[30px] font-semibold leading-tight tracking-[-0.01em] [font-variation-settings:'SOFT'_100]">
+        <div className="min-w-0">
+          <h1 id="cover-name" className="font-display text-[clamp(36px,11vw,48px)] font-semibold leading-[1.02] tracking-[-0.02em] [overflow-wrap:anywhere]">
             {menu.businessName}
           </h1>
-          <div className="mt-0.5 flex min-h-8 flex-wrap items-center gap-x-3 text-[15px] text-white/75">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-white/75">
             {menu.tableLabel && <span>{menu.tableLabel}</span>}
             {onNickname && (
-              <button
-                type="button"
-                onClick={onNickname}
-                aria-label={nickname ? `Ordering as ${nickname}, change name` : "Add your name"}
-                className="-my-1 flex h-9 items-center rounded-full bg-white/15 px-3 font-medium text-white active:bg-white/20"
-              >
+              <button type="button" onClick={onNickname} className="flex h-9 items-center rounded-full bg-white/15 px-3 font-medium text-white active:bg-white/25">
                 {nickname ? `Hi ${nickname}` : "Add your name"}
               </button>
             )}
           </div>
         </div>
       </div>
-    </header>
-  );
-}
 
-/** Today's pick, then best sellers, then new dishes, once each. */
-function pickList(menu: Menu): { dish: Dish; tag: string }[] {
-  const all = menu.dishOrder.map((id) => menu.dishes[id]);
-  const seen = new Set<string>();
-  const out: { dish: Dish; tag: string }[] = [];
-  const take = (d: Dish, tag: string) => {
-    if (seen.has(d.id) || out.length >= 8) return;
-    seen.add(d.id);
-    out.push({ dish: d, tag });
-  };
-  all.filter((d) => d.featured).forEach((d) => take(d, "Today's pick"));
-  all.filter((d) => d.bestSeller).forEach((d) => take(d, "Best seller"));
-  all.filter((d) => d.isNew).forEach((d) => take(d, "New"));
-  return out;
-}
+      <button
+        type="button"
+        onClick={onSearch}
+        className="mt-7 flex h-12 w-full items-center gap-3 rounded-2xl bg-white/10 px-4 text-left text-[16px] text-white/70 ring-1 ring-white/20 active:bg-white/20"
+      >
+        <SearchIcon width={20} height={20} />
+        Find a dish
+      </button>
 
-/** Tall photo cards to swipe, starting inside the band. */
-function Picks({ menu, onDish, onAdd }: { menu: Menu; onDish: (id: string) => void; onAdd: (id: string) => void }) {
-  const picks = pickList(menu);
-  if (!picks.length) return <div className="-mt-[80px]" />;
-  return (
-    <section aria-labelledby="picks-title" className="-mt-[96px]">
-      <h2 id="picks-title" className="mx-auto max-w-2xl px-5 font-display text-[20px] italic text-white/90">
-        The kitchen&apos;s picks
-      </h2>
-      {/* Full width, so on a wide screen the row runs off the edge instead of
-          being cut at the column; the padding lines its start up with the column. */}
-      <ul className="no-scrollbar mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[max(20px,calc(50vw-316px))] pb-5 [scroll-padding-inline:max(20px,calc(50vw-316px))]">
-        {picks.map(({ dish: d, tag }) => (
-          <li key={d.id} className="w-[min(62vw,232px)] shrink-0 snap-start">
-            <article className="relative flex h-full flex-col rounded-[26px] bg-white p-2 shadow-[0_14px_32px_rgb(30_21_48/0.16)]">
-              <DishImage dish={d} eager className="aspect-[4/5] rounded-[20px]" soldOutLabel={false} />
-              <span className="absolute left-4 top-4 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold text-forest">
-                {d.available ? tag : "Not available today"}
-              </span>
-              <div className="flex flex-1 items-end gap-2 px-2 pb-1 pt-2.5">
-                <h3 className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => onDish(d.id)}
-                    className="text-left after:absolute after:inset-0 after:rounded-[26px] after:content-['']"
-                  >
-                    <span className="line-clamp-2 font-display text-[18px] font-semibold leading-tight">{d.name}</span>
-                    <span className="mt-1 block text-[15px] font-semibold text-forest">{formatPrice(d.priceCents)}</span>
+      {sections.length > 1 && (
+        <nav aria-label="Categories" className="mt-6">
+          <ul className="divide-y divide-white/10 border-y border-white/10">
+            {sections.map((s) => {
+              const first = slides.findIndex((x) => x.section.id === s.id);
+              const photo = s.dishIds.map((id) => menu.dishes[id].imageUrl).find(Boolean);
+              return (
+                <li key={s.id}>
+                  <button type="button" onClick={() => onJump(first)} className="flex min-h-[68px] w-full items-center gap-3.5 py-2 text-left active:bg-white/5">
+                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-white/10">
+                      {photo && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photo} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 font-display text-[22px] font-semibold leading-tight">{s.name}</span>
+                    <span className="shrink-0 text-[14px] text-white/60">{s.dishIds.length}</span>
+                    <ChevronRight width={18} height={18} className="shrink-0 text-white/50" />
                   </button>
-                </h3>
-                {d.available && <AddButton name={d.name} onAdd={() => onAdd(d.id)} className="relative" />}
-              </div>
-            </article>
-          </li>
-        ))}
-      </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
+
+      {slides.length > 0 && (
+        <button type="button" onClick={() => onJump(0)} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-white/80 active:bg-white/10">
+          Swipe up for the first dish
+        </button>
+      )}
     </section>
   );
 }
 
-/** The round calamansi +, over the card or row's tap area; the caller positions it. */
-function AddButton({ name, onAdd, className = "" }: { name: string; onAdd: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onAdd}
-      aria-label={`Add ${name} to order`}
-      className={`z-[1] grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mango text-ink shadow-[0_4px_10px_rgb(30_21_48/0.18)] active:brightness-95 ${className}`}
-    >
-      <PlusIcon width={22} height={22} strokeWidth={2.4} />
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-
-type Section = { id: string; name: string; dishIds: string[] };
-
 /**
- * The categories in order. A dish in no category still shows, in a last
- * "More dishes"; a menu with no categories at all is one plain list.
+ * One dish, filling the screen: the photo behind, and over a dark fade at
+ * the foot its tags, name, a line on it, what it feeds, its heat and price,
+ * then Add and Details. No photo: the name stands on ube instead.
  */
-function sectionsOf(menu: Menu): Section[] {
-  const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
-  const loose = menu.dishOrder.filter((id) => !placed.has(id));
-  const sections: Section[] = menu.categories.map((c) => ({ id: c.id, name: c.name, dishIds: c.dishIds }));
-  if (loose.length) sections.push({ id: "more", name: sections.length ? "More dishes" : "Menu", dishIds: loose });
-  return sections;
-}
-
-/** The sticky tabs (and search), then every section of the menu. */
-function MenuList({
-  menu,
-  inOrder,
-  onDish,
+function DishScreen({
+  index,
+  slide,
+  eager,
+  count,
   onAdd,
+  onDetails,
 }: {
-  menu: Menu;
-  inOrder: (id: string) => number;
-  onDish: (id: string) => void;
-  onAdd: (id: string) => void;
+  index: number;
+  slide: Slide;
+  eager: boolean;
+  count: number;
+  onAdd: () => void;
+  onDetails: () => void;
 }) {
-  const sections = useMemo(() => sectionsOf(menu), [menu]);
-  const [active, setActive] = useState(sections[0]?.id ?? "");
-  const [searching, setSearching] = useState(false);
-  const [q, setQ] = useState("");
-  const barRef = useRef<HTMLDivElement>(null);
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
-  // While a tapped tab's smooth scroll runs, the sections it passes must not
-  // light their own tabs one after another.
-  const jumping = useRef(false);
-
-  // The tab of the section under the bar lights up as the page scrolls.
-  useEffect(() => {
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (jumping.current) return;
-        const line = (barRef.current?.getBoundingClientRect().bottom ?? 0) + 12;
-        let current = sections[0]?.id ?? "";
-        for (const s of sections) {
-          const el = document.getElementById(`sec-${s.id}`);
-          if (el && el.getBoundingClientRect().top <= line) current = s.id;
-        }
-        setActive(current);
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [sections]);
-
-  // Keep the lit tab in sight in the row, without moving the page.
-  useEffect(() => {
-    const row = tabsRef.current;
-    const tab = row?.querySelector<HTMLElement>(`[data-tab="${active}"]`);
-    if (!row || !tab) return;
-    const left = tab.offsetLeft - row.clientWidth / 2 + tab.offsetWidth / 2;
-    row.scrollTo({ left, behavior: "smooth" });
-  }, [active]);
-
-  const barHeight = () => barRef.current?.offsetHeight ?? 0;
-
-  const jumpTo = (id: string) => {
-    const el = document.getElementById(`sec-${id}`);
-    if (!el) return;
-    setActive(id);
-    jumping.current = true;
-    const done = () => {
-      jumping.current = false;
-      window.removeEventListener("scrollend", done);
-    };
-    window.addEventListener("scrollend", done);
-    // Browsers without scrollend, or no scroll needed at all.
-    setTimeout(done, 900);
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - barHeight() + 1, behavior: "smooth" });
-  };
-
-  const openSearch = () => {
-    setSearching(true);
-    // The box sits at the top with the results under it.
-    const top = (anchorRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
-    if (window.scrollY < top) window.scrollTo(0, top);
-  };
-  const closeSearch = () => {
-    setSearching(false);
-    setQ("");
-  };
-
-  const needle = fold(q.trim());
-  const results = needle
-    ? menu.dishOrder.filter((id) => {
-        const d = menu.dishes[id];
-        return fold(d.name).includes(needle) || fold(d.shortDescription).includes(needle);
-      })
-    : [];
-
+  const { dish } = slide;
+  const tags = [dish.featured && "Today's pick", dish.bestSeller && "Best seller", dish.isNew && "New"].filter(Boolean) as string[];
+  const needsPick = mustPick(dish);
   return (
-    <>
-      <div ref={anchorRef} />
-      <div ref={barRef} className="sticky top-0 z-20 bg-paper/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-2xl items-center gap-1 border-b border-line px-3">
-          {searching ? (
-            <SearchBox value={q} onChange={setQ} onCancel={closeSearch} />
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={openSearch}
-                aria-label="Search the menu"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-forest active:bg-wash"
-              >
-                <SearchIcon width={21} height={21} />
-              </button>
-              {sections.length > 1 && (
-                <div ref={tabsRef} role="tablist" aria-label="Categories" className="no-scrollbar flex h-full flex-1 gap-1 overflow-x-auto">
-                  {sections.map((s) => {
-                    const on = s.id === active;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={on}
-                        data-tab={s.id}
-                        onClick={() => jumpTo(s.id)}
-                        className={`relative h-full shrink-0 px-3 text-[15px] font-semibold transition-colors ${
-                          on ? "text-forest" : "text-muted"
-                        }`}
-                      >
-                        {s.name}
-                        <span
-                          aria-hidden
-                          className={`absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-forest transition-opacity ${on ? "opacity-100" : "opacity-0"}`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {searching && needle ? (
-        <section aria-label="Search results" className="mx-auto min-h-[60svh] max-w-2xl px-5">
-          <p className="pb-1 pt-5 text-[15px] text-muted" aria-live="polite">
-            {results.length
-              ? `${results.length} ${results.length === 1 ? "dish" : "dishes"} for “${q.trim()}”`
-              : `No dishes match “${q.trim()}”. Try another word.`}
-          </p>
-          <ul className="divide-y divide-line">
-            {results.map((id) => (
-              <li key={id}>
-                <DishRow dish={menu.dishes[id]} count={inOrder(id)} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <div className="mx-auto max-w-2xl px-5">
-          {sections.map((s) => (
-            <section
-              key={s.id}
-              id={`sec-${s.id}`}
-              aria-labelledby={`sec-${s.id}-title`}
-              className="pt-7"
-            >
-              <h2 id={`sec-${s.id}-title`} className="flex items-baseline justify-between gap-3">
-                <span className="font-display text-[28px] font-semibold leading-tight tracking-[-0.01em]">{s.name}</span>
-                <span className="shrink-0 text-[14px] text-muted">
-                  {s.dishIds.length} {s.dishIds.length === 1 ? "dish" : "dishes"}
-                </span>
-              </h2>
-              <ul className="divide-y divide-line">
-                {s.dishIds.map((id) => (
-                  <li key={id}>
-                    <DishRow dish={menu.dishes[id]} count={inOrder(id)} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-function SearchBox({ value, onChange, onCancel }: { value: string; onChange: (v: string) => void; onCancel: () => void }) {
-  return (
-    <>
-      <label className="relative min-w-0 flex-1">
-        <span className="sr-only">Search the menu</span>
-        <SearchIcon width={19} height={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-        <input
-          type="search"
-          autoFocus
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && onCancel()}
-          placeholder="Dish name or ingredient"
-          enterKeyHint="search"
-          autoComplete="off"
-          className="h-11 w-full rounded-full bg-wash pl-10 pr-3 text-[16px] outline-none placeholder:text-muted focus:ring-2 focus:ring-forest/30 [&::-webkit-search-cancel-button]:hidden"
+    <article data-i={index} aria-label={dish.name} className="relative h-full snap-start snap-always overflow-hidden bg-forest">
+      {dish.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={dish.imageUrl}
+          alt=""
+          loading={eager ? "eager" : "lazy"}
+          decoding="async"
+          className={`absolute inset-0 h-full w-full object-cover ${dish.available ? "" : "grayscale"}`}
         />
-      </label>
-      <button type="button" onClick={onCancel} className="h-11 shrink-0 rounded-full px-3 text-[15px] font-semibold text-forest active:bg-wash">
-        Cancel
-      </button>
-    </>
-  );
-}
+      )}
+      {dish.imageUrl && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgb(20_10_28/0.55)_0%,rgb(20_10_28/0)_18%,rgb(20_10_28/0)_42%,rgb(20_10_28/0.92)_78%)]"
+        />
+      )}
 
-/**
- * One dish: name, a line on it, price, how many it feeds and its heat, with
- * the photo on the right and the + on the photo's corner. The whole row
- * opens the dish; the + adds it.
- */
-function DishRow({ dish, count, onOpen, onAdd }: { dish: Dish; count: number; onOpen: () => void; onAdd: () => void }) {
-  return (
-    <article className="relative flex gap-4 py-4">
-      <div className="min-w-0 flex-1">
-        <h3>
-          <button
-            type="button"
-            onClick={onOpen}
-            className="text-left font-display text-[19px] font-semibold leading-snug after:absolute after:inset-0 after:content-['']"
-          >
-            {dish.name}
-          </button>
-        </h3>
-        {dish.isNew && dish.available && (
-          <span className="mt-1 inline-block rounded-full bg-mango-soft px-2 py-0.5 text-[12px] font-semibold text-ink">New</span>
+      <div className="absolute inset-x-0 bottom-0 px-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
+        {(tags.length > 0 || count > 0) && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {count > 0 && (
+              <span className="flex h-7 items-center gap-1 rounded-full bg-mango px-2.5 text-[13px] font-bold text-ink">
+                <CheckIcon width={15} height={15} />
+                {count} in your order
+              </span>
+            )}
+            {tags.map((t) => (
+              <span key={t} className="flex h-7 items-center rounded-full bg-white/15 px-2.5 text-[13px] font-semibold backdrop-blur-md">
+                {t}
+              </span>
+            ))}
+          </div>
         )}
-        <p className="mt-1 line-clamp-2 text-[14px] leading-snug text-muted">{dish.shortDescription}</p>
-        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
-          {dish.available ? (
-            <span className="text-[16px] font-bold">{formatPrice(dish.priceCents)}</span>
-          ) : (
-            <span className="font-semibold text-chili">Not available today</span>
-          )}
-          <span className="flex items-center gap-1 text-muted">
-            <PeopleIcon width={15} height={15} />
-            {servesLabel(dish.servesMin, dish.servesMax).replace(/ (people|person)$/, "")}
+        <h2
+          className={`font-display font-semibold leading-[1.02] tracking-[-0.02em] [overflow-wrap:anywhere] ${
+            dish.imageUrl ? "text-[clamp(34px,10vw,46px)]" : "text-[clamp(44px,14vw,64px)]"
+          }`}
+        >
+          {dish.name}
+        </h2>
+        {dish.shortDescription && <p className="mt-2 text-[16px] leading-snug text-white/85">{dish.shortDescription}</p>}
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-white/85">
+          <span className="font-display text-[26px] font-semibold text-white">{formatPrice(dish.priceCents)}</span>
+          <span className="flex items-center gap-1.5">
+            <PeopleIcon width={17} height={17} />
+            {servesLabel(dish.servesMin, dish.servesMax)}
           </span>
           {!!dish.spiceLevel && (
-            <span className="flex text-chili" role="img" aria-label={`Spice level ${dish.spiceLevel} of 5`}>
+            <span className="flex text-[#ff7a5c]" role="img" aria-label={`Spice level ${dish.spiceLevel} of 5`}>
               {Array.from({ length: dish.spiceLevel }, (_, i) => (
-                <ChiliIcon key={i} lit width={15} height={15} />
+                <ChiliIcon key={i} lit width={17} height={17} />
               ))}
             </span>
           )}
         </p>
-      </div>
-      <div className="relative w-[104px] shrink-0 self-start">
-        <DishImage dish={dish} className="aspect-square rounded-[18px]" soldOutLabel={false} />
-        {count > 0 && (
-          <span className="absolute left-1.5 top-1.5 grid h-7 min-w-7 place-items-center rounded-full bg-forest px-1.5 text-[13px] font-bold text-white ring-2 ring-white">
-            <span className="sr-only">In your order: </span>
-            {count}
-          </span>
-        )}
-        {dish.available && <AddButton name={dish.name} onAdd={onAdd} className="absolute -bottom-2 -right-2 ring-[3px] ring-paper" />}
+
+        <div className="mt-5 flex gap-2.5">
+          {dish.available ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="flex h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-mango px-4 text-[17px] font-bold text-ink active:brightness-95"
+            >
+              {needsPick ? (
+                <span className="truncate">Choose a {missingPick(dish, startPicks(dish)) ?? "size"}</span>
+              ) : (
+                <>
+                  <PlusIcon width={20} height={20} strokeWidth={2.4} />
+                  Add to order
+                </>
+              )}
+            </button>
+          ) : (
+            <p className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-white/15 text-[16px] font-semibold">Not available today</p>
+          )}
+          <button
+            type="button"
+            onClick={onDetails}
+            className="h-14 shrink-0 rounded-2xl bg-white/15 px-5 text-[16px] font-semibold ring-1 ring-inset ring-white/40 backdrop-blur-md active:bg-white/25"
+          >
+            Details
+          </button>
+        </div>
       </div>
     </article>
   );
 }
 
-// ---------------------------------------------------------------------------
-
-/**
- * The bottom dock: the call button, and once there is an order (or something
- * already sent) a bar with the count and total that opens it.
- */
-function Dock({
-  count,
-  total,
-  sent,
-  calling,
-  onOrder,
-  onCall,
-}: {
-  count: number;
-  total: number;
-  sent: GuestOrders | null;
-  calling: boolean;
-  onOrder: () => void;
-  onCall?: () => void;
-}) {
-  const hasSent = !!sent && sent.batches.length > 0;
-  const bar = count > 0 || hasSent;
+/** After the last dish: back to the top, or on to the order. */
+function EndScreen({ onTop, onOrder, count }: { onTop: () => void; onOrder: () => void; count: number }) {
   return (
-    <nav aria-label="Your order" className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex max-w-2xl items-center justify-end gap-2.5">
-        {onCall && (
-          <button
-            type="button"
-            onClick={onCall}
-            aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
-            className={`relative flex h-14 shrink-0 items-center justify-center gap-2 rounded-full bg-white text-forest shadow-[0_10px_26px_rgb(30_21_48/0.22)] ring-1 ring-line active:bg-wash ${
-              bar ? "w-14" : "px-5"
-            }`}
-          >
-            <BellIcon width={22} height={22} />
-            {!bar && <span className="text-[16px] font-semibold">Call waiter</span>}
-            {calling && <span className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-forest" aria-hidden />}
-          </button>
-        )}
-        {bar && (
-          <button
-            type="button"
-            onClick={onOrder}
-            className="flex h-14 min-w-0 flex-1 items-center gap-3 rounded-full bg-forest pl-2 pr-5 text-white shadow-[0_10px_26px_rgb(30_21_48/0.32)] active:bg-forest-soft"
-          >
-            <span className="grid h-10 min-w-10 shrink-0 place-items-center rounded-full bg-mango px-2 text-[16px] font-bold text-ink">
-              {count > 0 ? count : <CheckIcon width={20} height={20} />}
-            </span>
-            <span className="min-w-0 truncate text-[16px] font-semibold">{count > 0 ? "View order" : "Sent orders"}</span>
-            <span className="ml-auto shrink-0 font-display text-[20px] font-semibold">
-              {formatPrice(count > 0 ? total : sent!.subtotal)}
-            </span>
-          </button>
-        )}
-      </div>
-    </nav>
+    <section className="flex h-[60%] snap-end flex-col items-center justify-center gap-3 bg-forest px-8 text-center">
+      <p className="font-display text-[28px] font-semibold">That&apos;s the whole menu</p>
+      {count > 0 && (
+        <button type="button" onClick={onOrder} className="h-12 rounded-2xl bg-mango px-6 text-[16px] font-bold text-ink active:brightness-95">
+          See your order
+        </button>
+      )}
+      <button type="button" onClick={onTop} className="h-12 rounded-2xl px-6 text-[16px] font-semibold text-white/80 ring-1 ring-inset ring-white/30 active:bg-white/10">
+        Back to the top
+      </button>
+    </section>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-/** The dish: photo across the top, details on a card rising over it, Add pinned at the foot. */
+/**
+ * Every dish as a row, by category, with a search box and a row of the
+ * categories on top. A category scrolls the list to its section, and the one
+ * in view stays lit as the list scrolls. Picking a dish goes to its screen.
+ */
+function IndexSheet({
+  menu,
+  sections,
+  slides,
+  onPick,
+  onClose,
+}: {
+  menu: Menu;
+  sections: Section[];
+  slides: Slide[];
+  onPick: (i: number) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const needle = fold(q.trim());
+  const match = (d: Dish) => !needle || fold(d.name).includes(needle) || fold(d.shortDescription).includes(needle);
+  const shown = sections
+    .map((s) => ({ s, ids: s.dishIds.filter((id) => match(menu.dishes[id])) }))
+    .filter((x) => x.ids.length > 0);
+
+  const listRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(shown[0]?.s.id ?? "");
+  // While a tapped category's scroll runs, the sections it passes must not light up in turn.
+  const jumping = useRef(false);
+
+  // The section at the top of the list lights its category.
+  const onListScroll = () => {
+    const list = listRef.current;
+    if (!list || jumping.current) return;
+    const top = list.getBoundingClientRect().top + 8;
+    let current = shown[0]?.s.id ?? "";
+    for (const { s } of shown) {
+      const el = list.querySelector<HTMLElement>(`[data-sec="${s.id}"]`);
+      if (el && el.getBoundingClientRect().top <= top) current = s.id;
+    }
+    setActive(current);
+  };
+
+  // Keep the lit category in sight in its row.
+  useEffect(() => {
+    const row = tabsRef.current;
+    const tab = row?.querySelector<HTMLElement>(`[data-tab="${active}"]`);
+    if (row && tab) row.scrollTo({ left: tab.offsetLeft - row.clientWidth / 2 + tab.offsetWidth / 2, behavior: "smooth" });
+  }, [active]);
+
+  // A search changes which sections there are: start from the first.
+  useEffect(() => {
+    setActive(shown[0]?.s.id ?? "");
+    listRef.current?.scrollTo({ top: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needle]);
+
+  const showSection = (id: string) => {
+    const list = listRef.current;
+    const el = list?.querySelector<HTMLElement>(`[data-sec="${id}"]`);
+    if (!list || !el) return;
+    setActive(id);
+    jumping.current = true;
+    const done = () => {
+      jumping.current = false;
+      list.removeEventListener("scrollend", done);
+    };
+    list.addEventListener("scrollend", done);
+    setTimeout(done, 800); // no scrollend event, or nothing to scroll
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    list.scrollTo({ top: el.offsetTop, behavior: smooth ? "smooth" : "auto" });
+  };
+
+  return (
+    <div className="flex h-full flex-col text-ink">
+      <div className="shrink-0 px-5 pb-3 pt-[calc(16px+env(safe-area-inset-top))] sm:pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-[30px] font-semibold leading-tight">Menu</h2>
+          <button type="button" onClick={onClose} aria-label="Close the index" className="grid h-11 w-11 place-items-center rounded-full bg-wash active:bg-line">
+            <CloseIcon width={20} height={20} />
+          </button>
+        </div>
+        <label className="relative mt-3 block">
+          <span className="sr-only">Find a dish</span>
+          <SearchIcon width={19} height={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Dish name or ingredient"
+            enterKeyHint="search"
+            autoComplete="off"
+            className="h-12 w-full rounded-2xl bg-wash pl-10 pr-3 text-[16px] outline-none placeholder:text-muted focus:ring-2 focus:ring-forest/30 [&::-webkit-search-cancel-button]:hidden"
+          />
+        </label>
+        {shown.length > 1 && (
+          <div ref={tabsRef} role="group" aria-label="Categories" className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
+            {shown.map(({ s }) => {
+              const on = s.id === active;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-tab={s.id}
+                  aria-pressed={on}
+                  onClick={() => showSection(s.id)}
+                  className={`h-10 shrink-0 rounded-full px-4 text-[15px] font-semibold transition-colors ${
+                    on ? "bg-forest text-white" : "bg-wash text-ink active:bg-line"
+                  }`}
+                >
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div
+        ref={listRef}
+        onScroll={onListScroll}
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-line px-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+      >
+        {shown.length === 0 ? (
+          <p className="pt-6 text-center text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;. Try another word.</p>
+        ) : (
+          shown.map(({ s, ids }) => (
+            <section key={s.id} data-sec={s.id} aria-label={s.name} className="pt-4">
+              <h3 className="font-display text-[20px] font-semibold">{s.name}</h3>
+              <ul className="mt-1 divide-y divide-line">
+                {ids.map((id) => {
+                  const d = menu.dishes[id];
+                  const i = slides.findIndex((x) => x.section.id === s.id && x.dish.id === id);
+                  return (
+                    <li key={id}>
+                      <button type="button" onClick={() => onPick(i)} className="flex min-h-14 w-full items-center gap-3 py-2 text-left active:bg-wash">
+                        <span className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-wash">
+                          {d.imageUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={d.imageUrl} alt="" loading="lazy" className={`h-full w-full object-cover ${d.available ? "" : "grayscale"}`} />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1 leading-tight">
+                          <span className="block truncate text-[16px] font-semibold">{d.name}</span>
+                          <span className="block truncate text-[13px] text-muted">{d.available ? d.shortDescription : "Not available today"}</span>
+                        </span>
+                        <span className="shrink-0 text-[15px] font-semibold">{formatPrice(d.priceCents)}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Details and choices for one dish, in a half sheet over its screen: what it
+ * is and what's in it, sizes, set meal picks, add-ons and spice behind one
+ * line, how many, and Add pinned at the foot.
+ */
 function DishSheet({
   dish,
   inOrder,
@@ -645,65 +798,56 @@ function DishSheet({
   const pick = (o: DishOption) => setPicked((prev) => togglePick(dish, prev, o));
 
   return (
-    <>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="relative">
-          <DishImage dish={dish} eager className="aspect-[4/3] w-full" />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-3 top-[calc(12px+env(safe-area-inset-top))] grid h-11 w-11 place-items-center rounded-full bg-white/95 text-ink shadow-[0_4px_12px_rgb(0_0_0/0.2)] active:bg-wash sm:top-3"
-          >
-            <CloseIcon width={20} height={20} />
-          </button>
+    <div className="flex max-h-[85dvh] flex-col text-ink">
+      <div aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line" />
+      <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-3">
+        <div className="min-w-0">
+          <h2 className="font-display text-[28px] font-semibold leading-[1.1] tracking-[-0.01em]">{dish.name}</h2>
+          <p className="mt-0.5 font-display text-[20px] font-semibold text-forest">{formatPrice(dish.priceCents)}</p>
         </div>
+        <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
+          <CloseIcon width={20} height={20} />
+        </button>
+      </div>
 
-        <div className="relative -mt-7 rounded-t-[28px] bg-white px-5 pb-7 pt-6">
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.01em]">{dish.name}</h2>
-            <p className="shrink-0 pt-1 font-display text-[24px] font-semibold text-forest">{formatPrice(dish.priceCents)}</p>
-          </div>
-          {dish.shortDescription && <p className="mt-1 font-display text-[17px] italic text-muted">{dish.shortDescription}</p>}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="flex h-9 items-center gap-1.5 rounded-full bg-wash px-3 text-[14px]">
-              <PeopleIcon width={17} height={17} />
-              Serves {servesLabel(dish.servesMin, dish.servesMax)}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="flex h-9 items-center gap-1.5 rounded-full bg-wash px-3 text-[14px]">
+            <PeopleIcon width={17} height={17} />
+            Serves {servesLabel(dish.servesMin, dish.servesMax)}
+          </span>
+          {dish.spiceLevel !== null && (
+            <span className="flex h-9 items-center rounded-full bg-wash px-3">
+              <SpiceMeter level={dish.spiceLevel} />
             </span>
-            {dish.spiceLevel !== null && (
-              <span className="flex h-9 items-center rounded-full bg-wash px-3">
-                <SpiceMeter level={dish.spiceLevel} />
-              </span>
-            )}
-          </div>
-
-          {dish.description && <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>}
-
-          {sizes.length > 0 && <Chips title="Size" required={dish.sizeRequired} options={sizes} picked={picked} onPick={pick} round />}
-          {/* Set meals: one pick from each list ("Drink", "Side"), always required. */}
-          {lists.map((l) => (
-            <Chips key={l.name} title={l.name} required options={l.options} picked={picked} onPick={pick} round />
-          ))}
-          {addons.length + spices.length > 0 && <Extras addons={addons} spices={spices} picked={picked} onPick={pick} />}
-
-          {dish.ingredients.length > 0 && (
-            <>
-              <h3 className="mt-7 font-display text-[20px] font-semibold">What&apos;s in it</h3>
-              <ul className="mt-2.5 flex flex-wrap gap-2">
-                {dish.ingredients.map((ing, i) => {
-                  const Icon = INGREDIENT_ICONS[ing.kind];
-                  return (
-                    <li key={i} className="flex h-9 items-center gap-1.5 rounded-full bg-wash pl-2.5 pr-3 text-[14px]">
-                      {Icon && <Icon width={16} height={16} className="text-forest" />}
-                      {ing.name}
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
           )}
         </div>
+
+        {dish.description && <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>}
+
+        {sizes.length > 0 && <Chips title="Size" required={dish.sizeRequired} options={sizes} picked={picked} onPick={pick} round />}
+        {/* Set meals: one pick from each list ("Drink", "Side"), always required. */}
+        {lists.map((l) => (
+          <Chips key={l.name} title={l.name} required options={l.options} picked={picked} onPick={pick} round />
+        ))}
+        {addons.length + spices.length > 0 && <Extras addons={addons} spices={spices} picked={picked} onPick={pick} />}
+
+        {dish.ingredients.length > 0 && (
+          <>
+            <h3 className="mt-7 font-display text-[20px] font-semibold">What&apos;s in it</h3>
+            <ul className="mt-2.5 flex flex-wrap gap-2">
+              {dish.ingredients.map((ing, i) => {
+                const Icon = INGREDIENT_ICONS[ing.kind];
+                return (
+                  <li key={i} className="flex h-9 items-center gap-1.5 rounded-full bg-wash pl-2.5 pr-3 text-[14px]">
+                    {Icon && <Icon width={16} height={16} className="text-forest" />}
+                    {ing.name}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-line bg-white px-5 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3">
@@ -714,13 +858,13 @@ function DishSheet({
         )}
         <div className="flex gap-2.5">
           {dish.available && (
-            <div className="flex h-14 shrink-0 items-center rounded-full bg-wash" role="group" aria-label="How many">
+            <div className="flex h-14 shrink-0 items-center rounded-2xl bg-wash" role="group" aria-label="How many">
               <button
                 type="button"
                 disabled={n <= 1}
                 onClick={() => setN(n - 1)}
                 aria-label="One less"
-                className="grid h-14 w-12 place-items-center rounded-full active:bg-line disabled:text-muted/50"
+                className="grid h-14 w-12 place-items-center rounded-2xl active:bg-line disabled:text-muted/50"
               >
                 <MinusIcon width={20} height={20} />
               </button>
@@ -732,7 +876,7 @@ function DishSheet({
                 disabled={n >= 20}
                 onClick={() => setN(n + 1)}
                 aria-label="One more"
-                className="grid h-14 w-12 place-items-center rounded-full active:bg-line disabled:text-muted/50"
+                className="grid h-14 w-12 place-items-center rounded-2xl active:bg-line disabled:text-muted/50"
               >
                 <PlusIcon width={20} height={20} />
               </button>
@@ -745,8 +889,9 @@ function DishSheet({
               onAdd(n, picks!);
               setN(1);
               setPicked(startPicks(dish));
+              onClose();
             }}
-            className="flex h-14 min-w-0 flex-1 items-center justify-between gap-2 rounded-full bg-mango px-5 text-[17px] font-bold text-ink active:brightness-95 disabled:justify-center disabled:bg-wash disabled:text-muted"
+            className="flex h-14 min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl bg-mango px-5 text-[17px] font-bold text-ink active:brightness-95 disabled:justify-center disabled:bg-wash disabled:text-muted"
           >
             {!dish.available ? (
               "Not available today"
@@ -761,7 +906,7 @@ function DishSheet({
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

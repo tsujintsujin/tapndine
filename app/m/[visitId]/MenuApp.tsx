@@ -39,35 +39,9 @@ import {
   SearchIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
+import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
 import { DishImage, SpiceMeter } from "./parts";
-
-// ---------------------------------------------------------------------------
-// Where the customer is lives in the URL (?v=menu the whole menu, ?d= dish,
-// ?o= order), pushed with history.pushState so the phone's Back button
-// closes a sheet or goes back home instead of leaving the menu.
-// `pushed` counts the entries this page added, so a close button knows
-// whether Back is safe or would leave the page.
-let pushed = 0;
-
-function setParams(mutate: (p: URLSearchParams) => void, mode: "push" | "replace") {
-  const p = new URLSearchParams(window.location.search);
-  mutate(p);
-  const qs = p.toString();
-  const url = window.location.pathname + (qs ? `?${qs}` : "");
-  if (mode === "push") {
-    pushed++;
-    window.history.pushState(null, "", url);
-  } else {
-    window.history.replaceState(null, "", url);
-  }
-}
-
-/** Undo the last thing opened: Back if we added it, otherwise drop the param. */
-function closeParam(key: string) {
-  if (pushed > 0) window.history.back();
-  else setParams((p) => p.delete(key), "replace");
-}
 
 // ---------------------------------------------------------------------------
 // The list being built lives on this phone until Send to waiter; then it is a
@@ -314,11 +288,8 @@ export default function MenuApp({
   }, [orderOpen, callOpen, loadSent]);
 
   useEffect(() => {
-    const onPop = () => {
-      pushed = Math.max(0, pushed - 1);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    window.addEventListener("popstate", notePop);
+    return () => window.removeEventListener("popstate", notePop);
   }, []);
 
   const dish = dishId ? menu.dishes[dishId] : undefined;
@@ -475,7 +446,7 @@ export default function MenuApp({
   // Design B they take its colours and type from .theme-ube.
   const shared = (
     <>
-      <AddedToast toast={toast} onDone={() => setToast(null)} />
+      <AddedToast toast={toast} top={menu.design === "b"} onDone={() => setToast(null)} />
       <NicknamePrompt
         open={nickOpen}
         initial={nick || ""}
@@ -518,6 +489,7 @@ export default function MenuApp({
         calling={calls.length > 0}
         dish={dish}
         orderOpen={orderOpen}
+        indexOpen={params.get("i") === "1"}
         onDish={openDish}
         onQuickAdd={quickAdd}
         onAdd={(id, n, picks) => addOne(lineKey(id, picks), n)}
@@ -1935,9 +1907,12 @@ type Toast = { key: number; title: string; detail: string };
 
 function AddedToast({
   toast,
+  top = false,
   onDone,
 }: {
   toast: Toast | null;
+  /** Design B: at the top, because the bottom of the screen holds the dish's buttons. */
+  top?: boolean;
   onDone: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -1972,7 +1947,9 @@ function AddedToast({
       popover="manual"
       role="status"
       aria-live="polite"
-      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 bottom-[calc(92px+env(safe-area-inset-bottom))]`}
+      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 ${
+        top ? "top-[calc(72px+env(safe-area-inset-top))]" : "bottom-[calc(92px+env(safe-area-inset-bottom))]"
+      }`}
     >
       {toast && (
         <div key={toast.key} className="flex items-center gap-3 rounded-2xl bg-forest py-2.5 pl-2.5 pr-5 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">
