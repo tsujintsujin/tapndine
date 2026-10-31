@@ -10,6 +10,7 @@ import { btn, PageHead } from "../kit";
 import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
 import LogoCard from "./LogoCard";
+import PaletteCard from "./PaletteCard";
 
 /**
  * Every dish, in menu order. Click a row to edit it; flip the switch to mark
@@ -20,11 +21,14 @@ export default function MenuBoard({
   dishes,
   categories,
   logo,
+  palette,
 }: {
   dishes: AdminDish[];
   categories: AdminCategory[];
   /** The restaurant's name and logo, for the logo card under the title. */
   logo: { name: string; url: string | null };
+  /** The guests' menu colours (lib/palettes.ts), null for the default. */
+  palette: string | null;
 }) {
   const router = useRouter();
   const [list, setList] = useState(dishes);
@@ -109,6 +113,7 @@ export default function MenuBoard({
       </PageHead>
 
       <LogoCard name={logo.name} logoUrl={logo.url} />
+      <PaletteCard palette={palette} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">

@@ -169,3 +169,14 @@ export async function restaurantLogo(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT logo_url FROM businesses WHERE id = ?").bind(id).first<{ logo_url: string | null }>();
   return r?.logo_url ?? null;
 }
+
+/** The guests' menu colour scheme (lib/palettes.ts), or null for the design's own. */
+export async function restaurantPalette(id: string): Promise<string | null> {
+  const r = await db().prepare("SELECT menu_palette FROM businesses WHERE id = ?").bind(id).first<{ menu_palette: string | null }>();
+  return r?.menu_palette ?? null;
+}
+
+export async function setPalette(id: string, palette: string | null): Promise<boolean> {
+  const r = await db().prepare("UPDATE businesses SET menu_palette = ? WHERE id = ?").bind(palette, id).run();
+  return r.meta.changes > 0;
+}
