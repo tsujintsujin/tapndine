@@ -17,6 +17,7 @@ import {
   TableIcon,
   TagIcon,
 } from "@/app/components/Icons";
+import { daysLeft, TRIAL_STAFF, TRIAL_TABLES } from "@/lib/trial";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
 
@@ -114,7 +115,34 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   );
 }
 
+/** Above every manager page while the restaurant is on its free trial: how long is left, and what it covers. */
+function TrialBar({ endsAt }: { endsAt: number }) {
+  const left = daysLeft(endsAt);
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-mango-soft px-4 py-3 text-[15px] text-forest">
+      <p>
+        <span className="font-semibold">
+          {left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days left`}`}
+        </span>
+        <span className="text-forest/75">
+          {" "}
+          · {TRIAL_TABLES} table and {TRIAL_STAFF} staff logins besides yours
+        </span>
+      </p>
+      <a
+        href={`${BASE_PATH}/#pricing`}
+        target="_blank"
+        rel="noopener"
+        className="inline-flex h-9 items-center rounded-full bg-forest px-4 text-[14px] font-semibold text-white hover:bg-forest-soft"
+      >
+        See plans
+      </a>
+    </div>
+  );
+}
+
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
+  const { trialEndsAt } = useStaffInfo();
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
@@ -166,7 +194,11 @@ export default function Shell({ name, children }: { name: string; children: Reac
         </div>
       )}
 
-      <main className="min-w-0 flex-1 bg-paper px-4 pb-12 pt-5 sm:px-6 lg:rounded-[28px] lg:px-8 lg:pt-7">{children}</main>
+      <main className="min-w-0 flex-1 bg-paper px-4 pb-12 pt-5 sm:px-6 lg:rounded-[28px] lg:px-8 lg:pt-7">
+        {/* Not on the developers' own pages: there it would describe whichever restaurant is open. */}
+        {trialEndsAt !== null && !path.startsWith("/admin/dev") && <TrialBar endsAt={trialEndsAt} />}
+        {children}
+      </main>
     </div>
   );
 }

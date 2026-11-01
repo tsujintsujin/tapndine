@@ -2,6 +2,7 @@ import { db } from "./cf";
 import { today } from "./billing";
 import { randomId } from "./ids";
 import { PLANS } from "./plans";
+import { TRIAL_TABLES } from "./trial";
 
 // The manager's NFC links page: the tables, and the tag link each one opens.
 // We only hand out the link; the restaurant writes it to the tag with any NFC
@@ -13,19 +14,26 @@ export type LinksPage = { tables: TableLinks[]; unplaced: string[]; limit: numbe
 
 /**
  * How many tables the restaurant may have: what its contract covering today
- * says, else its latest contract's. With no contract yet (a trial), the
- * biggest plan's count.
+ * says, else its latest contract's. With no contract yet: a self sign-up
+ * trial gets TRIAL_TABLES, one a developer added the biggest plan's count.
  */
 export async function tableLimit(businessId: string): Promise<number> {
   const day = today();
-  const r = await db()
-    .prepare(
-      `SELECT tables FROM contracts WHERE business_id = ?1
-       ORDER BY (starts_on <= ?2 AND ends_on >= ?2) DESC, starts_on DESC LIMIT 1`
-    )
-    .bind(businessId, day)
-    .first<{ tables: number }>();
-  return r?.tables ?? Math.max(...PLANS.map((p) => p.tables));
+  const d = db();
+  const [contract, biz] = await d.batch([
+    d
+      .prepare(
+        `SELECT tables FROM contracts WHERE business_id = ?1
+         ORDER BY (starts_on <= ?2 AND ends_on >= ?2) DESC, starts_on DESC LIMIT 1`
+      )
+      .bind(businessId, day),
+    d.prepare("SELECT trial_ends_at FROM businesses WHERE id = ?").bind(businessId),
+  ]);
+  const tables = (contract.results as { tables: number }[])[0]?.tables;
+  if (tables !== undefined) return tables;
+  return (biz.results as { trial_ends_at: number | null }[])[0]?.trial_ends_at != null
+    ? TRIAL_TABLES
+    : Math.max(...PLANS.map((p) => p.tables));
 }
 
 /** A table name from a request body, trimmed; null if empty or too long. */

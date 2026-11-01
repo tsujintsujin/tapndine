@@ -19,7 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tagI
   // (next dev rewrites req.url to "localhost", which a phone on Wi-Fi cannot open).
   const res = new NextResponse(null, {
     status: 303,
-    headers: { Location: BASE_PATH + (visitId ? `/m/${visitId}` : "/unknown-tag") },
+    headers: {
+      Location: BASE_PATH + (visitId === "closed" ? "/menu-unavailable" : visitId ? `/m/${visitId}` : "/unknown-tag"),
+    },
   });
   // A cached redirect would hand every tap the same visit.
   res.headers.set("Cache-Control", "no-store");

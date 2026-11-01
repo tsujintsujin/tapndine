@@ -7,6 +7,7 @@ import { isRange, type Range } from "@/lib/reports";
 import { requireDeveloper } from "@/lib/staff";
 import { card, PageHead } from "@/app/admin/kit";
 import Shell from "@/app/admin/Shell";
+import { daysLeft } from "@/lib/trial";
 import DevBoard from "./DevBoard";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,9 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
   const q = await searchParams;
   const range: Range = isRange(q.range) ? q.range : "7d";
   const [list, billing] = await Promise.all([restaurants(range), billingOverview()]);
-  const live = list.filter((r) => !r.off);
+  const off = list.filter((r) => r.off).length;
+  const ended = list.filter((r) => !r.off && r.trialEndsAt !== null && daysLeft(r.trialEndsAt) === 0).length;
+  const live = list.filter((r) => !r.off && (r.trialEndsAt === null || daysLeft(r.trialEndsAt) > 0));
   const sum = (k: "sent" | "groups" | "ordering") => list.reduce((n, r) => n + r[k], 0);
   const stat = "mt-3 font-display text-[40px] font-bold leading-none tracking-tight";
 
@@ -72,7 +75,10 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
             <span className="ml-1.5 font-sans text-[16px] font-medium tracking-normal text-muted">live</span>
           </p>
           <p className="mt-3 text-[13px] text-muted">
-            {list.length - live.length ? `${list.length - live.length} switched off` : "None switched off"}
+            {[
+              off ? `${off} switched off` : "None switched off",
+              ...(ended ? [`${ended} free ${ended === 1 ? "trial" : "trials"} ended`] : []),
+            ].join(", ")}
           </p>
         </section>
       </div>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
 import { ChevronRight, GripIcon, PlusIcon } from "@/app/components/Icons";
-import { btn, PageHead } from "../kit";
+import { btn, PageHead, SkeletonList } from "../kit";
 import { api } from "../ui";
 
 /**
@@ -121,7 +121,24 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
           <span />
         </div>
         {list.length === 0 ? (
-          <p className="px-4 py-12 text-center text-[15px] text-muted">No categories yet. Add the first one.</p>
+          <SkeletonList
+            title="Your categories go here"
+            text="Group your dishes so guests find them fast: Rice meals, Drinks, Desserts."
+          >
+            {!adding && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setAdding(true);
+                }}
+                className={btn.primary}
+              >
+                <PlusIcon width={18} height={18} />
+                Add category
+              </button>
+            )}
+          </SkeletonList>
         ) : (
           <ul>
             {list.map((c, i) => {

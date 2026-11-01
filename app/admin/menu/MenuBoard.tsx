@@ -7,7 +7,7 @@ import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
 import type { MenuDesign } from "@/lib/menu";
 import { formatPrice } from "@/lib/format";
 import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
-import { btn, PageHead } from "../kit";
+import { btn, PageHead, SkeletonList } from "../kit";
 import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
 import DesignCard from "./DesignCard";
@@ -166,10 +166,18 @@ export default function MenuBoard({
           <span className="text-right">Price</span>
           <span>Available today</span>
         </div>
-        {shown.length === 0 ? (
-          <p className="px-4 py-12 text-center text-[15px] text-muted">
-            {list.length === 0 ? "No dishes yet. Add the first one." : "No dish matches."}
-          </p>
+        {list.length === 0 ? (
+          <SkeletonList photo title="Your dishes go here" text="Add your first dish, or import your whole menu from a spreadsheet.">
+            <Link href="/admin/menu/new" className={btn.primary}>
+              <PlusIcon width={18} height={18} />
+              Add dish
+            </Link>
+            <button type="button" onClick={() => setImporting(true)} className={btn.secondary}>
+              Import CSV
+            </button>
+          </SkeletonList>
+        ) : shown.length === 0 ? (
+          <p className="px-4 py-12 text-center text-[15px] text-muted">No dish matches.</p>
         ) : (
           <ul>
             {shown.map((d) => {

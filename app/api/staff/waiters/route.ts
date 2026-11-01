@@ -22,5 +22,11 @@ export async function POST(req: Request) {
   }
   const added = await addStaff(staff.business_id, name, username, password, role);
   if (added === "taken") return NextResponse.json({ error: "That username is taken." }, { status: 409 });
+  if (added === "full") {
+    return NextResponse.json(
+      { error: "The free trial has room for 2 staff logins besides yours. Pick a plan to add more." },
+      { status: 403 }
+    );
+  }
   return NextResponse.json({ ok: true, username: added });
 }

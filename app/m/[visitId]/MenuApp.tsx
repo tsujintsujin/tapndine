@@ -1117,6 +1117,24 @@ function WholeMenu({
       </aside>
       <section aria-label={category?.name ?? "All dishes"} className="min-w-0">
         <h2 className="mb-5 hidden font-display text-[28px] font-bold leading-tight lg:block">{category?.name ?? "All dishes"}</h2>
+        {ids.length === 0 && (
+          <div className="pb-6 pt-2">
+            <ul aria-hidden="true" className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
+              {[1, 0.7, 0.45, 0.25].map((o, i) => (
+                <li key={i} style={{ opacity: o }} className={i > 1 ? "hidden sm:block" : ""}>
+                  <span className="block rounded-[22px] bg-leaf-tint p-2">
+                    <span className="block aspect-square rounded-2xl bg-white/70" />
+                  </span>
+                  <span className="mt-4 block h-4 w-3/4 rounded-full bg-wash" />
+                  <span className="mt-2 block h-3.5 w-1/3 rounded-full bg-wash" />
+                </li>
+              ))}
+            </ul>
+            <p className="mt-8 text-center text-[16px] text-muted">
+              {category ? "No dishes here yet." : "No dishes yet. They show up here as soon as the restaurant adds them."}
+            </p>
+          </div>
+        )}
         <ul key={categoryId ?? "all"} className="view-in grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:gap-x-5 lg:gap-y-8 xl:grid-cols-4">
           {ids.map((id) => (
             <li key={id}>
@@ -1188,6 +1206,7 @@ function HomeView({
   onMenu: () => void;
 }) {
   const all = menu.dishOrder.map((id) => menu.dishes[id]);
+  if (!all.length) return <MenuSoon name={menu.businessName} />;
   const hero = all.find((d) => d.featured) ?? all[0];
   const featured = all.filter((d) => d.bestSeller && d.id !== hero?.id).slice(0, 3);
   const fresh = all.filter((d) => d.isNew && d.id !== hero?.id).slice(0, 3);
@@ -1214,6 +1233,46 @@ function HomeView({
           <span className="text-[14px] text-white/60">{all.length} dishes</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A menu with no dishes yet (a restaurant just signed up): the home page's
+ * shapes, faded, so the guest sees where the dishes will go, and a word for them.
+ */
+function MenuSoon({ name }: { name: string }) {
+  return (
+    <div className="mx-auto max-w-3xl md:max-w-5xl md:px-6 md:pt-2 lg:max-w-6xl">
+      <section
+        aria-labelledby="soon-title"
+        className="relative isolate flex min-h-[440px] flex-col justify-end overflow-hidden rounded-b-[32px] bg-forest px-5 pb-8 text-white sm:mx-4 sm:rounded-[32px] md:mx-0 md:min-h-[400px] md:px-8 md:pb-10"
+      >
+        <div aria-hidden="true" className="absolute right-4 top-4 h-[84px] w-[84px] -rotate-[8deg] rounded-full border-2 border-dashed border-white/25 md:right-8 md:top-8" />
+        <div aria-hidden="true">
+          <span className="block h-7 w-28 rounded-full bg-white/15" />
+          <span className="mt-4 block h-11 w-3/4 max-w-sm rounded-xl bg-white/15" />
+          <span className="mt-2.5 block h-11 w-1/2 max-w-[240px] rounded-xl bg-mango/30" />
+        </div>
+        <h1 id="soon-title" className="mt-8 font-display text-[30px] font-bold leading-tight">
+          The menu is on its way
+        </h1>
+        <p className="mt-2 max-w-md text-[16px] leading-snug text-white/80">
+          Dishes show up here as soon as {name} adds them. Your waiter can tell you what&apos;s cooking today.
+        </p>
+      </section>
+      <section aria-hidden="true" className="mt-10 px-4 md:px-0">
+        <span className="mx-auto block h-5 w-44 rounded-full bg-wash" />
+        <ul className="mt-4 grid grid-cols-3 gap-2.5 md:mx-auto md:max-w-xl">
+          {MINI_TINTS.map((tint, i) => (
+            <li key={i} className={`rounded-[20px] p-1.5 pb-2.5 ${tint}`}>
+              <span className="block aspect-square rounded-[14px] bg-white/70" />
+              <span className="mx-auto mt-2.5 block h-3 w-3/4 rounded-full bg-white/80" />
+              <span className="mt-2.5 block h-10 rounded-full bg-white/60" />
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

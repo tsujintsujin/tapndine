@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BASE_PATH } from "@/lib/base";
-import { restaurantName } from "@/lib/dev";
+import { restaurantName, trialEndsAt } from "@/lib/dev";
 import { currentLogin } from "@/lib/staff";
 import { StaffInfoProvider } from "./ui";
 
@@ -17,8 +17,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const login = await currentLogin();
   const id = login?.business_id ?? null;
   const name = id ? await restaurantName(id) : null;
+  // A developer's open restaurant can be a trial too; their own login never is.
+  const trial = id ? (login?.role === "developer" ? await trialEndsAt(id) : login!.trialEndsAt) : null;
   return (
-    <StaffInfoProvider value={{ developer: login?.role === "developer", restaurant: id && name ? { id, name } : null }}>
+    <StaffInfoProvider
+      value={{ developer: login?.role === "developer", restaurant: id && name ? { id, name } : null, trialEndsAt: trial }}
+    >
       {children}
     </StaffInfoProvider>
   );
