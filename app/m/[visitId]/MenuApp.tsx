@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Dish, Menu } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
-import { formatPrice, formatTime, servesLabel } from "@/lib/format";
+import { fold, formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
 import {
   choiceLists,
@@ -39,34 +39,9 @@ import {
   SearchIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
+import { closeParam, notePop, setParams } from "./history";
+import MenuB from "./MenuB";
 import { DishImage, SpiceMeter } from "./parts";
-
-// ---------------------------------------------------------------------------
-// Where the customer is lives in the URL (?v=menu the whole menu, ?d= dish,
-// ?o= order), pushed with history.pushState so the phone's Back button
-// closes a sheet or goes back home instead of leaving the menu.
-// `pushed` counts the entries this page added, so a close button knows
-// whether Back is safe or would leave the page.
-let pushed = 0;
-
-function setParams(mutate: (p: URLSearchParams) => void, mode: "push" | "replace") {
-  const p = new URLSearchParams(window.location.search);
-  mutate(p);
-  const qs = p.toString();
-  const url = window.location.pathname + (qs ? `?${qs}` : "");
-  if (mode === "push") {
-    pushed++;
-    window.history.pushState(null, "", url);
-  } else {
-    window.history.replaceState(null, "", url);
-  }
-}
-
-/** Undo the last thing opened: Back if we added it, otherwise drop the param. */
-function closeParam(key: string) {
-  if (pushed > 0) window.history.back();
-  else setParams((p) => p.delete(key), "replace");
-}
 
 // ---------------------------------------------------------------------------
 // The list being built lives on this phone until Send to waiter; then it is a
@@ -75,10 +50,10 @@ function closeParam(key: string) {
 /** Line key (lib/options.ts lineKey: the dish plus its picks) to how many. */
 type Order = Record<string, number>;
 /** The guest's note per line in the list ("no egg"), sent with it. */
-type Notes = Record<string, string>;
+export type Notes = Record<string, string>;
 
 /** A line in the phone's order, priced from today's menu. */
-type OrderLine = { key: string; dish: Dish; picks: DishOption[]; label: string | null; unitCents: number; qty: number };
+export type OrderLine = { key: string; dish: Dish; picks: DishOption[]; label: string | null; unitCents: number; qty: number };
 
 /**
  * The order's lines in menu order. A line whose dish or picks the menu no
@@ -313,11 +288,8 @@ export default function MenuApp({
   }, [orderOpen, callOpen, loadSent]);
 
   useEffect(() => {
-    const onPop = () => {
-      pushed = Math.max(0, pushed - 1);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    window.addEventListener("popstate", notePop);
+    return () => window.removeEventListener("popstate", notePop);
   }, []);
 
   const dish = dishId ? menu.dishes[dishId] : undefined;
@@ -470,6 +442,71 @@ export default function MenuApp({
 
   if (expired) return <Expired />;
 
+  // The two small dialogs and the notice are the same in both designs; under
+  // Design B they take its colours and type from .theme-ube.
+  const shared = (
+    <>
+      <AddedToast toast={toast} top={menu.design === "b"} onDone={() => setToast(null)} />
+      <NicknamePrompt
+        open={nickOpen}
+        initial={nick || ""}
+        sending={sendAfterNick}
+        onDone={(v) => {
+          saveNick(v);
+          setNickOpen(false);
+          if (sendAfterNick) {
+            setSendAfterNick(false);
+            send(v || null);
+          }
+        }}
+      />
+      <CallPrompt
+        open={callOpen}
+        calls={calls}
+        calling={calling}
+        error={callError}
+        onCall={call}
+        onClose={() => {
+          setCallOpen(false);
+          setCallError("");
+        }}
+      />
+    </>
+  );
+
+  if (menu.design === "b") {
+    return (
+      <MenuB
+        menu={menu}
+        nickname={nick || ""}
+        canSend={canSend}
+        demo={demo}
+        lines={lines}
+        notes={notes}
+        setNote={setNote}
+        setQty={setQty}
+        sent={sent}
+        calling={calls.length > 0}
+        dish={dish}
+        orderOpen={orderOpen}
+        indexOpen={params.get("i") === "1"}
+        onDish={openDish}
+        onQuickAdd={quickAdd}
+        onAdd={(id, n, picks) => addOne(lineKey(id, picks), n)}
+        onCloseDish={() => closeParam("d")}
+        onOrder={openOrder}
+        onCloseOrder={() => closeParam("o")}
+        onNickname={canSend ? () => setNickOpen(true) : undefined}
+        onCall={canSend ? () => setCallOpen(true) : undefined}
+        sending={sending}
+        sendError={sendError}
+        onSend={trySend}
+      >
+        {shared}
+      </MenuB>
+    );
+  }
+
   return (
     <>
       <Header
@@ -508,8 +545,6 @@ export default function MenuApp({
           )}
         </div>
       </main>
-
-      <AddedToast toast={toast} onDone={() => setToast(null)} />
 
       <BottomNav
         view={view}
@@ -550,31 +585,7 @@ export default function MenuApp({
         />
       </Sheet>
 
-      <NicknamePrompt
-        open={nickOpen}
-        initial={nick || ""}
-        sending={sendAfterNick}
-        onDone={(v) => {
-          saveNick(v);
-          setNickOpen(false);
-          if (sendAfterNick) {
-            setSendAfterNick(false);
-            send(v || null);
-          }
-        }}
-      />
-
-      <CallPrompt
-        open={callOpen}
-        calls={calls}
-        calling={calling}
-        error={callError}
-        onCall={call}
-        onClose={() => {
-          setCallOpen(false);
-          setCallError("");
-        }}
-      />
+      {shared}
     </>
   );
 }
@@ -886,13 +897,6 @@ function CountBadge({ count }: { count: number }) {
 }
 
 // ---------------------------------------------------------------------------
-
-/** Accents and case don't matter: "sinigang" finds "Sinigang", "creme" finds "crème". */
-const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
 
 /**
  * Type and the matching dishes drop down under the box; picking one opens it.
@@ -1981,9 +1985,12 @@ type Toast = { key: number; title: string; detail: string };
 
 function AddedToast({
   toast,
+  top = false,
   onDone,
 }: {
   toast: Toast | null;
+  /** Design B: at the top, because the bottom of the screen holds the dish's buttons. */
+  top?: boolean;
   onDone: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -2018,7 +2025,9 @@ function AddedToast({
       popover="manual"
       role="status"
       aria-live="polite"
-      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 bottom-[calc(92px+env(safe-area-inset-bottom))] md:bottom-8`}
+      className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 ${
+        top ? "top-[calc(72px+env(safe-area-inset-top))]" : "bottom-[calc(92px+env(safe-area-inset-bottom))] md:bottom-8"
+      }`}
     >
       {toast && (
         <div key={toast.key} className="flex items-center gap-3 rounded-2xl bg-forest py-2.5 pl-2.5 pr-5 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">

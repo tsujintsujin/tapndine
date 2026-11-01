@@ -28,3 +28,10 @@ export const ago = (ms: number, now = Date.now()) => {
   if (min < 60) return `${min} min ago`;
   return `${Math.floor(min / 60)} h ${min % 60} min ago`;
 };
+
+/** For search: accents and case don't matter, "creme" finds "Crème". */
+export const fold = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();

@@ -2,19 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { MenuDesign } from "@/lib/menu";
 import { PALETTES, type Palette } from "@/lib/palettes";
 import { CheckIcon } from "@/app/components/Icons";
 import { card } from "../kit";
 import { api } from "../ui";
 
 /**
- * The colours of the guests' menu. A restaurant that never picked has the
- * first one, cocoa and orange (the menu's own colours). Picking one saves
- * straight away; guests see it the next time the menu loads.
+ * The colours of the guests' menu. A restaurant that never picked has its
+ * design's own colours: cocoa and orange for Design A, ube and calamansi for
+ * Design B. Picking one saves straight away; guests see it the next time the
+ * menu loads.
  */
-export default function PaletteCard({ palette }: { palette: string | null }) {
+export default function PaletteCard({ palette, design }: { palette: string | null; design: MenuDesign }) {
   const router = useRouter();
-  const [current, setCurrent] = useState(palette ?? PALETTES[0].id);
+  const [current, setCurrent] = useState(palette ?? (design === "b" ? "ube" : PALETTES[0].id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 

@@ -36,6 +36,29 @@
   --mango-soft: 252 239 203;
   --focus: #1f5c3f;
 }
+/* Design B of the guest menu (MenuB.tsx): ube and calamansi, dish names in
+   Fraunces. Same roles as above: forest and leaf are ube, mango calamansi. */
+.theme-ube {
+  --ink: 30 21 48;
+  --muted: 104 94 120;
+  --line: 230 224 238;
+  --wash: 240 234 247; /* lilac */
+  --paper: 248 247 251;
+  --forest: 61 35 88; /* ube */
+  --forest-soft: 82 52 112;
+  --leaf: 61 35 88;
+  --leaf-dark: 44 24 66;
+  --leaf-tint: 240 234 247;
+  --mango: 212 225 87; /* calamansi */
+  --mango-soft: 236 243 190;
+  --focus: #3d2358;
+  --font-display: var(--font-serif);
+}
+/* Past the ends of the page (pull to refresh, overscroll) too. */
+html:has(.theme-ube),
+html:has(.theme-ube) body {
+  background: rgb(248 247 251);
+}
 
 html {
   -webkit-text-size-adjust: 100%;

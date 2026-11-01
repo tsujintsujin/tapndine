@@ -28,12 +28,16 @@ export type Dish = {
   sizeRequired: boolean;
 };
 
+export type MenuDesign = "a" | "b";
+
 export type Category = { id: string; name: string; dishIds: string[] };
 
 export type Menu = {
   businessName: string;
   /** The restaurant's own logo (Cloudinary URL), or null for name only. */
   logoUrl: string | null;
+  /** Which look the menu has; the manager picks it (migration 0016). */
+  design: MenuDesign;
   /** The colour scheme the manager picked (lib/palettes.ts), or null for the design's own. */
   palette: string | null;
   tableLabel: string | null;
@@ -89,7 +93,7 @@ export const CHOICE_ON_MENU = "(o.ref_dish_id IS NULL OR (r.available = 1 AND r.
 export async function loadMenu(visit: Visit): Promise<Menu | null> {
   const d = db();
   const [biz, table, cats, dishes, links, ingredients, options] = await d.batch([
-    d.prepare("SELECT name, logo_url, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
+    d.prepare("SELECT name, logo_url, menu_design, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
       .prepare("SELECT id, name FROM categories WHERE business_id = ? ORDER BY sort, name")
@@ -126,7 +130,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       .bind(visit.business_id),
   ]);
 
-  const business = (biz.results as { name: string; logo_url: string | null; menu_palette: string | null }[])[0];
+  const business = (biz.results as { name: string; logo_url: string | null; menu_design: string; menu_palette: string | null }[])[0];
   if (!business) return null;
 
   const byId: Record<string, Dish> = {};
@@ -173,6 +177,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
   return {
     businessName: business.name,
     logoUrl: business.logo_url,
+    design: business.menu_design === "b" ? "b" : "a",
     palette: business.menu_palette,
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.

@@ -16,12 +16,15 @@ export default function Sheet({
   onClose,
   from,
   label,
+  half = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   from: "bottom" | "left" | "right";
   label: string;
+  /** From the bottom, but only as tall as its content, so what is behind still shows above it. */
+  half?: boolean;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -68,7 +71,9 @@ export default function Sheet({
   }, [open]);
 
   const panel =
-    from === "bottom"
+    from === "bottom" && half
+      ? "absolute inset-x-0 bottom-0 max-h-[85dvh] rounded-t-[26px] sm:mx-auto sm:w-[min(520px,100%)]"
+      : from === "bottom"
       ? "absolute inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px] md:h-[min(620px,88dvh)] md:w-[min(920px,calc(100%-48px))]"
       : from === "left"
         ? "absolute inset-y-0 left-0 w-[min(320px,86vw)]"

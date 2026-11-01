@@ -33,8 +33,8 @@ export default async function MenuPage({ params }: { params: Promise<{ visitId: 
   // A tag not placed at a table has no waiter to send to.
   return (
     <>
-      {/* The backdrop's cream shapes belong to the default colours. */}
-      {colors ? <style>{paletteCss(colors)}</style> : <WarmBackdrop />}
+      {/* The backdrop's cream shapes belong to Design A's default colours. */}
+      {colors ? <style>{paletteCss(colors)}</style> : menu.design === "a" && <WarmBackdrop />}
       <MenuApp
         visitId={visitId}
         menu={menu}

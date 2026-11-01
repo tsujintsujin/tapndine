@@ -1,5 +1,6 @@
 import { db } from "./cf";
 import { randomId } from "./ids";
+import type { MenuDesign } from "./menu";
 import { rangeStart, type Range } from "./reports";
 import { hashPassword } from "./staff";
 import { newTagId } from "./tables";
@@ -168,6 +169,17 @@ export async function setLogo(id: string, slug: string, url: string | null): Pro
 export async function restaurantLogo(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT logo_url FROM businesses WHERE id = ?").bind(id).first<{ logo_url: string | null }>();
   return r?.logo_url ?? null;
+}
+
+/** Which look the guests' menu has, "a" or "b" (lib/menu.ts MenuDesign). */
+export async function restaurantDesign(id: string): Promise<MenuDesign> {
+  const r = await db().prepare("SELECT menu_design FROM businesses WHERE id = ?").bind(id).first<{ menu_design: string }>();
+  return r?.menu_design === "b" ? "b" : "a";
+}
+
+export async function setDesign(id: string, design: MenuDesign): Promise<boolean> {
+  const r = await db().prepare("UPDATE businesses SET menu_design = ? WHERE id = ?").bind(design, id).run();
+  return r.meta.changes > 0;
 }
 
 /** The guests' menu colour scheme (lib/palettes.ts), or null for the design's own. */
