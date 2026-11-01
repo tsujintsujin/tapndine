@@ -9,7 +9,7 @@ import { api } from "../ui";
 
 const DESIGNS: { id: MenuDesign; name: string; about: string; Mini: () => React.JSX.Element }[] = [
   { id: "a", name: "Design A", about: "Warm cream. Today's pick big at the top, dishes in a photo grid.", Mini: MiniA },
-  { id: "b", name: "Design B", about: "Ube and calamansi. One long list by category, photos on the side.", Mini: MiniB },
+  { id: "b", name: "Design B", about: "One dish per screen, its photo filling the phone. Guests swipe through or jump from the category list.", Mini: MiniB },
 ];
 
 /**
@@ -108,29 +108,21 @@ function MiniA() {
   );
 }
 
-/** A tiny drawing of Design B: ube band with picks, then rows with a photo on the right. */
+/** A tiny drawing of Design B: one dish filling the screen, its name and Add at the foot. */
 function MiniB() {
   return (
-    <span aria-hidden className="relative flex h-[128px] w-[72px] shrink-0 flex-col overflow-hidden rounded-[12px] bg-[#F8F7FB] ring-1 ring-black/10">
-      <span className="h-[30px] bg-[#3D2358] px-1.5 pt-1.5">
-        <span className="block h-1.5 w-7 rounded-full bg-white/80" />
+    <span aria-hidden className="relative flex h-[128px] w-[72px] shrink-0 flex-col overflow-hidden rounded-[12px] bg-[linear-gradient(160deg,#9A6A3E,#4a2d1f_55%,#1b1024)] ring-1 ring-black/10">
+      <span className="absolute right-1.5 top-1.5 flex gap-0.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-black/40 ring-1 ring-white/40" />
+        <span className="h-2.5 w-2.5 rounded-full bg-black/40 ring-1 ring-white/40" />
       </span>
-      <span className="-mt-3 flex gap-1 px-1.5">
-        <span className="h-8 w-7 rounded-[5px] bg-white ring-1 ring-black/5" />
-        <span className="h-8 w-7 rounded-[5px] bg-white ring-1 ring-black/5" />
-      </span>
-      <span className="mx-1.5 mt-1.5 block h-[2px] w-4 rounded-full bg-[#3D2358]" />
-      {[0, 1, 2].map((i) => (
-        <span key={i} className="mx-1.5 mt-1.5 flex items-center gap-1">
-          <span className="flex-1">
-            <span className="block h-1 w-7 rounded-full bg-[#1E1530]/60" />
-            <span className="mt-0.5 block h-1 w-5 rounded-full bg-[#1E1530]/25" />
-          </span>
-          <span className="h-4 w-4 rounded-[4px] bg-[#C9B6DD]" />
+      <span className="absolute inset-x-1.5 bottom-1.5">
+        <span className="block h-2 w-10 rounded-full bg-white/90" />
+        <span className="mt-1 block h-1 w-7 rounded-full bg-white/50" />
+        <span className="mt-1.5 flex gap-1">
+          <span className="h-3 flex-1 rounded-[4px] bg-[#D4E157]" />
+          <span className="h-3 w-3 rounded-[4px] bg-white/25" />
         </span>
-      ))}
-      <span className="absolute inset-x-1.5 bottom-1.5 flex h-3 items-center justify-end rounded-full bg-[#3D2358] pr-0.5">
-        <span className="h-2 w-2 rounded-full bg-[#D4E157]" />
       </span>
     </span>
   );

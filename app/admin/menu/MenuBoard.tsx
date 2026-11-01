@@ -119,7 +119,8 @@ export default function MenuBoard({
 
       <LogoCard name={logo.name} logoUrl={logo.url} />
       <DesignCard design={design} />
-      <PaletteCard palette={palette} />
+      {/* Keyed by design: with no palette picked, the tick follows the design's own colours. */}
+      <PaletteCard key={design} palette={palette} design={design} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">

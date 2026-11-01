@@ -518,6 +518,19 @@ function DishScreen({
         />
       )}
 
+      {/* No photo: the name fills the space the photo would, set large in the serif. */}
+      {!dish.imageUrl && (
+        <div className="absolute inset-x-0 top-[calc(96px+env(safe-area-inset-top))] px-6">
+          <p
+            aria-hidden
+            className="font-display text-[clamp(56px,17vw,88px)] font-semibold italic leading-[0.95] tracking-[-0.03em] text-white/90 [overflow-wrap:anywhere]"
+          >
+            {dish.name}
+          </p>
+          {dish.description && <p className="mt-6 line-clamp-6 text-[17px] leading-relaxed text-white/75">{dish.description}</p>}
+        </div>
+      )}
+
       <div className="absolute inset-x-0 bottom-0 px-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         {(tags.length > 0 || count > 0) && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -535,8 +548,8 @@ function DishScreen({
           </div>
         )}
         <h2
-          className={`font-display font-semibold leading-[1.02] tracking-[-0.02em] [overflow-wrap:anywhere] ${
-            dish.imageUrl ? "text-[clamp(34px,10vw,46px)]" : "text-[clamp(44px,14vw,64px)]"
+          className={`font-display text-[clamp(34px,10vw,46px)] font-semibold leading-[1.02] tracking-[-0.02em] [overflow-wrap:anywhere] ${
+            dish.imageUrl ? "" : "sr-only"
           }`}
         >
           {dish.name}
