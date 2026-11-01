@@ -81,5 +81,5 @@ export function paletteCss(c: Palette): string {
   ]
     .map(([k, v]) => `--${k}:${v};`)
     .join("");
-  return `:root,.theme-warm,.theme-ube{${vars}--focus:${hex(c.forest)};}html,body{background:rgb(${c.paper});}`;
+  return `:root,.theme-warm,.theme-ube,.theme-c{${vars}--focus:${hex(c.forest)};}html,body{background:rgb(${c.paper});}`;
 }

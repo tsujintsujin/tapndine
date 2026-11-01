@@ -41,6 +41,7 @@ import {
 import Sheet from "./Sheet";
 import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
+import MenuC from "./MenuC";
 import { DishImage, SpiceMeter } from "./parts";
 
 // ---------------------------------------------------------------------------
@@ -504,6 +505,38 @@ export default function MenuApp({
       >
         {shared}
       </MenuB>
+    );
+  }
+
+  if (menu.design === "c") {
+    return (
+      <MenuC
+        menu={menu}
+        nickname={nick || ""}
+        canSend={canSend}
+        demo={demo}
+        lines={lines}
+        notes={notes}
+        setNote={setNote}
+        setQty={setQty}
+        sent={sent}
+        calling={calls.length > 0}
+        dish={dish}
+        orderOpen={orderOpen}
+        onDish={openDish}
+        onQuickAdd={quickAdd}
+        onAdd={(id, n, picks) => addOne(lineKey(id, picks), n)}
+        onCloseDish={() => closeParam("d")}
+        onOrder={openOrder}
+        onCloseOrder={() => closeParam("o")}
+        onNickname={canSend ? () => setNickOpen(true) : undefined}
+        onCall={canSend ? () => setCallOpen(true) : undefined}
+        sending={sending}
+        sendError={sendError}
+        onSend={trySend}
+      >
+        {shared}
+      </MenuC>
     );
   }
 

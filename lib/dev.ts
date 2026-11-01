@@ -184,10 +184,11 @@ export async function restaurantLogo(id: string): Promise<string | null> {
   return r?.logo_url ?? null;
 }
 
-/** Which look the guests' menu has, "a" or "b" (lib/menu.ts MenuDesign). */
+/** Which look the guests' menu has, "a", "b" or "c" (lib/menu.ts MenuDesign). */
 export async function restaurantDesign(id: string): Promise<MenuDesign> {
   const r = await db().prepare("SELECT menu_design FROM businesses WHERE id = ?").bind(id).first<{ menu_design: string }>();
-  return r?.menu_design === "b" ? "b" : "a";
+  const d = r?.menu_design;
+  return d === "b" || d === "c" ? d : "a";
 }
 
 export async function setDesign(id: string, design: MenuDesign): Promise<boolean> {

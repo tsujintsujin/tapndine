@@ -11,12 +11,12 @@ import { api } from "../ui";
 /**
  * The colours of the guests' menu. A restaurant that never picked has its
  * design's own colours: cocoa and orange for Design A, ube and calamansi for
- * Design B. Picking one saves straight away; guests see it the next time the
+ * Design B, navy and coral for Design C. Picking one saves straight away; guests see it the next time the
  * menu loads.
  */
 export default function PaletteCard({ palette, design }: { palette: string | null; design: MenuDesign }) {
   const router = useRouter();
-  const [current, setCurrent] = useState(palette ?? (design === "b" ? "ube" : PALETTES[0].id));
+  const [current, setCurrent] = useState(palette ?? (design === "b" ? "ube" : design === "c" ? "navy" : PALETTES[0].id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
