@@ -285,30 +285,56 @@ export default function TableView({
       />
       <OfflineNote offline={offline} />
 
-      <main className="mx-auto max-w-3xl space-y-4 px-4 pb-36 pt-4">
-        {callNote}
-        {errorNote}
+      {/* Desktop: the orders on the left, the total and Clear table in a column on the right. */}
+      <main className="mx-auto max-w-3xl px-4 pb-36 pt-4 md:max-w-5xl md:px-6 md:pt-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6 lg:pb-10">
+        <div className="min-w-0 space-y-4">
+          {callNote}
+          {errorNote}
 
-        {emptyNote}
+          {emptyNote}
 
-        {view === "summary" && !empty && <Summary table={table} />}
+          {view === "summary" && !empty && <Summary table={table} />}
 
-        {view === "guests" &&
-          table.guests.map((g) => <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} newIds={newIds} />)}
+          {view === "guests" && (
+            <div
+              className={`space-y-4 md:grid md:items-start md:gap-4 md:space-y-0 ${
+                // Two guests or more side by side; one guest keeps the full width.
+                table.guests.length > 1 ? "md:grid-cols-2" : ""
+              }`}
+            >
+              {table.guests.map((g) => (
+                <GuestCard key={g.number} guest={g} busy={busy} onQty={setQty} newIds={newIds} />
+              ))}
+            </div>
+          )}
 
-        {view === "guests" && additionals}
+          {view === "guests" && additionals}
 
-        <Link
-          href={`/admin/t/${tableId}/history`}
-          className="flex min-h-12 items-center justify-between rounded-2xl border border-line bg-white px-4 text-[15px] font-semibold active:bg-wash"
-        >
-          Past orders at this table
-          <ChevronRight width={20} height={20} className="text-muted" />
-        </Link>
+          <Link
+            href={`/admin/t/${tableId}/history`}
+            className="flex min-h-12 items-center justify-between rounded-2xl border border-line bg-white px-4 text-[15px] font-semibold hover:bg-wash active:bg-wash"
+          >
+            Past orders at this table
+            <ChevronRight width={20} height={20} className="text-muted" />
+          </Link>
+        </div>
+
+        <aside className="hidden rounded-2xl border border-line bg-white p-5 lg:sticky lg:top-20 lg:block">
+          <p className="text-[15px] font-semibold">Table total</p>
+          <p className="mt-2 font-display text-[40px] font-bold leading-none tracking-tight">{formatPrice(table.totalCents)}</p>
+          <button
+            type="button"
+            disabled={empty || busy === "clear"}
+            onClick={clear}
+            className="mt-5 h-12 w-full rounded-xl border border-ink px-4 text-[15px] font-semibold hover:bg-wash active:bg-wash disabled:border-line disabled:text-muted"
+          >
+            Clear table (paid)
+          </button>
+        </aside>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+      <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 md:max-w-5xl md:px-2">
           <div className="min-w-0">
             <p className="text-[13px] text-muted">Table total</p>
             <p className="font-display text-[26px] font-bold leading-tight">{formatPrice(table.totalCents)}</p>

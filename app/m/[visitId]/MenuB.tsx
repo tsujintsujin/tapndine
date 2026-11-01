@@ -57,8 +57,6 @@ const serif = Fraunces({
   display: "swap",
 });
 
-/** The phone's status bar matches the cover while this design is open. */
-const UBE = "#3D2358";
 
 type Section = { id: string; name: string; dishIds: string[] };
 
@@ -141,7 +139,9 @@ export default function MenuB({
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!meta) return;
     const before = meta.content;
-    meta.content = UBE;
+    // The cover's colour: ube, or the restaurant's palette when it picked one.
+    const forest = getComputedStyle(document.querySelector(".theme-ube") ?? document.documentElement).getPropertyValue("--forest").trim();
+    meta.content = forest ? `rgb(${forest.replaceAll(" ", ",")})` : "#3D2358";
     return () => {
       meta.content = before;
     };

@@ -91,7 +91,7 @@ export function StaffHeader({
 }) {
   return (
     <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
-      <div className="mx-auto grid h-14 max-w-3xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-2">
+      <div className="mx-auto grid h-14 max-w-3xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 md:max-w-5xl md:px-4 lg:max-w-6xl">
         <div className="justify-self-start">
           {back ? (
             <Link href={back.href} className="flex h-11 items-center gap-0.5 rounded-lg pl-1 pr-3 text-[15px] font-medium active:bg-white/10">
@@ -141,7 +141,7 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
   if (!isManager) {
     return (
       <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
-        <nav className="mx-auto flex h-14 max-w-3xl items-center justify-between px-2">
+        <nav className="mx-auto flex h-14 max-w-3xl items-center justify-between px-2 md:max-w-5xl md:px-4 lg:max-w-6xl">
           <span className="px-2 text-sm font-semibold uppercase tracking-wide text-mango">Staff</span>
           <button
             type="button"
@@ -158,7 +158,7 @@ export function StaffNav({ isManager }: { isManager: boolean }) {
 
   return (
     <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
-      <nav className="relative mx-auto flex h-14 max-w-3xl items-center px-2">
+      <nav className="relative mx-auto flex h-14 max-w-3xl items-center px-2 md:max-w-5xl md:px-4 lg:max-w-6xl">
         <button
           type="button"
           aria-expanded={open}

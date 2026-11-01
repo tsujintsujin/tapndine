@@ -1,1 +1,1 @@
-tapndine: NFC table menus that send orders to your waiters
+tapndine: no more idle waiting at the table. A couple with their food already served.

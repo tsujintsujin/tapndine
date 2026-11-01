@@ -32,7 +32,9 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - **Guests**: no account. A nickname, asked the first time they send.
 - **Waiters**: Tables, a table's orders by guest, add items, clear the table.
 - **Managers**: plus Dashboard, NFC links (tables and their tag links, capped
-  by the plan's table count), Menu (dishes, dish options, logo), Categories, Staff.
+  by the plan's table count), Menu (dishes, dish options, logo, menu colors), Categories, Staff.
+  Menu colors: 10 palettes in `lib/palettes.ts` (`menu_palette`, migration
+  0017; NULL = cocoa); `node scripts/palettes-check.ts` checks their contrast.
 
 ## Dish options (Stage 1 Build 1, live 2026-10-21)
 
@@ -67,7 +69,8 @@ A restaurant's table limit comes from its current contract; with no contract
   "Try the menu" opens it).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
-- Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`, and with the dev
+- Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`,
+  `node scripts/palettes-check.ts`, and with the dev
   server up, `node scripts/isolation-check.mjs http://localhost:3390`.
 - Deploys are **manual** (`opennextjs-cloudflare build` + `deploy`) from a clean
   copy outside this folder, never by building here while `next dev` runs.

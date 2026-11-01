@@ -12,6 +12,7 @@ import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
 import DesignCard from "./DesignCard";
 import LogoCard from "./LogoCard";
+import PaletteCard from "./PaletteCard";
 
 /**
  * Every dish, in menu order. Click a row to edit it; flip the switch to mark
@@ -23,6 +24,7 @@ export default function MenuBoard({
   categories,
   logo,
   design,
+  palette,
 }: {
   dishes: AdminDish[];
   categories: AdminCategory[];
@@ -30,6 +32,8 @@ export default function MenuBoard({
   logo: { name: string; url: string | null };
   /** The look of the guests' menu, for the design card. */
   design: MenuDesign;
+  /** The guests' menu colours (lib/palettes.ts), null for the default. */
+  palette: string | null;
 }) {
   const router = useRouter();
   const [list, setList] = useState(dishes);
@@ -115,6 +119,7 @@ export default function MenuBoard({
 
       <LogoCard name={logo.name} logoUrl={logo.url} />
       <DesignCard design={design} />
+      <PaletteCard palette={palette} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">

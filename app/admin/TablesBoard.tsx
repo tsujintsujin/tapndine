@@ -10,7 +10,7 @@ import { OfflineNote, StaffNav, usePoll } from "./ui";
 
 /**
  * Every table as a button; tables with orders stand out and show their total.
- * Waiters get it on their phone layout, managers inside the dashboard frame.
+ * Waiters get the staff layout (wider on tablets and desktop), managers the dashboard frame.
  */
 export default function TablesBoard({
   initial,
@@ -29,7 +29,7 @@ export default function TablesBoard({
     (flagged ? ` ${flagged} ${flagged === 1 ? "needs" : "need"} you.` : "");
 
   const grid = (
-    <ul className={`grid auto-rows-fr gap-3 ${isManager ? "mt-6 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "mt-4 grid-cols-2 sm:grid-cols-3"}`}>
+    <ul className={`grid auto-rows-fr gap-3 ${isManager ? "mt-6 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "mt-4 grid-cols-2 sm:grid-cols-3 md:mt-6 md:grid-cols-4 md:gap-4 lg:grid-cols-5"}`}>
       {tables.map((t) => {
         const active = t.items > 0;
         const flags = [
@@ -90,7 +90,7 @@ export default function TablesBoard({
       <WarmBackdrop />
       <StaffNav isManager={false} />
       <OfflineNote offline={offline} />
-      <main className="mx-auto max-w-3xl px-4 pb-10 pt-4">
+      <main className="mx-auto max-w-3xl px-4 pb-10 pt-4 md:max-w-5xl md:px-6 md:pt-8 lg:max-w-6xl">
         <h1 className="font-display text-[28px] font-bold leading-tight">Tables</h1>
         <p className="mt-1 text-[15px] text-muted">
           Hi {staffName}. {summary}

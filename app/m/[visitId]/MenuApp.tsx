@@ -519,6 +519,10 @@ export default function MenuApp({
         onNickname={canSend ? () => setNickOpen(true) : undefined}
         onCall={canSend ? () => setCallOpen(true) : undefined}
         onOrder={openOrder}
+        view={view}
+        orderTotal={orderTotal}
+        onHome={goHome}
+        onMenu={view === "menu" ? () => window.scrollTo({ top: 0, behavior: "smooth" }) : openMenu}
       >
         {view === "menu" && (
           <>
@@ -532,10 +536,10 @@ export default function MenuApp({
           screen without the address bar (100lvh) while the bar sits above the
           address bar, so a short page ends that much under the bar and can't
           scroll further: add the difference (0 on desktop). */}
-      <main className="pb-[calc(112px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)]">
+      <main className="pb-[calc(112px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)] md:pb-16">
         <div key={view} className="view-in">
           {view === "menu" ? (
-            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={quickAdd} />
+            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={quickAdd} onPick={pickCategory} />
           ) : (
             <HomeView menu={menu} onDish={openDish} onAdd={quickAdd} onMenu={openMenu} />
           )}
@@ -776,6 +780,10 @@ function Header({
   onNickname,
   onCall,
   onOrder,
+  view,
+  orderTotal,
+  onHome,
+  onMenu,
   children,
 }: {
   nickname: string;
@@ -790,13 +798,21 @@ function Header({
   /** Missing where there is no waiter to call. */
   onCall?: () => void;
   onOrder: () => void;
+  view: "home" | "menu";
+  orderTotal: number;
+  onHome: () => void;
+  onMenu: () => void;
   children?: React.ReactNode;
 }) {
+  const navTab = (on: boolean) =>
+    `flex h-11 items-center gap-2 rounded-full px-4 text-[15px] font-semibold ${
+      on ? "bg-leaf-tint text-ink" : "text-muted hover:bg-wash hover:text-ink"
+    }`;
   const who = [tableLabel, nickname ? `Hi ${nickname}` : null].filter(Boolean).join(" · ");
   return (
     <header className="sticky top-0 z-20 bg-paper/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-      <div className="mx-auto max-w-3xl px-4">
-        <div className="flex h-[72px] items-center justify-between gap-3">
+      <div className="mx-auto max-w-3xl px-4 md:max-w-5xl md:px-6 lg:max-w-6xl">
+        <div className="flex h-[72px] items-center justify-between gap-3 md:h-20">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -819,6 +835,30 @@ function Header({
               )}
             </div>
           </div>
+          {/* Tablets and desktop: the bottom bar's three places, up here. */}
+          <nav aria-label="Menu sections" className="hidden items-center gap-1 md:flex">
+            <button type="button" onClick={onHome} aria-current={view === "home" ? "page" : undefined} className={navTab(view === "home")}>
+              <HomeIcon width={20} height={20} />
+              Home
+            </button>
+            <button type="button" onClick={onMenu} aria-current={view === "menu" ? "page" : undefined} className={navTab(view === "menu")}>
+              <ClocheIcon width={20} height={20} />
+              Menu
+            </button>
+            <button
+              type="button"
+              onClick={onOrder}
+              aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
+              className="ml-2 flex h-12 items-center gap-2.5 rounded-full border border-line bg-white pl-4 pr-5 text-[15px] font-semibold hover:border-leaf"
+            >
+              <span className="relative">
+                <BagIcon width={20} height={20} />
+                {itemCount > 0 && <CountBadge count={itemCount} />}
+              </span>
+              My order
+              {itemCount > 0 && <span className="text-muted">{formatPrice(orderTotal)}</span>}
+            </button>
+          </nav>
           {onCall ? (
             <button
               type="button"
@@ -835,14 +875,14 @@ function Header({
               type="button"
               onClick={onOrder}
               aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-              className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
+              className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark md:hidden"
             >
               <BagIcon width={22} height={22} />
               {itemCount > 0 && <CountBadge count={itemCount} />}
             </button>
           )}
         </div>
-        {children && <div className="pb-3">{children}</div>}
+        {children && <div className="pb-3 lg:hidden">{children}</div>}
       </div>
     </header>
   );
@@ -1030,30 +1070,62 @@ function CategoryTags({
 
 // ---------------------------------------------------------------------------
 
-/** Every dish, or one category's, two to a row. */
+/**
+ * Every dish, or one category's: two to a row on phones, three on tablets.
+ * On desktop the search and categories leave the header for a rail on the
+ * left, and the dishes fill the rest, up to four to a row.
+ */
 function WholeMenu({
   menu,
   categoryId,
   onDish,
   onAdd,
+  onPick,
 }: {
   menu: Menu;
   categoryId: string | null;
   onDish: (id: string) => void;
   onAdd: (id: string) => void;
+  onPick: (id: string | null) => void;
 }) {
   const category = categoryId ? menu.categories.find((c) => c.id === categoryId) : undefined;
   const ids = category ? category.dishIds : menu.dishOrder;
+  const rail = [{ id: null, name: "All dishes", count: menu.dishOrder.length }, ...menu.categories.map((c) => ({ id: c.id, name: c.name, count: c.dishIds.length }))];
   return (
-    <section className="mx-auto max-w-3xl px-4 pt-2" aria-label={category?.name ?? "All dishes"}>
-      <ul key={categoryId ?? "all"} className="view-in grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3">
-        {ids.map((id) => (
-          <li key={id}>
-            <GridCard dish={menu.dishes[id]} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div className="mx-auto max-w-3xl px-4 pt-2 md:max-w-5xl md:px-6 lg:grid lg:max-w-6xl lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:pt-4">
+      <aside className="hidden lg:sticky lg:top-24 lg:block lg:self-start">
+        <DishSearch menu={menu} onDish={onDish} />
+        <div role="group" aria-label="Categories" className="mt-5 flex flex-col gap-0.5">
+          {rail.map((t) => {
+            const on = t.id === categoryId;
+            return (
+              <button
+                key={t.id ?? "all"}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onPick(t.id)}
+                className={`flex h-11 items-center justify-between rounded-xl px-4 text-left text-[15px] font-semibold ${
+                  on ? "bg-leaf text-white" : "text-ink hover:bg-wash"
+                }`}
+              >
+                <span className="truncate">{t.name}</span>
+                <span className={`shrink-0 text-[13px] font-medium ${on ? "text-white/70" : "text-muted"}`}>{t.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+      <section aria-label={category?.name ?? "All dishes"} className="min-w-0">
+        <h2 className="mb-5 hidden font-display text-[28px] font-bold leading-tight lg:block">{category?.name ?? "All dishes"}</h2>
+        <ul key={categoryId ?? "all"} className="view-in grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:gap-x-5 lg:gap-y-8 xl:grid-cols-4">
+          {ids.map((id) => (
+            <li key={id}>
+              <GridCard dish={menu.dishes[id]} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
 
@@ -1121,15 +1193,17 @@ function HomeView({
   const fresh = all.filter((d) => d.isNew && d.id !== hero?.id).slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl md:max-w-5xl md:px-6 md:pt-2 lg:max-w-6xl">
       {hero && <Hero dish={hero} onOpen={() => onDish(hero.id)} onAdd={() => onAdd(hero.id)} onMenu={onMenu} />}
 
-      {featured.length > 0 && (
-        <MiniRow title="Featured dishes" rowId="featured" dishes={featured} onDish={onDish} onAdd={onAdd} />
-      )}
-      {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-10">
+        {featured.length > 0 && (
+          <MiniRow title="Featured dishes" rowId="featured" dishes={featured} onDish={onDish} onAdd={onAdd} />
+        )}
+        {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
+      </div>
 
-      <div className="mt-10 px-4">
+      <div className="mt-10 px-4 md:mx-auto md:max-w-md md:px-0">
         <button
           type="button"
           onClick={onMenu}
@@ -1160,32 +1234,32 @@ function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void;
   return (
     <section
       aria-labelledby="hero-name"
-      className="relative isolate h-[min(74svh,640px)] min-h-[460px] overflow-hidden rounded-b-[32px] bg-forest text-white sm:mx-4 sm:rounded-[32px]"
+      className="relative isolate h-[min(74svh,640px)] min-h-[460px] overflow-hidden rounded-b-[32px] bg-forest text-white sm:mx-4 sm:rounded-[32px] md:mx-0 md:grid md:h-[min(60vh,480px)] md:min-h-[420px] lg:h-[min(72vh,540px)] lg:min-h-[440px] md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
     >
-      <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="absolute inset-0 -z-10 block">
+      <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="absolute inset-0 -z-10 block md:relative md:z-auto md:h-full">
         <DishImage dish={dish} eager onDark className="h-full w-full" />
       </button>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(33_24_18/0.94)_0%,rgb(33_24_18/0.6)_36%,rgb(33_24_18/0)_64%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(33_24_18/0.94)_0%,rgb(33_24_18/0.6)_36%,rgb(33_24_18/0)_64%)] md:hidden"
       />
 
       {/* The price stamp, tilted like a sticker on the menu board. */}
-      <div className="pointer-events-none absolute right-4 top-4 grid h-[84px] w-[84px] -rotate-[8deg] place-items-center rounded-full bg-mango text-forest shadow-[0_8px_20px_rgb(0_0_0/0.3)]">
-        <div className="grid h-[72px] w-[72px] place-content-center rounded-full border-[1.5px] border-dashed border-forest/40 text-center">
+      <div className="pointer-events-none absolute right-4 top-4 grid h-[84px] w-[84px] -rotate-[8deg] md:right-8 md:top-8 md:h-[104px] md:w-[104px] place-items-center rounded-full bg-mango text-forest shadow-[0_8px_20px_rgb(0_0_0/0.3)]">
+        <div className="grid h-[72px] w-[72px] place-content-center rounded-full border-[1.5px] border-dashed border-forest/40 text-center md:h-[90px] md:w-[90px]">
           <span className="text-[12px] font-medium leading-none text-forest/70">Price</span>
           <span className="mt-0.5 font-display text-[20px] font-bold leading-tight">{formatPrice(dish.priceCents)}</span>
         </div>
       </div>
 
       {/* Taps on the words fall through to the photo; only the buttons catch them. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-5">
-        <p className="inline-flex h-7 items-center rounded-full bg-white/15 px-3 text-[13px] font-semibold backdrop-blur">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-5 md:static md:flex md:flex-col md:justify-end md:px-8 md:pb-8 lg:px-10 lg:pb-10">
+        <p className="inline-flex h-7 items-center self-start rounded-full bg-white/15 px-3 text-[13px] font-semibold backdrop-blur">
           Today&apos;s pick
         </p>
         <h1
           id="hero-name"
-          className="mt-3 font-display text-[clamp(42px,13vw,64px)] font-bold leading-[0.9] tracking-[-0.02em] [overflow-wrap:anywhere]"
+          className="mt-3 font-display text-[clamp(42px,13vw,64px)] font-bold md:text-[clamp(44px,5vw,72px)] leading-[0.9] tracking-[-0.02em] [overflow-wrap:anywhere]"
         >
           <span className="block">{first}</span>
           {rest && <span className="block text-mango">{rest}</span>}
@@ -1196,12 +1270,12 @@ function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void;
           {servesLabel(dish.servesMin, dish.servesMax)}
         </p>
 
-        <div className="pointer-events-auto mt-5 flex gap-3 sm:max-w-md">
+        <div className="pointer-events-auto mt-5 flex gap-3 sm:max-w-md md:mt-8">
           <button
             type="button"
             disabled={!dish.available}
             onClick={onAdd}
-            className="flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full bg-mango text-[16px] font-bold text-forest active:brightness-95 disabled:bg-white/20 disabled:text-white/80"
+            className="flex h-[54px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-mango text-[16px] font-bold text-forest active:brightness-95 disabled:bg-white/20 disabled:text-white/80"
           >
             {dish.available ? (
               <>
@@ -1256,7 +1330,7 @@ function MiniRow({
 }) {
   const titleId = `row-${rowId}`;
   return (
-    <section className="mt-10 px-4" aria-labelledby={titleId}>
+    <section className="mt-10 px-4 md:px-0" aria-labelledby={titleId}>
       <SectionTitle id={titleId}>{title}</SectionTitle>
       <ul className="mt-4 grid grid-cols-3 gap-2.5">
         {dishes.map((d, i) => (
@@ -1395,8 +1469,11 @@ function DishDetails({
   );
 
   return (
-    <>
-      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3">
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      {/* Tablets and up: the photo takes the left half, full height. */}
+      <DishImage dish={dish} eager className="hidden md:block md:w-[46%] md:shrink-0" />
+      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3 md:pl-6 md:pr-3 md:pt-5">
         <h2 className="pt-1.5 font-display text-[26px] font-bold leading-tight">{dish.name}</h2>
         <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
           <CloseIcon width={20} height={20} />
@@ -1408,9 +1485,9 @@ function DishDetails({
           hasOptions ? "pb-6" : "pb-[calc(24px+env(safe-area-inset-bottom))]"
         }`}
       >
-        <DishImage dish={dish} eager className="mx-4 aspect-[4/3] rounded-2xl" />
+        <DishImage dish={dish} eager className="mx-4 aspect-[4/3] rounded-2xl md:hidden" />
 
-        <div className="px-4">
+        <div className="px-4 md:px-6">
           <div className="mt-4 flex items-baseline justify-between gap-4">
             <p className="text-[15px] text-muted">{dish.shortDescription}</p>
             <p className="shrink-0 font-display text-[26px] font-bold">{formatPrice(dish.priceCents)}</p>
@@ -1461,9 +1538,10 @@ function DishDetails({
 
       {/* With options the sheet scrolls further, so Add stays in reach at the bottom. */}
       {hasOptions && (
-        <div className="shrink-0 border-t border-line px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-3">{addRow}</div>
+        <div className="shrink-0 border-t border-line px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-3 md:px-6">{addRow}</div>
       )}
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -1848,7 +1926,7 @@ function BottomNav({
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6"
+      className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6 md:hidden"
     >
       <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">
         <button
@@ -1948,7 +2026,7 @@ function AddedToast({
       role="status"
       aria-live="polite"
       className={`toast fixed inset-auto left-1/2 m-0 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-visible border-0 bg-transparent p-0 ${
-        top ? "top-[calc(72px+env(safe-area-inset-top))]" : "bottom-[calc(92px+env(safe-area-inset-bottom))]"
+        top ? "top-[calc(72px+env(safe-area-inset-top))]" : "bottom-[calc(92px+env(safe-area-inset-bottom))] md:bottom-8"
       }`}
     >
       {toast && (
