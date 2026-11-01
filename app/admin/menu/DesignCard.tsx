@@ -10,6 +10,7 @@ import { api } from "../ui";
 const DESIGNS: { id: MenuDesign; name: string; about: string; Mini: () => React.JSX.Element }[] = [
   { id: "a", name: "Design A", about: "Warm cream. Today's pick big at the top, dishes in a photo grid.", Mini: MiniA },
   { id: "b", name: "Design B", about: "One dish per screen, its photo filling the phone. Guests swipe through or jump from the category list.", Mini: MiniB },
+  { id: "c", name: "Design C", about: "Categories down the left, every dish in a list on the right, with a counter on each row.", Mini: MiniC },
 ];
 
 /**
@@ -44,7 +45,7 @@ export default function DesignCard({ design }: { design: MenuDesign }) {
         Menu design
       </h2>
       <p className="text-[14px] text-muted">How your menu looks on guests&apos; phones. Switch any time.</p>
-      <div role="radiogroup" aria-labelledby="design-title" className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div role="radiogroup" aria-labelledby="design-title" className="mt-4 grid gap-3 lg:grid-cols-3">
         {DESIGNS.map(({ id, name, about, Mini }) => {
           const on = current === id;
           return (
@@ -124,6 +125,38 @@ function MiniB() {
           <span className="h-3 w-3 rounded-[4px] bg-white/25" />
         </span>
       </span>
+    </span>
+  );
+}
+
+/** A tiny drawing of Design C: a navy header, categories in a column, dish rows beside it. */
+function MiniC() {
+  return (
+    <span aria-hidden className="relative flex h-[128px] w-[72px] shrink-0 flex-col overflow-hidden rounded-[12px] bg-white ring-1 ring-black/10">
+      <span className="flex h-[18px] items-center justify-between bg-[#163A5F] px-1.5">
+        <span className="h-1.5 w-6 rounded-full bg-white/85" />
+        <span className="h-2 w-3 rounded-[3px] bg-[#FF9B80]" />
+      </span>
+      <span className="flex flex-1">
+        <span className="flex w-[18px] flex-col gap-1.5 bg-[#E7EEF5] pt-1.5">
+          <span className="ml-0.5 h-2 w-3.5 rounded-[2px] bg-white" />
+          <span className="ml-1 h-1 w-2.5 rounded-full bg-[#163A5F]/40" />
+          <span className="ml-1 h-1 w-2.5 rounded-full bg-[#163A5F]/40" />
+          <span className="ml-1 h-1 w-2.5 rounded-full bg-[#163A5F]/40" />
+        </span>
+        <span className="flex flex-1 flex-col gap-1.5 px-1 pt-1.5">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className="flex items-center gap-1">
+              <span className="h-4 w-4 rounded-[3px] bg-[#C9A27E]" />
+              <span className="flex-1">
+                <span className="block h-1 w-full rounded-full bg-[#163A5F]/60" />
+                <span className="mt-0.5 block h-1 w-3/5 rounded-full bg-[#163A5F]/25" />
+              </span>
+            </span>
+          ))}
+        </span>
+      </span>
+      <span className="h-3 bg-[#163A5F]" />
     </span>
   );
 }

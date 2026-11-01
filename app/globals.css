@@ -54,10 +54,33 @@
   --focus: #3d2358;
   --font-display: var(--font-serif);
 }
+/* Design C of the guest menu (MenuC.tsx): navy and coral, headings in
+   Plus Jakarta Sans. Same roles: forest and leaf navy, mango coral. Values
+   are the "navy" palette in lib/palettes.ts. */
+.theme-c {
+  --ink: 20 34 52;
+  --muted: 88 102 120;
+  --line: 220 229 238;
+  --wash: 231 238 245;
+  --paper: 245 248 251;
+  --forest: 22 58 95; /* navy */
+  --forest-soft: 36 78 120;
+  --leaf: 22 58 95;
+  --leaf-dark: 14 42 70;
+  --leaf-tint: 226 236 246;
+  --mango: 255 155 128; /* coral */
+  --mango-soft: 255 214 201;
+  --focus: #163a5f;
+  --font-display: var(--font-c);
+}
 /* Past the ends of the page (pull to refresh, overscroll) too. */
 html:has(.theme-ube),
 html:has(.theme-ube) body {
   background: rgb(248 247 251);
+}
+html:has(.theme-c),
+html:has(.theme-c) body {
+  background: rgb(245 248 251);
 }
 
 html {

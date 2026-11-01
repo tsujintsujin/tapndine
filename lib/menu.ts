@@ -28,7 +28,7 @@ export type Dish = {
   sizeRequired: boolean;
 };
 
-export type MenuDesign = "a" | "b";
+export type MenuDesign = "a" | "b" | "c";
 
 export type Category = { id: string; name: string; dishIds: string[] };
 
@@ -36,7 +36,7 @@ export type Menu = {
   businessName: string;
   /** The restaurant's own logo (Cloudinary URL), or null for name only. */
   logoUrl: string | null;
-  /** Which look the menu has; the manager picks it (migration 0016). */
+  /** Which look the menu has; the manager picks it (migrations 0016, 0019). */
   design: MenuDesign;
   /** The colour scheme the manager picked (lib/palettes.ts), or null for the design's own. */
   palette: string | null;
@@ -177,7 +177,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
   return {
     businessName: business.name,
     logoUrl: business.logo_url,
-    design: business.menu_design === "b" ? "b" : "a",
+    design: business.menu_design === "b" || business.menu_design === "c" ? business.menu_design : "a",
     palette: business.menu_palette,
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.

@@ -58,13 +58,13 @@ const serif = Fraunces({
 });
 
 
-type Section = { id: string; name: string; dishIds: string[] };
+export type Section = { id: string; name: string; dishIds: string[] };
 
 /**
  * The categories in order. A dish in no category still shows, in a last
  * "More dishes"; a menu with no categories at all is one plain run.
  */
-function sectionsOf(menu: Menu): Section[] {
+export function sectionsOf(menu: Menu): Section[] {
   const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
   const loose = menu.dishOrder.filter((id) => !placed.has(id));
   const sections: Section[] = menu.categories.map((c) => ({ id: c.id, name: c.name, dishIds: c.dishIds }));
