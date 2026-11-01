@@ -9,9 +9,12 @@ import { ChevronLeft, MenuIcon } from "@/app/components/Icons";
 // Pieces every staff screen shares. Staff screens are used on a phone in one
 // hand, so everything you press is at least 44px tall.
 
-/** Who is on this page: a developer or not, and the restaurant it shows (null: none open). */
-export type StaffInfo = { developer: boolean; restaurant: { id: string; name: string } | null };
-const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null });
+/**
+ * Who is on this page: a developer or not, the restaurant it shows (null: none
+ * open), and when that restaurant's free trial ends (null: not on trial).
+ */
+export type StaffInfo = { developer: boolean; restaurant: { id: string; name: string } | null; trialEndsAt: number | null };
+const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null });
 export const useStaffInfo = () => useContext(StaffContext);
 
 /** The restaurant this page was drawn for; api() refuses to act on another. */

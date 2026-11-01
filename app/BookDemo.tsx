@@ -41,8 +41,8 @@ const CLOSE_X =
   "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl leading-none text-home-cocoa/50 transition hover:bg-home-cream hover:text-home-cocoa";
 
 /**
- * Opens the demo booking. With `withLogin` it first asks which one: log in
- * (staff, to /login) or book a demo.
+ * Opens the demo booking. With `withLogin` it first asks which one: the free
+ * trial (/start), log in (staff, to /login) or book a demo.
  */
 export function BookDemoButton({
   className,
@@ -81,6 +81,12 @@ export function BookDemoButton({
               </button>
             </div>
             <div className="mt-6 grid gap-3">
+              <Link
+                href="/start"
+                className="rounded-full bg-home-cocoa px-6 py-3 text-center font-semibold text-home-shell transition hover:bg-black"
+              >
+                Try it free for 7 days
+              </Link>
               <Link
                 href="/login"
                 className="rounded-full border-2 border-home-cocoa px-6 py-3 text-center font-semibold transition hover:bg-home-cocoa hover:text-home-shell"

@@ -241,7 +241,7 @@ const FAQ = [
   },
   {
     q: "Can I try it before I pay?",
-    a: `Yes. You get one week free with the full system: your menu online, orders to your waiters' phones, and the statistics. Print each table's QR code from your manager login and put it on the table. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
+    a: `Yes. Sign up with your email or Google account and you get 7 days free with every feature on 1 table: your menu online, orders to your waiter's phone, and the statistics. Print the table's QR code from your manager login and put it on the table. When the week is up, pick a plan to keep going; your menu and settings stay as you left them. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
   },
   {
     q: "Does tapndine replace my POS?",
@@ -628,9 +628,12 @@ export default async function Home() {
             One price a year for your restaurant or cafe, by how many tables you have. Renew at the same rate to keep
             your menu online.
           </p>
-          <p className="mx-auto mt-4 w-fit rounded-full bg-home-butter px-4 py-1.5 text-center text-sm font-bold">
-            Try it free for a week, with QR codes
-          </p>
+          <Link
+            href="/start"
+            className="mx-auto mt-5 flex w-fit items-center rounded-full bg-home-butter px-5 py-2.5 text-center text-sm font-bold transition hover:brightness-95"
+          >
+            Try it free for 7 days on 1 table &rarr;
+          </Link>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {PLANS.map((p) => (
               <div key={p.name} className="flex flex-col rounded-3xl bg-white p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">

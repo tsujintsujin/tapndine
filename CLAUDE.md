@@ -55,9 +55,26 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 Starter 5 tables ₱3,000/yr, Small Cafe 10 ₱5,000/yr, Standard 15 ₱7,100/yr,
 High-end 20 ₱8,500/yr. Extra tables on any plan: ₱35 per table a month
 (₱420/yr). Set 2026-10-19 (₱50 a table a month base, less for bigger plans and
-for paying yearly; still under Qashier ₱590/mo and MenuTiger ~₱1,000/mo). Free 1-week trial: the full system with QR codes, no NFC tags.
-A restaurant's table limit comes from its current contract; with no contract
-(a trial) it is the biggest plan's count.
+for paying yearly; still under Qashier ₱590/mo and MenuTiger ~₱1,000/mo).
+A restaurant's table limit comes from its current contract; with no contract,
+a self sign-up trial gets 1 and one a developer added the biggest plan's count.
+
+## Free trial (self sign-up, built 2026-11-01)
+
+- Restaurants sign themselves up at `/start` with Google or a 6-digit code
+  emailed through Brevo; the same page logs a trial manager back in (they have
+  no password). Code in `lib/signup.ts`, limits in `lib/trial.ts`.
+- A trial: every feature, 1 table (QR, no NFC), 2 staff logins besides the
+  manager, 7 days (`businesses.trial_ends_at`). The menu starts empty, with
+  placeholder rows on the manager's Menu/Categories and on the guest menu.
+- When it ends: staff see `/trial-over` (plans + Book a call, + Messenger once
+  `MESSENGER_URL` in `lib/trial.ts` is set) and every staff API refuses;
+  guests' tags go to "Menu not available". Adding a contract in Billing ends
+  the trial for good and everything opens again.
+- Restaurants a developer adds keep working as before (no trial date).
+- Google sign-in needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Worker
+  secrets; the button hides without them). Redirect URI:
+  `https://tapndine.online/api/auth/google/callback`.
 
 ## Stack and running it
 

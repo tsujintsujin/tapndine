@@ -7,6 +7,7 @@ import { BASE_PATH } from "@/lib/base";
 import type { Standing } from "@/lib/billing";
 import type { Restaurant } from "@/lib/dev";
 import { formatPrice } from "@/lib/format";
+import { daysLeft } from "@/lib/trial";
 import { btn, card } from "@/app/admin/kit";
 import { api, useConfirm } from "@/app/admin/ui";
 import { StandingBadge } from "./billing/parts";
@@ -97,13 +98,27 @@ export default function DevBoard({
                     <div className="min-w-0">
                       <p className="flex flex-wrap items-center gap-2">
                         <span className="font-display text-[18px] font-bold leading-tight">{r.name}</span>
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
-                            r.off ? "bg-chili/10 text-chili" : "bg-leaf-tint text-leaf"
-                          }`}
-                        >
-                          {r.off ? "Switched off" : "Live"}
-                        </span>
+                        {/* An ended trial is closed to guests, so not "Live"; its own badge says why. */}
+                        {(r.off || r.trialEndsAt === null || daysLeft(r.trialEndsAt) > 0) && (
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                              r.off ? "bg-chili/10 text-chili" : "bg-leaf-tint text-leaf"
+                            }`}
+                          >
+                            {r.off ? "Switched off" : "Live"}
+                          </span>
+                        )}
+                        {r.trialEndsAt !== null && (
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                              daysLeft(r.trialEndsAt) ? "bg-mango-soft text-ink" : "bg-chili/10 text-chili"
+                            }`}
+                          >
+                            {daysLeft(r.trialEndsAt)
+                              ? `Free trial · ${daysLeft(r.trialEndsAt)} ${daysLeft(r.trialEndsAt) === 1 ? "day" : "days"} left`
+                              : "Free trial ended"}
+                          </span>
+                        )}
                         {standings[r.id] && <StandingBadge standing={standings[r.id]} />}
                         {r.id === openId && (
                           <span className="rounded-full bg-mango-soft px-2.5 py-1 text-[12px] font-semibold text-ink">Open now</span>

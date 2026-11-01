@@ -14,6 +14,9 @@ export type Env = {
   /** Demo request emails (lib/mail.ts). Worker secrets; .dev.vars locally. */
   BREVO_API_KEY?: string;
   MAIL_FROM?: string;
+  /** "Continue with Google" on the sign-up page (lib/signup.ts); without them the button is hidden. Worker secrets; .dev.vars locally. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 };
 
 export const env = () => getCloudflareContext().env as unknown as Env;

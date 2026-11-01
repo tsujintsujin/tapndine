@@ -3,6 +3,7 @@ import { randomId } from "./ids";
 import { rangeStart, type Range } from "./reports";
 import { hashPassword } from "./staff";
 import { newTagId } from "./tables";
+import { ON_TRIAL } from "./trial";
 
 // The developers' screen: every restaurant on tapndine, how each is doing,
 // and adding, renaming and switching them off. Developers only; the routes
@@ -13,6 +14,8 @@ export type Restaurant = {
   slug: string;
   name: string;
   off: boolean;
+  /** When its free trial ends (unix ms); null when it isn't a trial, or has a contract now. */
+  trialEndsAt: number | null;
   tables: number;
   dishes: number;
   staff: number;
@@ -28,6 +31,7 @@ export async function restaurants(range: Range, now = Date.now()): Promise<Resta
   const r = await db()
     .prepare(
       `SELECT b.id, b.slug, b.name, b.disabled_at IS NOT NULL AS off,
+              CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt,
               (SELECT COUNT(*) FROM tables t WHERE t.business_id = b.id AND t.removed_at IS NULL) AS tables,
               (SELECT COUNT(*) FROM dishes d WHERE d.business_id = b.id AND d.removed_at IS NULL) AS dishes,
               (SELECT COUNT(*) FROM staff s WHERE s.business_id = b.id AND s.disabled_at IS NULL) AS staff,
@@ -147,6 +151,15 @@ export async function restaurantExists(id: string): Promise<boolean> {
 export async function restaurantSlug(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT slug FROM businesses WHERE id = ?").bind(id).first<{ slug: string }>();
   return r?.slug ?? null;
+}
+
+/** When the restaurant's free trial ends (unix ms), or null when it is not on trial. */
+export async function trialEndsAt(id: string): Promise<number | null> {
+  const r = await db()
+    .prepare(`SELECT b.trial_ends_at AS ends FROM businesses b WHERE b.id = ? AND ${ON_TRIAL}`)
+    .bind(id)
+    .first<{ ends: number }>();
+  return r?.ends ?? null;
 }
 
 /** The restaurant's name, for the staff screens' frame. */

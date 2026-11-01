@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BASE_PATH, OPEN_COOKIE } from "./base";
 import { db } from "./cf";
 import { randomId } from "./ids";
+import { ON_TRIAL, TRIAL_STAFF } from "./trial";
 
 // Waiter and manager logins. Passwords are PBKDF2-SHA256 (Web Crypto, which
 // the Worker has; 100k is the most iterations Workers allow). The login
@@ -28,8 +29,21 @@ export type Staff = {
   role: "manager" | "waiter";
   developer: boolean;
 };
-/** Who is logged in. business_id: their restaurant, or the one a developer has open (null: none yet). */
-export type Login = { id: string; business_id: string | null; username: string; name: string; role: Role };
+/**
+ * Who is logged in. business_id: their restaurant, or the one a developer has open (null: none yet).
+ * trialEndsAt: when their restaurant's free trial ends (unix ms), null when not on trial; always null for developers.
+ */
+export type Login = {
+  id: string;
+  business_id: string | null;
+  username: string;
+  name: string;
+  role: Role;
+  trialEndsAt: number | null;
+};
+
+/** Restaurant staff whose free trial has ended: they see the trial-over page and nothing else. */
+const trialOver = (login: Login) => login.trialEndsAt !== null && login.trialEndsAt <= Date.now();
 
 /** A developer's username. Restaurant logins are longer: "<code>-<name>". */
 export const isUsername = (u: string) => /^[a-z0-9._-]{3,32}$/.test(u);
@@ -64,12 +78,12 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   return diff === 0;
 }
 
-async function sha256(s: string): Promise<string> {
+export async function sha256(s: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const cookieOptions = (secure: boolean) => ({
+export const cookieOptions = (secure: boolean) => ({
   httpOnly: true,
   sameSite: "lax" as const,
   secure,
@@ -140,19 +154,25 @@ export async function logIn(
   // Only after the right password, so it says nothing about the account to a guesser.
   if (row.off) return "off";
 
+  await startSession(row.id, secure);
+  return "ok";
+}
+
+/** Logs the staff member in on this browser: a new session and its cookie. The caller has checked who they are. */
+export async function startSession(staffId: string, secure: boolean) {
+  const now = Date.now();
   const token = randomId() + randomId();
   await db().batch([
-    db().prepare("UPDATE staff SET failed_logins = 0, locked_until = 0 WHERE id = ?").bind(row.id),
+    db().prepare("UPDATE staff SET failed_logins = 0, locked_until = 0 WHERE id = ?").bind(staffId),
     db().prepare("DELETE FROM staff_sessions WHERE expires_at < ?").bind(now),
     db()
       .prepare("INSERT INTO staff_sessions (id, staff_id, expires_at) VALUES (?, ?, ?)")
-      .bind(await sha256(token), row.id, now + SESSION_MS),
+      .bind(await sha256(token), staffId, now + SESSION_MS),
   ]);
   const jar = await cookies();
   jar.set(COOKIE, token, { ...cookieOptions(secure), maxAge: SESSION_MS / 1000 });
   // A developer who used this browser before opened a restaurant; this login starts clean.
   jar.delete({ name: OPEN_COOKIE, path: BASE_PATH || "/" });
-  return "ok";
 }
 
 export async function logOut() {
@@ -169,7 +189,8 @@ export async function currentLogin(): Promise<Login | null> {
   if (!token) return null;
   const row = await db()
     .prepare(
-      `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off
+      `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off,
+              CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt
        FROM staff_sessions x JOIN staff s ON s.id = x.staff_id
        LEFT JOIN businesses b ON b.id = s.business_id
        WHERE x.id = ? AND x.expires_at > ? AND s.disabled_at IS NULL`
@@ -190,15 +211,20 @@ function asStaff(login: Login | null): Staff | null {
   return { ...login, business_id: login.business_id, role, developer };
 }
 
-/** Whoever is working in a restaurant on this browser, or null. */
+/** Whoever is working in a restaurant on this browser, or null. Null too once their trial is over, so every staff API refuses. */
 export async function currentStaff(): Promise<Staff | null> {
-  return asStaff(await currentLogin());
+  const login = await currentLogin();
+  return login && trialOver(login) ? null : asStaff(login);
 }
 
-/** For staff pages: the login screen if nobody is logged in; a developer with no restaurant open goes to theirs. */
+/**
+ * For staff pages: the login screen if nobody is logged in; a developer with
+ * no restaurant open goes to theirs; staff whose trial is over to the page that says so.
+ */
 export async function requireStaff(role?: Staff["role"]): Promise<Staff> {
   const login = await currentLogin();
   if (!login) redirect("/login");
+  if (trialOver(login)) redirect("/trial-over");
   const staff = asStaff(login);
   if (!staff) redirect("/admin/dev");
   if (role && staff.role !== role) redirect("/admin");
@@ -235,16 +261,28 @@ export async function listStaff(businessId: string): Promise<StaffListing[]> {
   return r.results;
 }
 
-/** A waiter or manager; loginName is the part after the restaurant's code. Returns the full username, or "taken". */
+/**
+ * A waiter or manager; loginName is the part after the restaurant's code. Returns the full username,
+ * "taken", or "full" when a free trial already has TRIAL_STAFF logins besides its manager.
+ */
 export async function addStaff(
   businessId: string,
   name: string,
   loginName: string,
   password: string,
   role: "waiter" | "manager"
-): Promise<string | "taken"> {
-  const biz = await db().prepare("SELECT slug FROM businesses WHERE id = ?").bind(businessId).first<{ slug: string }>();
+): Promise<string | "taken" | "full"> {
+  const biz = await db()
+    .prepare(
+      `SELECT b.slug, ${ON_TRIAL} AS trial,
+              (SELECT COUNT(*) FROM staff s WHERE s.business_id = b.id AND s.disabled_at IS NULL) AS staff
+       FROM businesses b WHERE b.id = ?`
+    )
+    .bind(businessId)
+    .first<{ slug: string; trial: number; staff: number }>();
   if (!biz) return "taken";
+  // ponytail: count-then-insert, so two adds at the same instant could make it 4; harmless on a trial.
+  if (biz.trial && biz.staff >= 1 + TRIAL_STAFF) return "full";
   const username = restaurantLogin(biz.slug, loginName);
   const taken = await db().prepare("SELECT 1 FROM staff WHERE username = ?").bind(username).first();
   if (taken) return "taken";

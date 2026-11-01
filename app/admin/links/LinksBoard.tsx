@@ -6,7 +6,7 @@ import { BASE_PATH } from "@/lib/base";
 import type { LinksPage, TableLinks } from "@/lib/tables";
 import { CheckIcon, CopyIcon, PencilIcon, PlusIcon, QrIcon, TrashIcon } from "@/app/components/Icons";
 import { btn, card, PageHead } from "../kit";
-import { api, useConfirm } from "../ui";
+import { api, useConfirm, useStaffInfo } from "../ui";
 
 const field =
   "block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
@@ -18,6 +18,8 @@ const iconBtn = "grid h-11 w-11 shrink-0 place-items-center rounded-full text-mu
  */
 export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
   const full = tables.length >= limit;
+  const trial = useStaffInfo().trialEndsAt !== null;
+  const covers = `${trial ? "The free trial" : "Your plan"} covers ${limit} ${limit === 1 ? "table" : "tables"}`;
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -86,8 +88,9 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
 
       {full && (
         <p className="mt-4 rounded-2xl bg-mango-soft px-4 py-3 text-[15px]">
-          Your plan covers {limit} tables and all {limit} are set up. To add another, delete a table you don&apos;t use, or
-          contact tapndine to move to a bigger plan.
+          {trial
+            ? `${covers}, and it's set up. Pick a plan to add more tables.`
+            : `${covers} and all ${limit} are set up. To add another, delete a table you don't use, or contact tapndine to move to a bigger plan.`}
         </p>
       )}
 
@@ -127,7 +130,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
         <h2 className="font-display text-[19px] font-bold">
           {tables.length} of {limit} tables
         </h2>
-        <p className="text-[13px] text-muted">Your plan covers {limit}.</p>
+        <p className="text-[13px] text-muted">{covers}.</p>
         {tables.length === 0 && <p className="mt-2 text-[15px] text-muted">No tables yet. Add one to get its link.</p>}
         <ul className="mt-2">
           {tables.map((t) => (

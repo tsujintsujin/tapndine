@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
+import { env } from "@/lib/cf";
 import { currentLogin } from "@/lib/staff";
 import LoginForm from "./LoginForm";
 
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 export default async function LoginPage() {
   const me = await currentLogin();
   if (me) redirect(me.role === "developer" ? "/admin/dev" : me.role === "waiter" ? "/admin" : "/admin/dashboard");
-  return <LoginForm />;
+  return <LoginForm google={!!env().GOOGLE_CLIENT_ID} />;
 }

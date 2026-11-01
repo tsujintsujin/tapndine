@@ -1,5 +1,6 @@
 import { db } from "./cf";
 import { randomId } from "./ids";
+import { SERVING } from "./trial";
 
 /** A visit link dies this long after it was opened. Activity does not extend it. */
 export const VISIT_MS = 2 * 60 * 60 * 1000;
@@ -51,18 +52,20 @@ async function openSitting(businessId: string, tableId: string, now: number): Pr
  * One tap: look the tag up and return the visit to send the phone to.
  * The same phone tapping again at the same sitting gets its live link back,
  * so it stays the same guest with the same orders. Otherwise a fresh link.
- * Returns null when the tag is not registered, was replaced, or its restaurant is switched off.
+ * Returns null when the tag is not registered or was replaced, and "closed"
+ * when its restaurant is switched off or its free trial has ended.
  */
-export async function startVisit(tagId: string, phoneId: string): Promise<string | null> {
+export async function startVisit(tagId: string, phoneId: string): Promise<string | "closed" | null> {
   if (!isTagId(tagId)) return null;
   const tag = await db()
     .prepare(
-      `SELECT t.id, t.business_id, t.table_id FROM tags t JOIN businesses b ON b.id = t.business_id
-       WHERE t.id = ? AND t.removed_at IS NULL AND b.disabled_at IS NULL`
+      `SELECT t.id, t.business_id, t.table_id, ${SERVING} AS serving FROM tags t JOIN businesses b ON b.id = t.business_id
+       WHERE t.id = ? AND t.removed_at IS NULL`
     )
     .bind(tagId)
-    .first<{ id: string; business_id: string; table_id: string | null }>();
+    .first<{ id: string; business_id: string; table_id: string | null; serving: number }>();
   if (!tag) return null;
+  if (!tag.serving) return "closed";
 
   const now = Date.now();
   const sittingId = tag.table_id ? await openSitting(tag.business_id, tag.table_id, now) : null;
@@ -104,8 +107,8 @@ export async function liveVisit(visitId: string): Promise<Visit | null> {
        WHERE id = ?2 AND (expires_at > ?1 OR ?3 = 1)
          -- A cleared table ends its links, even with the testing switch on.
          AND (sitting_id IS NULL OR sitting_id IN (SELECT id FROM sittings WHERE closed_at IS NULL))
-         -- So does switching the restaurant off.
-         AND business_id IN (SELECT id FROM businesses WHERE disabled_at IS NULL)
+         -- So does switching the restaurant off, or its free trial ending.
+         AND business_id IN (SELECT b.id FROM businesses b WHERE ${SERVING})
        RETURNING id, tag_id, business_id, table_id, sitting_id, phone_id, expires_at`
     )
     .bind(now, visitId, neverExpire() ? 1 : 0)
