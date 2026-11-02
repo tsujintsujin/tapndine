@@ -34,7 +34,7 @@ const fingerprint = () =>
       (SELECT group_concat(id || COALESCE(table_id, '') || COALESCE(removed_at, ''), '|') FROM (SELECT * FROM tags WHERE business_id = '${HIKAY}' ORDER BY id)) AS tags,
       (SELECT group_concat(id || name || available || COALESCE(removed_at, '') || sort || featured || price_cents, '|') FROM (SELECT * FROM dishes WHERE business_id = '${HIKAY}' ORDER BY id)) AS dishes,
       (SELECT group_concat(o.id || o.dish_id || o.kind || o.name || o.price_cents || o.sort, '|') FROM (SELECT o.* FROM dish_options o JOIN dishes x ON x.id = o.dish_id WHERE x.business_id = '${HIKAY}' ORDER BY o.id) o) AS options,
-      (SELECT group_concat(id || name || sort, '|') FROM (SELECT * FROM categories WHERE business_id = '${HIKAY}' ORDER BY id)) AS categories,
+      (SELECT group_concat(id || name || sort || COALESCE(parent_id, ''), '|') FROM (SELECT * FROM categories WHERE business_id = '${HIKAY}' ORDER BY id)) AS categories,
       (SELECT COUNT(*) || '-' || SUM(dc.sort) FROM dish_categories dc JOIN categories c ON c.id = dc.category_id WHERE c.business_id = '${HIKAY}') AS links,
       (SELECT COUNT(*) || '-' || COUNT(closed_at) FROM sittings WHERE business_id = '${HIKAY}') AS sittings,
       (SELECT COUNT(*) || '-' || SUM(i.qty) FROM batch_items i JOIN batches b ON b.id = i.batch_id JOIN sittings s ON s.id = b.sitting_id WHERE s.business_id = '${HIKAY}') AS items,
@@ -113,6 +113,8 @@ const attacks = [
   ["POST", "/api/staff/menu/dishes/d_sisig/available", { available: false }],
   ["POST", "/api/staff/menu/dishes/order", { ids: JSON.parse(hikayDishes).reverse() }],
   ["PUT", "/api/staff/menu/categories/cat_pork", { name: "Hacked", dishIds: [] }],
+  ["PUT", "/api/staff/menu/categories/cat_pork", { name: "Pork", parentId: "cat_beef" }],
+  ["POST", "/api/staff/menu/categories", { name: "Under Hikay's", parentId: "cat_pork" }],
   ["DELETE", "/api/staff/menu/categories/cat_pork"],
   ["POST", "/api/staff/menu/categories/order", { ids: ["cat_halal", "cat_veg", "cat_beef", "cat_pork", "cat_chicken", "cat_seafood"] }],
   // A logo from Hikay's photo folder is not Kusina's to use.

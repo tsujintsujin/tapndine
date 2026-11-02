@@ -303,6 +303,7 @@ export default function DishEditor({
                         on ? "bg-forest text-white" : "border border-line bg-white text-ink hover:border-forest"
                       }`}
                     >
+                      {c.parentId && `${categories.find((p) => p.id === c.parentId)?.name} › `}
                       {c.name}
                     </button>
                   );

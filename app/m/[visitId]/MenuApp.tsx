@@ -1065,7 +1065,16 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
   );
 }
 
-/** All, then each category. Picking one swaps the dishes below in place. */
+/** Which main category and sub-category an id points at; the state holds either kind. */
+function findCategory(menu: Menu, id: string | null) {
+  const main = menu.categories.find((c) => c.id === id || c.subs.some((s) => s.id === id));
+  return { main, sub: main?.subs.find((s) => s.id === id) };
+}
+
+/**
+ * All, then each main category. Picking one swaps the dishes below in place;
+ * one with sub-categories opens a second row of them.
+ */
 function CategoryTags({
   menu,
   current,
@@ -1076,10 +1085,12 @@ function CategoryTags({
   onPick: (id: string | null) => void;
 }) {
   const tags = [{ id: null, name: "All" }, ...menu.categories];
+  const { main, sub } = findCategory(menu, current);
   return (
+    <>
     <div role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-3 flex gap-1 overflow-x-auto px-4">
       {tags.map((t) => {
-        const on = t.id === current;
+        const on = t.id === (main?.id ?? null);
         return (
           <button
             key={t.id ?? "all"}
@@ -1098,6 +1109,30 @@ function CategoryTags({
         );
       })}
     </div>
+    {main && main.subs.length > 0 && (
+      <div key={main.id} role="group" aria-label={`${main.name} sub-categories`} className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
+        {[{ id: main.id, name: "All" }, ...main.subs].map((s) => {
+          const on = s.id === (sub?.id ?? main.id);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={on}
+              onClick={(e) => {
+                onPick(s.id);
+                e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+              }}
+              className={`h-9 shrink-0 rounded-full border px-3.5 text-[14px] font-semibold ${
+                on ? "border-leaf bg-leaf-tint text-leaf" : "border-line text-muted active:bg-wash"
+              }`}
+            >
+              {s.name}
+            </button>
+          );
+        })}
+      </div>
+    )}
+    </>
   );
 }
 
@@ -1121,9 +1156,17 @@ function WholeMenu({
   onAdd: (id: string) => void;
   onPick: (id: string | null) => void;
 }) {
-  const category = categoryId ? menu.categories.find((c) => c.id === categoryId) : undefined;
+  const { main, sub } = findCategory(menu, categoryId);
+  const category = sub ?? main;
   const ids = category ? category.dishIds : menu.dishOrder;
-  const rail = [{ id: null, name: "All dishes", count: menu.dishOrder.length }, ...menu.categories.map((c) => ({ id: c.id, name: c.name, count: c.dishIds.length }))];
+  // The sub-categories of the open main category sit right under it.
+  const rail = [
+    { id: null as string | null, name: "All dishes", count: menu.dishOrder.length, isSub: false },
+    ...menu.categories.flatMap((c) => [
+      { id: c.id as string | null, name: c.name, count: c.dishIds.length, isSub: false },
+      ...(c.id === main?.id ? c.subs.map((s) => ({ id: s.id as string | null, name: s.name, count: s.dishIds.length, isSub: true })) : []),
+    ]),
+  ];
   return (
     <div className="mx-auto max-w-3xl px-4 pt-2 md:max-w-5xl md:px-6 lg:grid lg:max-w-6xl lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:pt-4">
       <aside className="hidden lg:sticky lg:top-24 lg:block lg:self-start">
@@ -1137,8 +1180,8 @@ function WholeMenu({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onPick(t.id)}
-                className={`flex h-11 items-center justify-between rounded-xl px-4 text-left text-[15px] font-semibold ${
-                  on ? "bg-leaf text-white" : "text-ink hover:bg-wash"
+                className={`flex h-11 items-center justify-between rounded-xl pr-4 text-left text-[15px] font-semibold ${t.isSub ? "ml-4 pl-3" : "pl-4"} ${
+                  on ? "bg-leaf text-white" : t.id === main?.id ? "bg-leaf-tint text-leaf" : "text-ink hover:bg-wash"
                 }`}
               >
                 <span className="truncate">{t.name}</span>

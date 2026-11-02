@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { body, fail, managerOr } from "@/lib/manager";
-import { deleteCategory, parseCategoryName, renameCategory, setCategoryDishes } from "@/lib/menu-admin";
+import { deleteCategory, parseCategoryName, renameCategory, setCategoryDishes, setCategoryParent } from "@/lib/menu-admin";
 
 type Ctx = { params: Promise<{ categoryId: string }> };
 
-/** Renames it and, if dishIds is sent, sets which dishes are in it. Body: { name, dishIds? }. */
+/** Renames it and, if sent, sets which dishes are in it and what it sits under. Body: { name, dishIds?, parentId? }. */
 export async function PUT(req: Request, { params }: Ctx) {
   const me = await managerOr();
   if (me instanceof NextResponse) return me;
@@ -15,7 +15,14 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (dishIds !== undefined && !(Array.isArray(dishIds) && dishIds.every((i) => typeof i === "string"))) {
     return fail("Pick the dishes again.");
   }
+  const parentId = b?.parentId;
+  if (parentId !== undefined && parentId !== null && typeof parentId !== "string") {
+    return fail("Pick a main category for it to sit under.");
+  }
   const { categoryId } = await params;
+  if (parentId !== undefined && !(await setCategoryParent(me.business_id, categoryId, parentId))) {
+    return fail("Pick a main category for it to sit under.");
+  }
   const ok =
     (await renameCategory(me.business_id, categoryId, name)) &&
     (dishIds === undefined || (await setCategoryDishes(me.business_id, categoryId, dishIds)));

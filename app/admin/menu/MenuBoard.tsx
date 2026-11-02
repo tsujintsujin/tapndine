@@ -52,8 +52,10 @@ export default function MenuBoard({
 
   const catName = new Map(categories.map((c) => [c.id, c.name]));
   const q = query.trim().toLowerCase();
+  // A main category shows its sub-categories' dishes too.
+  const inCat = [cat, ...categories.filter((c) => c.parentId === cat).map((c) => c.id)];
   const shown = list.filter(
-    (d) => (!cat || d.categoryIds.includes(cat)) && (!q || d.name.toLowerCase().includes(q) || d.shortDescription.toLowerCase().includes(q))
+    (d) => (!cat || d.categoryIds.some((c) => inCat.includes(c))) && (!q || d.name.toLowerCase().includes(q) || d.shortDescription.toLowerCase().includes(q))
   );
   // Reordering a filtered view would be ambiguous, so it's whole-menu only.
   const canSort = !cat && !q;

@@ -30,7 +30,9 @@ export type Dish = {
 
 export type MenuDesign = "a" | "b" | "c";
 
-export type Category = { id: string; name: string; dishIds: string[] };
+export type SubCategory = { id: string; name: string; dishIds: string[] };
+/** A main category. `dishIds` includes the dishes in its sub-categories. */
+export type Category = SubCategory & { subs: SubCategory[] };
 
 export type Menu = {
   businessName: string;
@@ -96,7 +98,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     d.prepare("SELECT name, logo_url, menu_design, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
-      .prepare("SELECT id, name FROM categories WHERE business_id = ? ORDER BY sort, name")
+      .prepare("SELECT id, name, parent_id FROM categories WHERE business_id = ? ORDER BY sort, name")
       .bind(visit.business_id),
     d
       .prepare(
@@ -164,14 +166,27 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     byId[o.dish_id]?.options.push(toOption(o));
   }
 
-  const categories: Category[] = (cats.results as { id: string; name: string }[]).map((c) => ({
-    id: c.id,
-    name: c.name,
-    dishIds: [],
-  }));
-  const catById = new Map(categories.map((c) => [c.id, c]));
+  const rows = cats.results as { id: string; name: string; parent_id: string | null }[];
+  const categories: Category[] = rows
+    .filter((c) => !c.parent_id)
+    .map((c) => ({ id: c.id, name: c.name, dishIds: [], subs: [] }));
+  const mainById = new Map(categories.map((c) => [c.id, c]));
+  const catById = new Map<string, SubCategory>(mainById);
+  for (const c of rows) {
+    if (!c.parent_id) continue;
+    const sub = { id: c.id, name: c.name, dishIds: [] };
+    mainById.get(c.parent_id)?.subs.push(sub);
+    catById.set(c.id, sub);
+  }
   for (const l of links.results as { category_id: string; dish_id: string }[]) {
     if (byId[l.dish_id]) catById.get(l.category_id)?.dishIds.push(l.dish_id);
+  }
+  for (const c of categories) {
+    if (!c.subs.length) continue;
+    // A dish in two sub-categories shows once under the main one, in menu order.
+    const inIt = new Set([...c.dishIds, ...c.subs.flatMap((s) => s.dishIds)]);
+    c.dishIds = dishOrder.filter((id) => inIt.has(id));
+    c.subs = c.subs.filter((s) => s.dishIds.length > 0);
   }
 
   return {
