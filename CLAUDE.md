@@ -84,7 +84,7 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   (Moved off Next 15 on 2026-10-22: OpenNext refuses to build a Next major past
   its two-year support date.)
 - Local DB: `npm run db:reset` (migrate + seed into `.localdb`). Seed restaurant
-  is Hikay; its menu-only demo tag is `h3nd6vya` (also on live; the homepage's
+  is Hikay; its "Menu for show" demo tag is `h3nd6vya` (also on live; the homepage's
   "Try the menu" opens it).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.

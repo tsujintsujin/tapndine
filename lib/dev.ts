@@ -61,7 +61,7 @@ export const parseName = (v: unknown) => {
   return s && s.length <= 60 ? s : null;
 };
 
-/** A new restaurant, its first manager and its "Not at a table" link, together or not at all. */
+/** A new restaurant, its first manager and its "Menu for show" link, together or not at all. */
 export async function addRestaurant(
   name: string,
   slug: string,

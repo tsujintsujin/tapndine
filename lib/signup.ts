@@ -144,7 +144,7 @@ export function slugFor(name: string): string {
 
 /**
  * The ticket's restaurant on a free trial: the restaurant, its manager (who
- * logs in with the ticket's email or Google account), its "Not at a table"
+ * logs in with the ticket's email or Google account), its "Menu for show"
  * link and Table 1 with its link, all or nothing. Then logs the manager in.
  */
 export async function createTrial(restaurant: string, managerName: string, secure: boolean): Promise<"ok" | "expired"> {
