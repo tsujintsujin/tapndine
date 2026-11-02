@@ -144,7 +144,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       shortDescription: r.short_description,
       description: r.description,
       priceCents: r.price_cents,
-      // Full Cloudinary URLs (cloud dopunn7eb, folder tapndine/).
+      // Full Cloudinary URLs (cloud ipp6vibv, folder tapndine/).
       imageUrl: r.image_url,
       spiceLevel: r.spice_level,
       servesMin: r.serves_min,
