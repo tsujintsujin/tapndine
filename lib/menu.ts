@@ -177,7 +177,9 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
   return {
     businessName: business.name,
     logoUrl: business.logo_url,
-    design: business.menu_design === "b" || business.menu_design === "c" ? business.menu_design : "a",
+    // Designs B and C are hidden until their rework; every guest gets A. A
+    // restaurant's stored menu_design stays as it was.
+    design: "a",
     palette: business.menu_palette,
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.
