@@ -33,7 +33,9 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - **Waiters**: Tables, a table's orders by guest, add items, clear the table.
 - **Managers**: plus Dashboard, Menu links (tables and their tag links, capped
   by the plan's table count), Menu (dishes, dish options), Categories, Staff,
-  Settings (logo, menu design, menu colors).
+  Settings (logo, menu colors). Menu Designs B and C are hidden until they are
+  reworked: no picker in Settings, every guest gets Design A (`lib/menu.ts`),
+  whatever a restaurant's `menu_design` says. Their code stays.
   Menu colors: 10 palettes in `lib/palettes.ts` (`menu_palette`, migration
   0017; NULL = cocoa); `node scripts/palettes-check.ts` checks their contrast.
 
