@@ -19,6 +19,7 @@ import {
   TagIcon,
 } from "@/app/components/Icons";
 import { daysLeft, TRIAL_STAFF, TRIAL_TABLES } from "@/lib/trial";
+import { useAlerts } from "./Alerts";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
 
@@ -61,6 +62,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
   const { developer, restaurant } = useStaffInfo();
+  const { needYou } = useAlerts();
   // A developer sees their own group, plus the restaurant they have open.
   const groups = [
     ...(developer ? [DEVELOPER] : []),
@@ -88,6 +90,12 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                     >
                       <Icon width={21} height={21} className={here ? "text-forest" : ""} />
                       {label}
+                      {href === "/admin" && needYou > 0 && (
+                        <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-full bg-mango px-1.5 text-[13px] font-bold text-forest">
+                          {needYou}
+                          <span className="sr-only"> {needYou === 1 ? "table needs" : "tables need"} you</span>
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );
@@ -145,6 +153,7 @@ function TrialBar({ endsAt }: { endsAt: number }) {
 
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
   const { trialEndsAt } = useStaffInfo();
+  const { needYou } = useAlerts();
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
@@ -168,12 +177,17 @@ export default function Shell({ name, children }: { name: string; children: Reac
         <Logo />
         <button
           type="button"
-          aria-label="Open menu"
+          aria-label={needYou ? `Open menu, ${needYou} ${needYou === 1 ? "table needs" : "tables need"} you` : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen(true)}
-          className="grid h-11 w-11 place-items-center rounded-full bg-paper text-forest"
+          className="relative grid h-11 w-11 place-items-center rounded-full bg-paper text-forest"
         >
           <MenuIcon width={22} height={22} />
+          {needYou > 0 && (
+            <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold text-forest">
+              {needYou}
+            </span>
+          )}
         </button>
       </header>
       {open && (

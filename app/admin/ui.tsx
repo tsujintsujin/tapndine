@@ -50,9 +50,10 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
 
 /**
  * Keeps `initial` fresh by asking `path` every few seconds while the screen
- * is on, and straight away when the phone comes back to it.
+ * is on (with `hiddenToo`, also when it isn't), and straight away when the
+ * phone comes back to it.
  */
-export function usePoll<T>(path: string, initial: T, pick: (data: unknown) => T, everyMs = 5000) {
+export function usePoll<T>(path: string, initial: T, pick: (data: unknown) => T, everyMs = 5000, hiddenToo = false) {
   const [data, setData] = useState(initial);
   const [offline, setOffline] = useState(false);
   const pickRef = useRef(pick);
@@ -69,7 +70,7 @@ export function usePoll<T>(path: string, initial: T, pick: (data: unknown) => T,
 
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.visibilityState === "visible") refresh();
+      if (hiddenToo || document.visibilityState === "visible") refresh();
     }, everyMs);
     const onVisible = () => document.visibilityState === "visible" && refresh();
     document.addEventListener("visibilitychange", onVisible);
@@ -77,7 +78,7 @@ export function usePoll<T>(path: string, initial: T, pick: (data: unknown) => T,
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [refresh, everyMs]);
+  }, [refresh, everyMs, hiddenToo]);
 
   return { data, refresh, offline };
 }

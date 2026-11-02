@@ -21,10 +21,13 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 ## Decided on purpose (don't "fix")
 
-- The waiter's screen has no sound, vibration or push notification for new
-  orders. It refreshes every 5 seconds while open. Tables with something new
-  show a "New order" / "Calling waiter" / "Wants the bill" badge that clears
-  when a waiter opens the table.
+- Staff pages refresh every 5 seconds. Tables with something new show a "New
+  order" / "Calling waiter" / "Wants the bill" badge that clears when a waiter
+  opens the table. Managers also get a count on the Tables tab, staff get it in
+  the browser tab's title, and a new order or call chimes (`app/admin/Alerts.tsx`,
+  `node scripts/alerts-check.ts`; Justin asked for these 2026-11-02). Browsers
+  block sound until a first tap on the page, so the page asks for one. No
+  vibration or push notification: a locked phone stays silent.
 - A menu link closes 2 hours after the tap, or when the waiter clears the table.
 
 ## Who uses it

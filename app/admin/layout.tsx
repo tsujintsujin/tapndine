@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BASE_PATH } from "@/lib/base";
 import { restaurantName, trialEndsAt } from "@/lib/dev";
 import { currentLogin } from "@/lib/staff";
+import AlertsProvider from "./Alerts";
 import { StaffInfoProvider } from "./ui";
 
 // Staff pages can be installed to the phone's home screen; the app opens on
@@ -23,7 +24,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
     <StaffInfoProvider
       value={{ developer: login?.role === "developer", restaurant: id && name ? { id, name } : null, trialEndsAt: trial }}
     >
-      {children}
+      <AlertsProvider>{children}</AlertsProvider>
     </StaffInfoProvider>
   );
 }
