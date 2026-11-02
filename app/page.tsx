@@ -60,7 +60,7 @@ const perTableMonth = (p: { price: number; tables: number }) =>
   "₱" + (p.price / p.tables / 12).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
- * The demo restaurant's "Not at a table" link: the real guest menu, to look
+ * The demo restaurant's "Menu for show" link: the real guest menu, to look
  * through, with no waiter to send to.
  */
 const DEMO_PATH = `/t/${DEMO_TAG}`;

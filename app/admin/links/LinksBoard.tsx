@@ -198,11 +198,11 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
 
       {unplaced.length > 0 && (
         <section className={`${card} mt-4`}>
-          <h2 className="font-display text-[19px] font-bold">Not at a table</h2>
-          <p className="mt-1 text-[14px] text-muted">These open the menu without a table number, so guests cannot send orders from them.</p>
+          <h2 className="font-display text-[19px] font-bold">Menu for show</h2>
+          <p className="mt-1 text-[14px] text-muted">These open your menu just to look at. Guests can&apos;t send orders from them.</p>
           <div className="mt-3 grid gap-2.5">
             {unplaced.map((tag) => (
-              <LinkRow key={tag} url={link(tag)} name="Menu" />
+              <LinkRow key={tag} url={link(tag)} name="Menu for show" />
             ))}
           </div>
         </section>
