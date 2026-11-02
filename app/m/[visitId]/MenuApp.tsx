@@ -1167,11 +1167,17 @@ function WholeMenu({
       ...(c.id === main?.id ? c.subs.map((s) => ({ id: s.id as string | null, name: s.name, count: s.dishIds.length, isSub: true })) : []),
     ]),
   ];
+  // A long rail scrolls by itself; opening a main category brings its
+  // sub-categories into view, or they could open below the fold.
+  const railRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    railRef.current?.querySelector("[data-sub]:last-child, [data-sub]:has(+ :not([data-sub]))")?.scrollIntoView({ block: "nearest" });
+  }, [main?.id]);
   return (
     <div className="mx-auto max-w-3xl px-4 pt-2 md:max-w-5xl md:px-6 lg:grid lg:max-w-6xl lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:pt-4">
-      <aside className="hidden lg:sticky lg:top-24 lg:block lg:self-start">
+      <aside className="hidden lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:self-start">
         <DishSearch menu={menu} onDish={onDish} />
-        <div role="group" aria-label="Categories" className="mt-5 flex flex-col gap-0.5">
+        <div ref={railRef} role="group" aria-label="Categories" className="mt-5 flex min-h-0 flex-col gap-0.5 overflow-y-auto">
           {rail.map((t) => {
             const on = t.id === categoryId;
             return (
@@ -1180,7 +1186,8 @@ function WholeMenu({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onPick(t.id)}
-                className={`flex h-11 items-center justify-between rounded-xl pr-4 text-left text-[15px] font-semibold ${t.isSub ? "ml-4 pl-3" : "pl-4"} ${
+                data-sub={t.isSub || undefined}
+                className={`flex h-11 shrink-0 items-center justify-between rounded-xl pr-4 text-left text-[15px] font-semibold ${t.isSub ? "ml-4 pl-3" : "pl-4"} ${
                   on ? "bg-leaf text-white" : t.id === main?.id ? "bg-leaf-tint text-leaf" : "text-ink hover:bg-wash"
                 }`}
               >
