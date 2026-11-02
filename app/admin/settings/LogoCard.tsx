@@ -73,7 +73,7 @@ export default function LogoCard({ name, logoUrl }: { name: string; logoUrl: str
           </span>
         )}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-[calc(100%-72px)] sm:basis-0">
         <h2 id="logo-title" className="font-display text-lg font-bold leading-tight">
           Logo on your menu
         </h2>

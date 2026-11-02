@@ -71,7 +71,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
 
   return (
     <>
-      <PageHead title="NFC links" sub="Copy a table's link and write it to the tag on that table with any NFC app.">
+      <PageHead title="Menu links" sub="Copy a table's link and write it to the tag on that table with any NFC app.">
         <button
           type="button"
           disabled={full}

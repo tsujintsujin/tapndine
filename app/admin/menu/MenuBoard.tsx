@@ -4,15 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
-import type { MenuDesign } from "@/lib/menu";
 import { formatPrice } from "@/lib/format";
 import { CheckIcon, GripIcon, PlusIcon, SearchIcon } from "@/app/components/Icons";
 import { btn, PageHead, SkeletonList } from "../kit";
 import { api } from "../ui";
 import ImportDialog from "./ImportDialog";
-import DesignCard from "./DesignCard";
-import LogoCard from "./LogoCard";
-import PaletteCard from "./PaletteCard";
 
 /**
  * Every dish, in menu order. Click a row to edit it; flip the switch to mark
@@ -22,18 +18,9 @@ import PaletteCard from "./PaletteCard";
 export default function MenuBoard({
   dishes,
   categories,
-  logo,
-  design,
-  palette,
 }: {
   dishes: AdminDish[];
   categories: AdminCategory[];
-  /** The restaurant's name and logo, for the logo card under the title. */
-  logo: { name: string; url: string | null };
-  /** The look of the guests' menu, for the design card. */
-  design: MenuDesign;
-  /** The guests' menu colours (lib/palettes.ts), null for the default. */
-  palette: string | null;
 }) {
   const router = useRouter();
   const [list, setList] = useState(dishes);
@@ -116,11 +103,6 @@ export default function MenuBoard({
           Add dish
         </Link>
       </PageHead>
-
-      <LogoCard name={logo.name} logoUrl={logo.url} />
-      <DesignCard design={design} />
-      {/* Keyed by design: with no palette picked, the tick follows the design's own colours. */}
-      <PaletteCard key={design} palette={palette} design={design} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="relative w-full sm:w-72">

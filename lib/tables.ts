@@ -4,7 +4,7 @@ import { randomId } from "./ids";
 import { PLANS } from "./plans";
 import { TRIAL_TABLES } from "./trial";
 
-// The manager's NFC links page: the tables, and the tag link each one opens.
+// The manager's Menu links page: the tables, and the tag link each one opens.
 // We only hand out the link; the restaurant writes it to the tag with any NFC
 // app. Deleting or replacing keeps the row (sittings and visits point at it).
 

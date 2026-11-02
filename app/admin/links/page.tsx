@@ -5,7 +5,7 @@ import Shell from "../Shell";
 import LinksBoard from "./LinksBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "NFC links · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Menu links · tapndine", robots: { index: false, follow: false } };
 
 export default async function LinksPage() {
   const me = await requireStaff("manager");

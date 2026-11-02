@@ -347,7 +347,7 @@ function DeleteDialog({
             Delete {r.name} for good?
           </h2>
           <p className="mt-1.5 text-[15px] text-muted">
-            Its menu, dish photos, tables, NFC links, orders, staff logins and billing are erased. This cannot be undone. To keep it
+            Its menu, dish photos, tables, menu links, orders, staff logins and billing are erased. This cannot be undone. To keep it
             without it running, switch it off instead.
           </p>
           <label className="mt-4 block text-[14px] font-semibold">
