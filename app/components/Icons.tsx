@@ -132,6 +132,15 @@ export const TagIcon = (p: P) => (
   </Svg>
 );
 
+/** Sliders: the restaurant's settings. */
+export const SlidersIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+    <circle cx="15" cy="7" r="2" />
+    <circle cx="9" cy="17" r="2" />
+  </Svg>
+);
+
 /** A tap: a dot sending waves out, for NFC links. */
 /** A receipt: contracts and payments. */
 export const ReceiptIcon = (p: P) => (

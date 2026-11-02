@@ -31,8 +31,9 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 - **Guests**: no account. A nickname, asked the first time they send.
 - **Waiters**: Tables, a table's orders by guest, add items, clear the table.
-- **Managers**: plus Dashboard, NFC links (tables and their tag links, capped
-  by the plan's table count), Menu (dishes, dish options, logo, menu colors), Categories, Staff.
+- **Managers**: plus Dashboard, Menu links (tables and their tag links, capped
+  by the plan's table count), Menu (dishes, dish options), Categories, Staff,
+  Settings (logo, menu design, menu colors).
   Menu colors: 10 palettes in `lib/palettes.ts` (`menu_palette`, migration
   0017; NULL = cocoa); `node scripts/palettes-check.ts` checks their contrast.
 

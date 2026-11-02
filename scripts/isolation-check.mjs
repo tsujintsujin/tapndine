@@ -89,7 +89,7 @@ check(own.status === 200 && own.text.includes("tbl_kusina_1"), "Kusina's manager
 check(!own.text.includes("hikay"), "...and none of Hikay's");
 
 // Pages a manager reads: none may show anything of Hikay's.
-for (const page of ["/admin", "/admin/dashboard", "/admin/menu", "/admin/categories", "/admin/links", "/admin/manage"]) {
+for (const page of ["/admin", "/admin/dashboard", "/admin/menu", "/admin/categories", "/admin/links", "/admin/manage", "/admin/settings"]) {
   const r = await kusina(page);
   const leak = ["Chicken Inasal", "Maria", "tbl_hikay", "k7x9q2mp", "biz_hikay"].find((s) => r.text.includes(s));
   check(r.status === 200 && !leak, `${page} shows only Kusina${leak ? ` (found "${leak}")` : ""}`);

@@ -14,6 +14,7 @@ import {
   NfcIcon,
   PeopleIcon,
   ReceiptIcon,
+  SlidersIcon,
   TableIcon,
   TagIcon,
 } from "@/app/components/Icons";
@@ -30,9 +31,10 @@ const GROUPS = [
     links: [
       { href: "/admin/dashboard", label: "Dashboard", Icon: GridIcon },
       { href: "/admin", label: "Tables", Icon: TableIcon },
-      { href: "/admin/links", label: "NFC links", Icon: NfcIcon },
+      { href: "/admin/links", label: "Menu links", Icon: NfcIcon },
       { href: "/admin/menu", label: "Menu", Icon: ClocheIcon },
       { href: "/admin/categories", label: "Categories", Icon: TagIcon },
+      { href: "/admin/settings", label: "Settings", Icon: SlidersIcon },
     ],
   },
   { label: "Team", links: [{ href: "/admin/manage", label: "Staff", Icon: PeopleIcon }] },
