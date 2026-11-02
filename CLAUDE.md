@@ -39,6 +39,15 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   Menu colors: 10 palettes in `lib/palettes.ts` (`menu_palette`, migration
   0017; NULL = cocoa); `node scripts/palettes-check.ts` checks their contrast.
 
+## Sub-categories (built 2026-11-02)
+
+- A category can sit under a main one (`categories.parent_id`, migration 0020),
+  one level deep. A main category's dishes on the guest menu include its
+  sub-categories'; Designs B and C just see the main categories.
+- Guests: tapping a main category opens a second row of its sub-categories
+  (under it in the desktop rail). Managers: "Sits under" on the category page
+  and in the add dialog. Deleting a main one makes its subs main ones.
+
 ## Dish options (Stage 1 Build 1, live 2026-10-21)
 
 - Per dish, a manager switches on Sizes, Add-ons and Spice choices (all off by

@@ -17,7 +17,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   if (!category) notFound();
   return (
     <Shell name={me.name}>
-      <CategoryEditor category={category} dishes={dishes} />
+      <CategoryEditor category={category} categories={categories} dishes={dishes} />
     </Shell>
   );
 }

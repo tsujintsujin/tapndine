@@ -13,11 +13,22 @@ const field =
   "mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
 
 /** Renames a category and picks which dishes are in it. Nothing saves until Save changes. */
-export default function CategoryEditor({ category, dishes }: { category: AdminCategory; dishes: AdminDish[] }) {
+export default function CategoryEditor({
+  category,
+  categories,
+  dishes,
+}: {
+  category: AdminCategory;
+  categories: AdminCategory[];
+  dishes: AdminDish[];
+}) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const start = useRef(dishes.filter((d) => d.categoryIds.includes(category.id)).map((d) => d.id));
   const [name, setName] = useState(category.name);
+  const [parentId, setParentId] = useState(category.parentId);
+  const subs = categories.filter((c) => c.parentId === category.id);
+  const mains = categories.filter((c) => !c.parentId && c.id !== category.id);
   const [picked, setPicked] = useState<string[]>(start.current);
   const [query, setQuery] = useState("");
   const [onlyPicked, setOnlyPicked] = useState(false);
@@ -27,6 +38,7 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
 
   const dirty =
     name !== category.name ||
+    parentId !== category.parentId ||
     picked.length !== start.current.length ||
     picked.some((id) => !start.current.includes(id));
 
@@ -51,7 +63,7 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
     setBusy(true);
     setError("");
     try {
-      await api(`/api/staff/menu/categories/${category.id}`, { method: "PUT", body: { name, dishIds: picked } });
+      await api(`/api/staff/menu/categories/${category.id}`, { method: "PUT", body: { name, dishIds: picked, parentId } });
       done.current = true;
       router.push("/admin/categories");
       router.refresh();
@@ -64,7 +76,9 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
   const remove = async () => {
     const ok = await confirm({
       title: `Delete ${category.name}?`,
-      body: "The tag comes off the guests' menu. Its dishes stay on the menu, just without this tag.",
+      body: `The tag comes off the guests' menu. Its dishes stay on the menu, just without this tag.${
+        subs.length ? " Its sub-categories become main categories." : ""
+      }`,
       confirmLabel: "Delete category",
       danger: true,
     });
@@ -129,8 +143,33 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
               className={field}
             />
           </label>
+          {subs.length > 0 ? (
+            <p className="mt-3 text-[14px]">
+              <span className="font-semibold">Sub-categories: </span>
+              {subs.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/admin/categories/${s.id}`} className="font-semibold text-leaf hover:underline">
+                    {s.name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          ) : (
+            <label className="mt-3 block text-[14px] font-semibold">
+              Sits under
+              <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value || null)} className={field}>
+                <option value="">Nothing, it&apos;s a main category</option>
+                {mains.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className="mt-3 text-[13px] text-muted">
-            Guests see it as a tag on the full menu. With no dishes in it, it stays hidden. Its dishes show in the same
+            Guests see it as a tag on the full menu{parentId ? ", after they tap the category it sits under" : ""}. With no dishes in it, it stays hidden. Its dishes show in the same
             order as on the{" "}
             <Link href="/admin/menu" className="font-semibold text-leaf hover:underline">
               Menu
@@ -147,9 +186,14 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 className="font-display text-[19px] font-bold">Dishes</h2>
             <p className="text-[14px] text-muted">
-              {picked.length} of {dishes.length} in {name.trim() || "this category"}
+              {picked.length} of {dishes.length} {subs.length > 0 && "directly "}in {name.trim() || "this category"}
             </p>
           </div>
+          {subs.length > 0 && (
+            <p className="mt-1 text-[13px] text-muted">
+              Dishes in its sub-categories already show here for guests. Tick a dish only if it fits no sub-category.
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <label className="relative w-full sm:w-64">
               <span className="sr-only">Search dishes</span>
@@ -184,6 +228,7 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
             <ul className="mt-3 divide-y divide-line">
               {shown.map((d) => {
                 const on = picked.includes(d.id);
+                const inSub = subs.find((s) => d.categoryIds.includes(s.id));
                 return (
                   <li key={d.id} className="flex items-center gap-2">
                     <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl py-2.5 pr-2 hover:bg-paper">
@@ -206,6 +251,7 @@ export default function CategoryEditor({ category, dishes }: { category: AdminCa
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-semibold">{d.name}</span>
                         <span className="block truncate text-[14px] text-muted">
+                          {inSub && <span className="font-semibold text-leaf">{inSub.name} · </span>}
                           {d.shortDescription}
                           {!d.available && <span className="hidden font-semibold text-chili sm:inline"> · Not today</span>}
                         </span>

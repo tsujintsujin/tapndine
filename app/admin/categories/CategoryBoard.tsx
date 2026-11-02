@@ -2,26 +2,135 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
 import { ChevronRight, GripIcon, PlusIcon } from "@/app/components/Icons";
 import { btn, PageHead, SkeletonList } from "../kit";
 import { api } from "../ui";
 
+/** Each main category with its sub-categories right after it, keeping their order. */
+const nest = (list: AdminCategory[]) =>
+  list.filter((c) => !c.parentId).flatMap((c) => [c, ...list.filter((s) => s.parentId === c.id)]);
+
+/** Names a new category and says what it sits under. Goes straight on to picking its dishes. */
+function AddCategoryDialog({
+  parentId,
+  mains,
+  onClose,
+}: {
+  parentId: string | null;
+  mains: AdminCategory[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!ref.current?.open) ref.current?.showModal();
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="add-category-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        // A tap on the backdrop lands on the dialog itself, not the card.
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="m-auto w-[min(420px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
+    >
+      <form
+        className="p-5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = new FormData(e.currentTarget);
+          setBusy(true);
+          setError("");
+          try {
+            const { id } = await api<{ id: string }>("/api/staff/menu/categories", {
+              method: "POST",
+              body: { name: form.get("name"), parentId: form.get("parentId") },
+            });
+            router.push(`/admin/categories/${id}`);
+            router.refresh();
+          } catch (err) {
+            setError((err as Error).message);
+            setBusy(false);
+          }
+        }}
+      >
+        <h2 id="add-category-title" className="font-display text-[22px] font-bold leading-tight">
+          {parentId ? "Add sub-category" : "Add category"}
+        </h2>
+        {error && (
+          <p role="alert" className="mt-3 rounded-2xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
+            {error}
+          </p>
+        )}
+        <label className="mt-4 block text-[14px] font-semibold">
+          Name
+          <input
+            name="name"
+            required
+            maxLength={30}
+            autoFocus
+            autoComplete="off"
+            placeholder={parentId ? "Coffee" : "Desserts"}
+            className={field}
+          />
+        </label>
+        <label className="mt-3 block text-[14px] font-semibold">
+          Sits under
+          <select name="parentId" defaultValue={parentId ?? ""} className={field}>
+            <option value="">Nothing, it&apos;s a main category</option>
+            {mains.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="mt-5 flex justify-end gap-2.5">
+          <button type="button" onClick={onClose} className={btn.secondary}>
+            Cancel
+          </button>
+          <button type="submit" disabled={busy} className={btn.primary}>
+            {busy ? "Adding…" : "Add"}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+const field =
+  "mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
+
 /**
- * Every category, in the order guests see the tags on the full menu. Click
- * one to rename it or pick its dishes; drag the handle (or focus it and press
- * the arrow keys) to move it.
+ * Every category, in the order guests see the tags on the full menu, with
+ * sub-categories under their main one. Click one to rename it or pick its
+ * dishes; drag the handle (or focus it and press the arrow keys) to move it
+ * among the rows on its level. A main category takes its sub-categories along.
  */
 export default function CategoryBoard({ categories, dishes }: { categories: AdminCategory[]; dishes: AdminDish[] }) {
   const router = useRouter();
   const [list, setList] = useState(categories);
-  const [adding, setAdding] = useState(false);
-  const [busy, setBusy] = useState(false);
+  // Open with the main category a new one will sit under, if any.
+  const [adding, setAdding] = useState<{ parentId: string | null } | null>(null);
   const [error, setError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   // The order before a drag started, to put back if the drag is abandoned.
   const before = useRef<AdminCategory[] | null>(null);
+  // The row a drag last moved past. A main category with sub-categories is
+  // taller than the row it swaps with, so the pointer can still be on that row
+  // after the swap; moving again would make them flip back and forth.
+  const lastOver = useRef<string | null>(null);
 
   useEffect(() => setList(categories), [categories]);
 
@@ -36,26 +145,31 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
     }
   };
 
-  const move = (from: number, to: number) => {
+  const move = (id: string, onto: string) => {
     const next = [...list];
-    const [c] = next.splice(from, 1);
+    const to = next.findIndex((c) => c.id === onto);
+    const [c] = next.splice(next.findIndex((x) => x.id === id), 1);
     next.splice(to, 0, c);
-    return next;
+    return nest(next);
   };
 
   const empty = list.filter((c) => c.dishCount === 0).length;
+  const mains = list.filter((c) => !c.parentId);
+  const subCount = list.length - mains.length;
 
   return (
     <>
       <PageHead
         title="Categories"
-        sub={`${list.length} ${list.length === 1 ? "category" : "categories"}, the tags guests filter the full menu by`}
+        sub={`${mains.length} ${mains.length === 1 ? "category" : "categories"}${
+          subCount ? ` and ${subCount} sub-${subCount === 1 ? "category" : "categories"}` : ""
+        }, the tags guests filter the full menu by`}
       >
         <button
           type="button"
           onClick={() => {
             setError("");
-            setAdding(true);
+            setAdding({ parentId: null });
           }}
           className={btn.primary}
         >
@@ -64,48 +178,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
         </button>
       </PageHead>
 
-      {adding && (
-        <form
-          className="mt-6 flex flex-wrap items-end gap-3 rounded-[22px] bg-white p-5 shadow-[0_1px_2px_rgb(16_52_42/0.06)]"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const name = new FormData(e.currentTarget).get("name");
-            setBusy(true);
-            setError("");
-            try {
-              const { id } = await api<{ id: string }>("/api/staff/menu/categories", { method: "POST", body: { name } });
-              // Straight on to picking its dishes.
-              router.push(`/admin/categories/${id}`);
-              router.refresh();
-            } catch (err) {
-              setError((err as Error).message);
-              setBusy(false);
-            }
-          }}
-          onKeyDown={(e) => e.key === "Escape" && setAdding(false)}
-        >
-          <label className="block min-w-0 flex-1 basis-60 text-[14px] font-semibold">
-            New category
-            <input
-              name="name"
-              required
-              maxLength={30}
-              autoFocus
-              autoComplete="off"
-              placeholder="Desserts"
-              className="mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20"
-            />
-          </label>
-          <div className="flex gap-2.5">
-            <button type="button" onClick={() => setAdding(false)} className={btn.secondary}>
-              Cancel
-            </button>
-            <button type="submit" disabled={busy} className={btn.primary}>
-              {busy ? "Adding…" : "Add"}
-            </button>
-          </div>
-        </form>
-      )}
+      {adding && <AddCategoryDialog parentId={adding.parentId} mains={mains} onClose={() => setAdding(null)} />}
 
       {error && (
         <p role="alert" className="mt-4 rounded-2xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
@@ -130,7 +203,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                 type="button"
                 onClick={() => {
                   setError("");
-                  setAdding(true);
+                  setAdding({ parentId: null });
                 }}
                 className={btn.primary}
               >
@@ -142,17 +215,27 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
         ) : (
           <ul>
             {list.map((c, i) => {
-              const inIt = dishes.filter((d) => d.categoryIds.includes(c.id));
+              const ids = [c.id, ...list.filter((s) => s.parentId === c.id).map((s) => s.id)];
+              const inIt = dishes.filter((d) => d.categoryIds.some((id) => ids.includes(id)));
+              const lastSub = c.parentId && list[i + 1]?.parentId !== c.parentId;
               return (
+                <Fragment key={c.id}>
                 <li
-                  key={c.id}
                   onDragOver={(e) => {
-                    if (!dragId || dragId === c.id) return;
+                    const dragged = list.find((x) => x.id === dragId);
+                    if (!dragged) return;
+                    // A sub-category stays among its own; a main category moves
+                    // past whole groups, so a sub-category row counts as its main.
+                    const onto = dragged.parentId ? (c.parentId === dragged.parentId ? c.id : null) : (c.parentId ?? c.id);
+                    if (!onto) return;
                     e.preventDefault();
-                    // Move the dragged row here as soon as it passes over, so
-                    // the list always shows where it will land.
-                    const from = list.findIndex((x) => x.id === dragId);
-                    setList(move(from, i));
+                    if (onto === dragged.id) lastOver.current = null;
+                    else if (onto !== lastOver.current) {
+                      lastOver.current = onto;
+                      // Move the dragged row here as soon as it passes over, so
+                      // the list always shows where it will land.
+                      setList(move(dragged.id, onto));
+                    }
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
@@ -160,7 +243,9 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                     setDragId(null);
                     saveOrder(list);
                   }}
-                  className={`grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 border-b border-line px-3 py-2 last:border-0 md:gap-4 md:px-4 ${
+                  className={`grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 border-b border-line py-2 pr-3 last:border-0 md:gap-4 md:pr-4 ${
+                    c.parentId ? "pl-7 md:pl-10" : "pl-3 md:pl-4"
+                  } ${
                     dragId === c.id ? "bg-leaf-tint opacity-70" : "hover:bg-paper"
                   }`}
                 >
@@ -171,6 +256,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                     title="Drag to reorder"
                     onDragStart={(e) => {
                       before.current = list;
+                      lastOver.current = null;
                       setDragId(c.id);
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", c.id);
@@ -184,10 +270,12 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                       setDragId(null);
                     }}
                     onKeyDown={(e) => {
-                      const to = e.key === "ArrowUp" ? i - 1 : e.key === "ArrowDown" ? i + 1 : -1;
-                      if (to < 0 || to >= list.length) return;
+                      const level = list.filter((x) => x.parentId === c.parentId);
+                      const at = level.findIndex((x) => x.id === c.id);
+                      const onto = e.key === "ArrowUp" ? level[at - 1] : e.key === "ArrowDown" ? level[at + 1] : undefined;
+                      if (!onto) return;
                       e.preventDefault();
-                      const next = move(i, to);
+                      const next = move(c.id, onto.id);
                       setList(next);
                       saveOrder(next);
                       // Keep focus on the handle as the row moves.
@@ -205,7 +293,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                     className="grid min-h-14 grid-cols-[minmax(0,1fr)_24px] items-center gap-3 rounded-lg py-1 md:grid-cols-[minmax(0,1fr)_220px_24px] md:gap-4"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold">{c.name}</span>
+                      <span className={`block truncate ${c.parentId ? "font-medium" : "font-semibold"}`}>{c.name}</span>
                       <span className={`block text-[14px] ${c.dishCount ? "text-muted" : "text-chili"}`}>
                         {c.dishCount === 0
                           ? "No dishes, so guests don't see it"
@@ -237,6 +325,22 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
                     <ChevronRight width={20} height={20} className="text-muted" />
                   </Link>
                 </li>
+                {lastSub && (
+                  <li className="border-b border-line py-1 pl-7 pr-3 last:border-0 md:pl-10 md:pr-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError("");
+                        setAdding({ parentId: c.parentId });
+                      }}
+                      className="flex h-11 items-center gap-2 rounded-lg px-2 text-[14px] font-semibold text-leaf hover:bg-paper"
+                    >
+                      <PlusIcon width={16} height={16} />
+                      Add sub-category
+                    </button>
+                  </li>
+                )}
+                </Fragment>
               );
             })}
           </ul>

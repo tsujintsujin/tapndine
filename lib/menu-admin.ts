@@ -29,7 +29,8 @@ export type AdminDish = {
   sizeRequired: boolean;
 };
 
-export type AdminCategory = { id: string; name: string; dishCount: number };
+/** `parentId` is the main category it sits under. `dishCount` includes its sub-categories' dishes. */
+export type AdminCategory = { id: string; name: string; parentId: string | null; dishCount: number };
 
 type Row = {
   id: string;
@@ -59,7 +60,7 @@ export async function loadMenuAdmin(businessId: string) {
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(businessId),
-    d.prepare("SELECT id, name FROM categories WHERE business_id = ? ORDER BY sort, name").bind(businessId),
+    d.prepare("SELECT id, name, parent_id FROM categories WHERE business_id = ? ORDER BY sort, name").bind(businessId),
     d
       .prepare(
         `SELECT dc.dish_id, dc.category_id FROM dish_categories dc
@@ -115,10 +116,21 @@ export async function loadMenuAdmin(businessId: string) {
     byId.get(o.dish_id)?.options.push(toOption(o));
   }
 
-  const categories: AdminCategory[] = (cats.results as { id: string; name: string }[]).map((c) => ({
-    ...c,
-    dishCount: list.filter((x) => x.categoryIds.includes(c.id)).length,
-  }));
+  // Each main category with its sub-categories right after it.
+  const rows = cats.results as { id: string; name: string; parent_id: string | null }[];
+  const subsOf = (id: string) => rows.filter((c) => c.parent_id === id);
+  const categories: AdminCategory[] = rows
+    .filter((c) => !c.parent_id)
+    .flatMap((c) => [c, ...subsOf(c.id)])
+    .map((c) => {
+      const ids = [c.id, ...subsOf(c.id).map((s) => s.id)];
+      return {
+        id: c.id,
+        name: c.name,
+        parentId: c.parent_id,
+        dishCount: list.filter((x) => x.categoryIds.some((i) => ids.includes(i))).length,
+      };
+    });
   return { dishes: list, categories };
 }
 
@@ -324,13 +336,22 @@ export const parseCategoryName = (v: unknown) => {
   return name && name.length <= 30 ? name : null;
 };
 
-export async function createCategory(businessId: string, name: string): Promise<string> {
+/** Whether this restaurant has this category as a main one, the only kind a category can sit under. */
+export async function isMainCategory(businessId: string, id: string): Promise<boolean> {
+  const row = await db()
+    .prepare("SELECT 1 FROM categories WHERE id = ? AND business_id = ? AND parent_id IS NULL")
+    .bind(id, businessId)
+    .first();
+  return !!row;
+}
+
+export async function createCategory(businessId: string, name: string, parentId: string | null = null): Promise<string> {
   const d = db();
   const last = await d.prepare("SELECT MAX(sort) AS s FROM categories WHERE business_id = ?").bind(businessId).first<{ s: number | null }>();
   const id = "cat_" + randomId();
   await d
-    .prepare("INSERT INTO categories (id, business_id, name, sort) VALUES (?, ?, ?, ?)")
-    .bind(id, businessId, name, (last?.s ?? 0) + 1)
+    .prepare("INSERT INTO categories (id, business_id, name, parent_id, sort) VALUES (?, ?, ?, ?, ?)")
+    .bind(id, businessId, name, parentId, (last?.s ?? 0) + 1)
     .run();
   return id;
 }
@@ -340,12 +361,25 @@ export async function renameCategory(businessId: string, id: string, name: strin
   return r.meta.changes > 0;
 }
 
-/** The dishes stay on the menu; they just lose this tag. */
+/** Puts it under a main category (null: makes it a main one). Its dishes come along. One level deep only. */
+export async function setCategoryParent(businessId: string, id: string, parentId: string | null): Promise<boolean> {
+  const d = db();
+  if (parentId) {
+    if (parentId === id || !(await isMainCategory(businessId, parentId))) return false;
+    const hasSubs = await d.prepare("SELECT 1 FROM categories WHERE parent_id = ?").bind(id).first();
+    if (hasSubs) return false;
+  }
+  const r = await d.prepare("UPDATE categories SET parent_id = ? WHERE id = ? AND business_id = ?").bind(parentId, id, businessId).run();
+  return r.meta.changes > 0;
+}
+
+/** The dishes stay on the menu; they just lose this tag. Its sub-categories become main ones. */
 export async function deleteCategory(businessId: string, id: string): Promise<boolean> {
   const d = db();
   const own = await d.prepare("SELECT 1 FROM categories WHERE id = ? AND business_id = ?").bind(id, businessId).first();
   if (!own) return false;
   await d.batch([
+    d.prepare("UPDATE categories SET parent_id = NULL WHERE parent_id = ?").bind(id),
     d.prepare("DELETE FROM dish_categories WHERE category_id = ?").bind(id),
     d.prepare("DELETE FROM categories WHERE id = ?").bind(id),
   ]);
