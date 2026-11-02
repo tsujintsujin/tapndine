@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     client_id: id,
     redirect_uri: callbackUrl(req),
     response_type: "code",
-    scope: "openid email profile",
+    scope: "openid email",
     state,
     prompt: "select_account",
   }).toString();

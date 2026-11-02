@@ -72,9 +72,10 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   guests' tags go to "Menu not available". Adding a contract in Billing ends
   the trial for good and everything opens again.
 - Restaurants a developer adds keep working as before (no trial date).
-- Google sign-in needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Worker
-  secrets; the button hides without them). Redirect URI:
-  `https://tapndine.online/api/auth/google/callback`.
+- Google sign-in: client "tapndine web" in Google Cloud project `tapndine-513409`,
+  in production, on Worker secrets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (the
+  button hides without them). Redirect URI:
+  `https://tapndine.online/api/auth/google/callback`. It asks Google for email only.
 
 ## Stack and running it
 
