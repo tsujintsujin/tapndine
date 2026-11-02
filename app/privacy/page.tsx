@@ -4,7 +4,7 @@ import { LegalPage, type LegalSection } from "@/app/components/LegalPage";
 
 // What tapndine stores about guests, restaurant staff and demo requests, and why.
 // Keep it matching the code: lib/visits.ts (2-hour links), app/t/[tagId] (tnd_phone
-// cookie), lib/staff.ts (login cookie), app/api/demo (demo requests), lib/cloudinary.ts.
+// cookie), lib/staff.ts (login cookie), lib/signup.ts (trial sign-up), app/api/demo (demo requests), lib/cloudinary.ts.
 
 export const metadata: Metadata = {
   title: "Privacy Policy · tapndine",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 };
 
-const UPDATED = "October 13, 2026";
+const UPDATED = "November 2, 2026";
 const EMAIL = "justin.masiga.94@gmail.com";
 
 const SECTIONS: LegalSection[] = [
@@ -69,6 +69,23 @@ const SECTIONS: LegalSection[] = [
     ),
   },
   {
+    title: "Restaurants that sign up for the free trial",
+    body: (
+      <>
+        <p>
+          When you sign up, or sign back in, without a password, we store your email address, your name and your
+          restaurant&apos;s name. If you use a code, we email it to you through Brevo and keep only a scrambled copy until it
+          is used or expires.
+        </p>
+        <p>
+          If you continue with Google, Google tells us your email address and a number that identifies your Google account.
+          We use them only to log you in to tapndine. We don&apos;t ask Google for your name or photo, we can&apos;t see your
+          Google password, and we don&apos;t read anything else in your Google account or share what Google sends us.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "People who book a demo",
     body: (
       <p>
@@ -83,7 +100,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>
           Only to run tapndine: to show the menu, pass orders to the waiters, show the restaurant its statistics, keep
-          logins secure, and answer demo requests.
+          logins secure, sign restaurants up for the free trial, and answer demo requests.
         </p>
         <p>We do not sell personal information, use it for advertising, or share it with other restaurants.</p>
       </>
@@ -97,7 +114,8 @@ const SECTIONS: LegalSection[] = [
         <ul className="list-disc space-y-2 pl-5">
           <li>Cloudflare, which hosts the website and its database and counts visits without cookies;</li>
           <li>Cloudinary, which stores and serves dish photos;</li>
-          <li>Brevo, which sends our emails.</li>
+          <li>Brevo, which sends our emails;</li>
+          <li>Google, if you choose to continue with Google, which confirms who you are.</li>
         </ul>
         <p>
           They may store data outside the Philippines. They handle it only to provide their service to us. We may also
@@ -112,8 +130,9 @@ const SECTIONS: LegalSection[] = [
       <p>
         Orders, including the names guests typed, stay in the restaurant&apos;s order history for as long as the
         restaurant uses tapndine, because its statistics are built from them. When a restaurant stops using tapndine, we
-        delete its data within 30 days of being asked, or keep it only as long as the law requires. Demo requests are
-        deleted once they are no longer needed.
+        delete its data within 30 days of being asked, or keep it only as long as the law requires. A free trial&apos;s data
+        stays after the trial ends, so the restaurant can pick up where it left off, until it asks us to delete it. Demo
+        requests are deleted once they are no longer needed.
       </p>
     ),
   },
