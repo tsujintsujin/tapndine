@@ -3,10 +3,12 @@
 import Link from "next/link";
 import type { TableSummary } from "@/lib/orders";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
+import { tablesNeedingYou } from "@/lib/alerts";
 import { ago, formatPrice } from "@/lib/format";
+import { useAlerts } from "./Alerts";
 import { PageHead } from "./kit";
 import Shell from "./Shell";
-import { OfflineNote, StaffNav, usePoll } from "./ui";
+import { OfflineNote, StaffNav } from "./ui";
 
 /**
  * Every table as a button; tables with orders stand out and show their total.
@@ -21,9 +23,10 @@ export default function TablesBoard({
   staffName: string;
   isManager: boolean;
 }) {
-  const { data: tables, offline } = usePoll("/api/staff/tables", initial, (d) => (d as { tables: TableSummary[] }).tables);
+  const { tables: live, offline } = useAlerts();
+  const tables = live ?? initial;
   const busy = tables.filter((t) => t.items > 0).length;
-  const flagged = tables.filter((t) => t.newOrders > 0 || t.calls.length > 0).length;
+  const flagged = tablesNeedingYou(tables);
   const summary =
     (busy === 0 ? "No orders yet." : `${busy} ${busy === 1 ? "table has" : "tables have"} orders.`) +
     (flagged ? ` ${flagged} ${flagged === 1 ? "needs" : "need"} you.` : "");
