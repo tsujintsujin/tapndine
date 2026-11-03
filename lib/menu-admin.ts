@@ -476,3 +476,35 @@ export async function importDishes(
   }
   return { added, skipped };
 }
+
+/**
+ * What the menu home shows: the hero (or none, for the first dish) and the
+ * dishes in the Featured and New rows. Each row keeps the menu's order.
+ * False when the hero isn't one of this restaurant's dishes.
+ */
+export async function setHomepage(
+  businessId: string,
+  hero: string | null,
+  featured: string[],
+  fresh: string[]
+): Promise<boolean> {
+  const d = db();
+  if (hero) {
+    const own = await d
+      .prepare("SELECT 1 FROM dishes WHERE id = ? AND business_id = ? AND removed_at IS NULL")
+      .bind(hero, businessId)
+      .first();
+    if (!own) return false;
+  }
+  await d
+    .prepare(
+      `UPDATE dishes SET
+         featured = (id = ?),
+         best_seller = (id IN (SELECT value FROM json_each(?))),
+         is_new = (id IN (SELECT value FROM json_each(?)))
+       WHERE business_id = ? AND removed_at IS NULL`
+    )
+    .bind(hero ?? "", JSON.stringify(featured), JSON.stringify(fresh), businessId)
+    .run();
+  return true;
+}

@@ -98,7 +98,7 @@ export const toOption = (o: OptionRow): DishOption => ({
 export const CHOICE_ON_MENU = "(o.ref_dish_id IS NULL OR (r.available = 1 AND r.removed_at IS NULL))";
 
 /** Everything the menu screens need, for the business the visit belongs to. */
-export async function loadMenu(visit: Visit): Promise<Menu | null> {
+export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): Promise<Menu | null> {
   const d = db();
   const [biz, table, cats, dishes, links, ingredients, options] = await d.batch([
     d.prepare("SELECT name, logo_url, menu_design, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),

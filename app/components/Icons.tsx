@@ -141,6 +141,21 @@ export const SlidersIcon = (p: P) => (
   </Svg>
 );
 
+/** A phone showing a big photo over a row of tiles: the menu's home page. */
+export const HomepageIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+    <path d="M6 11h12M9 15h.01M12 15h.01M15 15h.01" />
+  </Svg>
+);
+
+export const EyeIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Svg>
+);
+
 /** A tap: a dot sending waves out, for NFC links. */
 /** A receipt: contracts and payments. */
 export const ReceiptIcon = (p: P) => (

@@ -35,7 +35,9 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - **Guests**: no account. A nickname, asked the first time they send.
 - **Waiters**: Tables, a table's orders by guest, add items, clear the table.
 - **Managers**: plus Dashboard, Menu links (tables and their tag links, capped
-  by the plan's table count), Menu (dishes, dish options), Categories, Staff,
+  by the plan's table count), Menu (dishes, dish options), Homepage (the hero
+  and the Featured and New rows, beside a phone preview at `/m/preview`; a row
+  with more than 3 dishes swipes and goes round), Categories, Staff,
   Settings (logo, menu colors). Menu Designs B and C are hidden until they are
   reworked: no picker in Settings, every guest gets Design A (`lib/menu.ts`),
   whatever a restaurant's `menu_design` says. Their code stays.
