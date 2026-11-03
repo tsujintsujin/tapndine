@@ -6,13 +6,16 @@ import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish } from "@/lib/menu-admin";
 import { formatPrice } from "@/lib/format";
 import { ArrowUpRight, ChevronLeft, SearchIcon, TrashIcon } from "@/app/components/Icons";
+import { CategoryIcon, categoryShape, SHAPE_LABELS } from "@/app/components/CategoryIcon";
 import { btn, card, PageHead } from "../kit";
 import { api, useConfirm } from "../ui";
 
 const field =
   "mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
 
-/** Renames a category and picks which dishes are in it. Nothing saves until Save changes. */
+const shapes = Object.keys(SHAPE_LABELS) as (keyof typeof SHAPE_LABELS)[];
+
+/** Renames a category, picks its icon and which dishes are in it. Nothing saves until Save changes. */
 export default function CategoryEditor({
   category,
   categories,
@@ -27,6 +30,9 @@ export default function CategoryEditor({
   const start = useRef(dishes.filter((d) => d.categoryIds.includes(category.id)).map((d) => d.id));
   const [name, setName] = useState(category.name);
   const [parentId, setParentId] = useState(category.parentId);
+  // null until the manager taps one: guessed from the name as they type it.
+  const [icon, setIcon] = useState(category.icon);
+  const iconShown = icon ?? categoryShape(name);
   const subs = categories.filter((c) => c.parentId === category.id);
   const mains = categories.filter((c) => !c.parentId && c.id !== category.id);
   const [picked, setPicked] = useState<string[]>(start.current);
@@ -39,6 +45,7 @@ export default function CategoryEditor({
   const dirty =
     name !== category.name ||
     parentId !== category.parentId ||
+    icon !== category.icon ||
     picked.length !== start.current.length ||
     picked.some((id) => !start.current.includes(id));
 
@@ -63,7 +70,7 @@ export default function CategoryEditor({
     setBusy(true);
     setError("");
     try {
-      await api(`/api/staff/menu/categories/${category.id}`, { method: "PUT", body: { name, dishIds: picked, parentId } });
+      await api(`/api/staff/menu/categories/${category.id}`, { method: "PUT", body: { name, dishIds: picked, parentId, icon } });
       done.current = true;
       router.push("/admin/categories");
       router.refresh();
@@ -143,9 +150,35 @@ export default function CategoryEditor({
               className={field}
             />
           </label>
+          {/* Guests only see an icon on a category that isn't inside another one. */}
+          {!parentId && (
+            <fieldset className="mt-6">
+              <legend className="font-display text-[19px] font-bold">Icon</legend>
+              <div className="mt-3 grid grid-cols-5 gap-2">
+                {shapes.map((s) => (
+                  <label key={s} title={SHAPE_LABELS[s]} className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="icon"
+                      checked={iconShown === s}
+                      onChange={() => setIcon(s)}
+                      className="peer sr-only"
+                    />
+                    <span className="grid h-12 place-items-center rounded-xl border border-line text-muted hover:bg-paper peer-checked:border-forest peer-checked:bg-leaf-tint peer-checked:text-forest peer-checked:ring-1 peer-checked:ring-forest peer-focus-visible:ring-2 peer-focus-visible:ring-leaf/40">
+                      <CategoryIcon name="" icon={s} width={22} height={22} />
+                    </span>
+                    <span className="sr-only">{SHAPE_LABELS[s]}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-[13px] text-muted">
+                {icon ? `Guests see it next to ${name.trim() || "the name"} on the menu.` : "Picked from the name. Tap another to change it."}
+              </p>
+            </fieldset>
+          )}
           {subs.length > 0 ? (
-            <p className="mt-3 text-[14px]">
-              <span className="font-semibold">Sub-categories: </span>
+            <p className="mt-6 text-[14px]">
+              <span className="font-semibold">Categories inside it: </span>
               {subs.map((s, i) => (
                 <span key={s.id}>
                   {i > 0 && ", "}
@@ -156,25 +189,28 @@ export default function CategoryEditor({
               ))}
             </p>
           ) : (
-            <label className="mt-3 block text-[14px] font-semibold">
-              Sits under
-              <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value || null)} className={field}>
-                <option value="">Nothing, it&apos;s a main category</option>
-                {mains.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <>
+              <h2 className="mt-6 font-display text-[19px] font-bold">Inside another category?</h2>
+              <label className="mt-1.5 block">
+                <span className="sr-only">Inside another category?</span>
+                <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value || null)} className={field}>
+                  <option value="">No, it&apos;s on its own</option>
+                  {mains.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="mt-2 text-[13px] text-muted">For example, put Coffee inside Drinks. Guests tap Drinks, then see Coffee.</p>
+            </>
           )}
-          <p className="mt-3 text-[13px] text-muted">
-            Guests see it as a tag on the full menu{parentId ? ", after they tap the category it sits under" : ""}. With no dishes in it, it stays hidden. Its dishes show in the same
-            order as on the{" "}
+          <p className="mt-4 text-[13px] text-muted">
+            A category with no dishes doesn&apos;t show on the menu. To change the order of its dishes, use the{" "}
             <Link href="/admin/menu" className="font-semibold text-leaf hover:underline">
               Menu
             </Link>{" "}
-            page; change the order there.
+            page.
           </p>
           <button type="button" disabled={busy} onClick={remove} className={`${btn.danger} mt-3 -ml-4`}>
             <TrashIcon width={18} height={18} />

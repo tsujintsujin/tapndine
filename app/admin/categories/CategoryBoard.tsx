@@ -86,9 +86,9 @@ function AddCategoryDialog({
           />
         </label>
         <label className="mt-3 block text-[14px] font-semibold">
-          Sits under
+          Inside another category?
           <select name="parentId" defaultValue={parentId ?? ""} className={field}>
-            <option value="">Nothing, it&apos;s a main category</option>
+            <option value="">No, it&apos;s on its own</option>
             {mains.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -96,6 +96,7 @@ function AddCategoryDialog({
             ))}
           </select>
         </label>
+        <p className="mt-2 text-[13px] text-muted">For example, put Coffee inside Drinks.</p>
         <div className="mt-5 flex justify-end gap-2.5">
           <button type="button" onClick={onClose} className={btn.secondary}>
             Cancel

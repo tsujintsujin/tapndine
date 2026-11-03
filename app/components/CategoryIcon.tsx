@@ -1,11 +1,12 @@
 import type { SVGProps } from "react";
 import { fold } from "@/lib/format";
 
-// A food icon for a menu category, picked from its name ("Rice Meals",
-// "Inumin"), so the guest sees what a tab holds before reading it. Line icons
-// from Lucide (ISC licence) and Tabler Icons (MIT): the same 24px grid and
-// round line ends as Icons.tsx, drawn with its 1.75 stroke so they match.
-// A name it doesn't know gets a chef's hat.
+// A food icon for a menu category, so the guest sees what a tab holds before
+// reading it. The manager picks it on the category's page; until they do, it
+// is guessed from the name ("Rice Meals", "Inumin"), and a name it doesn't know
+// gets a chef's hat. Line icons from Lucide (ISC licence) and Tabler Icons
+// (MIT): the same 24px grid and round line ends as Icons.tsx, drawn with its
+// 1.75 stroke so they match.
 
 const SHAPES = {
   // Tabler tools-kitchen-2
@@ -61,6 +62,37 @@ const SHAPES = {
 };
 type Shape = keyof typeof SHAPES;
 
+/** Each icon in picker order, with the words a screen reader says for it. */
+export const SHAPE_LABELS: Record<Shape, string> = {
+  bowlSpoon: "Rice meal",
+  bowlChopsticks: "Noodles",
+  pot: "Pasta or stew",
+  soup: "Soup",
+  salad: "Salad",
+  carrot: "Vegetables",
+  fish: "Seafood",
+  drumstick: "Chicken",
+  ham: "Pork",
+  beef: "Beef",
+  burger: "Burger",
+  sandwich: "Sandwich",
+  pizza: "Pizza",
+  eggFried: "Breakfast",
+  wheat: "Rice",
+  croissant: "Bread",
+  cake: "Cake",
+  iceCream: "Dessert",
+  coffee: "Coffee",
+  bubbleTea: "Milk tea",
+  milkshake: "Shake",
+  cupSoda: "Drinks",
+  beer: "Beer",
+  utensils: "Starters",
+  chefHat: "Chef's special",
+};
+
+export const isShape = (v: unknown): v is Shape => typeof v === "string" && Object.hasOwn(SHAPES, v);
+
 // First match wins: "Rice Meals" is a meal before it is rice.
 const MATCH: [RegExp, Shape][] = [
   [/rice ?meal|silog|ulam|\bmeals?\b/, "bowlSpoon"],
@@ -95,7 +127,12 @@ export function categoryShape(name: string): Shape {
   return MATCH.find(([re]) => re.test(n))?.[1] ?? "chefHat";
 }
 
-export function CategoryIcon({ name, ...p }: { name: string } & SVGProps<SVGSVGElement>) {
+/** The picked icon, or the one guessed from the name when none is picked. */
+export function CategoryIcon({
+  name,
+  icon,
+  ...p
+}: { name: string; icon?: string | null } & SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -109,7 +146,7 @@ export function CategoryIcon({ name, ...p }: { name: string } & SVGProps<SVGSVGE
       aria-hidden="true"
       {...p}
     >
-      {SHAPES[categoryShape(name)]}
+      {SHAPES[isShape(icon) ? icon : categoryShape(name)]}
     </svg>
   );
 }
