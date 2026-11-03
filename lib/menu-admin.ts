@@ -31,8 +31,11 @@ export type AdminDish = {
   sizeLabel: string | null;
 };
 
-/** `parentId` is the main category it sits under. `dishCount` includes its sub-categories' dishes. */
-export type AdminCategory = { id: string; name: string; parentId: string | null; dishCount: number };
+/**
+ * `parentId` is the main category it sits under. `icon` is the one the manager
+ * picked (null: guessed from the name). `dishCount` includes its sub-categories' dishes.
+ */
+export type AdminCategory = { id: string; name: string; parentId: string | null; icon: string | null; dishCount: number };
 
 type Row = {
   id: string;
@@ -63,7 +66,7 @@ export async function loadMenuAdmin(businessId: string) {
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(businessId),
-    d.prepare("SELECT id, name, parent_id FROM categories WHERE business_id = ? ORDER BY sort, name").bind(businessId),
+    d.prepare("SELECT id, name, parent_id, icon FROM categories WHERE business_id = ? ORDER BY sort, name").bind(businessId),
     d
       .prepare(
         `SELECT dc.dish_id, dc.category_id FROM dish_categories dc
@@ -121,7 +124,7 @@ export async function loadMenuAdmin(businessId: string) {
   }
 
   // Each main category with its sub-categories right after it.
-  const rows = cats.results as { id: string; name: string; parent_id: string | null }[];
+  const rows = cats.results as { id: string; name: string; parent_id: string | null; icon: string | null }[];
   const subsOf = (id: string) => rows.filter((c) => c.parent_id === id);
   const categories: AdminCategory[] = rows
     .filter((c) => !c.parent_id)
@@ -132,6 +135,7 @@ export async function loadMenuAdmin(businessId: string) {
         id: c.id,
         name: c.name,
         parentId: c.parent_id,
+        icon: c.icon,
         dishCount: list.filter((x) => x.categoryIds.some((i) => ids.includes(i))).length,
       };
     });
@@ -367,6 +371,12 @@ export async function createCategory(businessId: string, name: string, parentId:
 
 export async function renameCategory(businessId: string, id: string, name: string): Promise<boolean> {
   const r = await db().prepare("UPDATE categories SET name = ? WHERE id = ? AND business_id = ?").bind(name, id, businessId).run();
+  return r.meta.changes > 0;
+}
+
+/** The icon guests see beside it (null: guessed from the name). The caller checks it is a known one. */
+export async function setCategoryIcon(businessId: string, id: string, icon: string | null): Promise<boolean> {
+  const r = await db().prepare("UPDATE categories SET icon = ? WHERE id = ? AND business_id = ?").bind(icon, id, businessId).run();
   return r.meta.changes > 0;
 }
 

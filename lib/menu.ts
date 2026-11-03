@@ -33,8 +33,11 @@ export type Dish = {
 export type MenuDesign = "a" | "b" | "c";
 
 export type SubCategory = { id: string; name: string; dishIds: string[] };
-/** A main category. `dishIds` includes the dishes in its sub-categories. */
-export type Category = SubCategory & { subs: SubCategory[] };
+/**
+ * A main category. `dishIds` includes the dishes in its sub-categories. `icon`
+ * is the one the manager picked (null: guessed from the name).
+ */
+export type Category = SubCategory & { icon: string | null; subs: SubCategory[] };
 
 export type Menu = {
   businessName: string;
@@ -101,7 +104,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     d.prepare("SELECT name, logo_url, menu_design, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
-      .prepare("SELECT id, name, parent_id FROM categories WHERE business_id = ? ORDER BY sort, name")
+      .prepare("SELECT id, name, parent_id, icon FROM categories WHERE business_id = ? ORDER BY sort, name")
       .bind(visit.business_id),
     d
       .prepare(
@@ -170,10 +173,10 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     byId[o.dish_id]?.options.push(toOption(o));
   }
 
-  const rows = cats.results as { id: string; name: string; parent_id: string | null }[];
+  const rows = cats.results as { id: string; name: string; parent_id: string | null; icon: string | null }[];
   const categories: Category[] = rows
     .filter((c) => !c.parent_id)
-    .map((c) => ({ id: c.id, name: c.name, dishIds: [], subs: [] }));
+    .map((c) => ({ id: c.id, name: c.name, icon: c.icon, dishIds: [], subs: [] }));
   const mainById = new Map(categories.map((c) => [c.id, c]));
   const catById = new Map<string, SubCategory>(mainById);
   for (const c of rows) {

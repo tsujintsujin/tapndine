@@ -1114,7 +1114,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
 }
 
 /** A block of the whole menu: a main category, or the dishes in none ("other"). */
-type Chapter = { id: string; name: string; direct: string[]; subs: SubCategory[] };
+type Chapter = { id: string; name: string; icon: string | null; direct: string[]; subs: SubCategory[] };
 
 /**
  * The menu in reading order. A main category's own dishes come first, then one
@@ -1123,11 +1123,11 @@ type Chapter = { id: string; name: string; direct: string[]; subs: SubCategory[]
 function menuChapters(menu: Menu): Chapter[] {
   const chapters: Chapter[] = menu.categories.map((c) => {
     const inSub = new Set(c.subs.flatMap((s) => s.dishIds));
-    return { id: c.id, name: c.name, direct: c.dishIds.filter((id) => !inSub.has(id)), subs: c.subs };
+    return { id: c.id, name: c.name, icon: c.icon, direct: c.dishIds.filter((id) => !inSub.has(id)), subs: c.subs };
   });
   const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
   const rest = menu.dishOrder.filter((id) => !placed.has(id));
-  if (rest.length) chapters.push({ id: "other", name: chapters.length ? "More dishes" : "All dishes", direct: rest, subs: [] });
+  if (rest.length) chapters.push({ id: "other", name: chapters.length ? "More dishes" : "All dishes", icon: null, direct: rest, subs: [] });
   return chapters;
 }
 
@@ -1246,7 +1246,7 @@ function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | n
             c.id === current ? "bg-leaf text-white" : "text-muted active:bg-wash"
           }`}
         >
-          <CategoryIcon name={c.name} />
+          <CategoryIcon name={c.name} icon={c.icon} />
           {c.name}
         </button>
       ))}
@@ -1360,7 +1360,7 @@ function WholeMenu({
                   c.id === open?.id ? "bg-leaf text-white" : "hover:bg-wash"
                 }`}
               >
-                <CategoryIcon name={c.name} className="shrink-0" />
+                <CategoryIcon name={c.name} icon={c.icon} className="shrink-0" />
                 <span className="truncate">{c.name}</span>
               </button>
               {c.id === open?.id &&
