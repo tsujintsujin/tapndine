@@ -27,6 +27,8 @@ export type AdminDish = {
   /** Sizes, add-ons and spice choices (lib/options.ts). A kind is on when it has options. */
   options: DishOption[];
   sizeRequired: boolean;
+  /** What the sizes are called when they aren't sizes ("Meat"); null shows "Size". */
+  sizeLabel: string | null;
 };
 
 /** `parentId` is the main category it sits under. `dishCount` includes its sub-categories' dishes. */
@@ -47,6 +49,7 @@ type Row = {
   best_seller: number;
   is_new: number;
   size_required: number;
+  size_label: string | null;
 };
 
 /** Every dish still on the menu (sold out included) and every category, in menu order. */
@@ -56,7 +59,7 @@ export async function loadMenuAdmin(businessId: string) {
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url, spice_level,
-                serves_min, serves_max, available, featured, best_seller, is_new, size_required
+                serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(businessId),
@@ -104,6 +107,7 @@ export async function loadMenuAdmin(businessId: string) {
     ingredients: [],
     options: [],
     sizeRequired: r.size_required === 1,
+    sizeLabel: r.size_label,
   }));
   const byId = new Map(list.map((x) => [x.id, x]));
   for (const l of links.results as { dish_id: string; category_id: string }[]) {
@@ -188,6 +192,10 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
   }
   if (new Set(options.filter((o) => o.kind === "choice").map((o) => o.group)).size > 5) return "Up to 5 choose-one lists.";
   if (OPTION_KINDS.some((k) => options.filter((o) => o.kind === k).length > 20)) return "Up to 20 choices of each kind.";
+  // Kept only with sizes, and only when it says something other than "Size".
+  const label = str(b.sizeLabel);
+  if (label.length > 20) return "Keep what the sizes are called under 20 characters.";
+  const sizeLabel = options.some((o) => o.kind === "size") && label && label.toLowerCase() !== "size" ? label : null;
   return {
     name,
     shortDescription,
@@ -205,6 +213,7 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     ingredients,
     options,
     sizeRequired: b.sizeRequired !== false,
+    sizeLabel,
   };
 }
 
@@ -253,19 +262,19 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
 
   const values = [
     x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, x.spiceLevel,
-    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.sizeRequired,
+    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.sizeRequired, x.sizeLabel,
   ];
   await d.batch([
     d
       .prepare(
         `INSERT INTO dishes (id, business_id, sort, name, short_description, description, price_cents, image_url,
-                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, short_description = excluded.short_description,
            description = excluded.description, price_cents = excluded.price_cents, image_url = excluded.image_url,
            spice_level = excluded.spice_level, serves_min = excluded.serves_min, serves_max = excluded.serves_max,
            available = excluded.available, featured = excluded.featured, best_seller = excluded.best_seller,
-           is_new = excluded.is_new, size_required = excluded.size_required`
+           is_new = excluded.is_new, size_required = excluded.size_required, size_label = excluded.size_label`
       )
       .bind(id, businessId, sort, ...values),
     // The menu home has one hero: picking this one unpicks the old one.

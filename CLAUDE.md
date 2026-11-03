@@ -47,9 +47,13 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - A category can sit under a main one (`categories.parent_id`, migration 0020),
   one level deep. A main category's dishes on the guest menu include its
   sub-categories'; Designs B and C just see the main categories.
-- Guests: tapping a main category opens a second row of its sub-categories
-  (under it in the desktop rail). Managers: "Sits under" on the category page
-  and in the add dialog. Deleting a main one makes its subs main ones.
+- Guests, phone: one fixed row of tabs, every main category and sub-category
+  its own tab, each sub right after its main one (Drinks, Beverage, Espresso
+  Based…), the way foodpanda and GrabFood list a café's drinks. Showing a
+  main one's subs only while inside it made the row grow, slide and push the
+  main one out of view (audit 2026-11-03). Desktop rail: subs indented under
+  the open main one. Managers: "Sits under" on the category page and in the
+  add dialog. Deleting a main one makes its subs main ones.
 
 ## Dish options (Stage 1 Build 1, live 2026-10-21)
 
@@ -59,6 +63,12 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   add-ons behind one "+" line, not a page of option groups.
 - The pick rules live once in `lib/options.ts` (server pricing and both
   phones use them); `node scripts/options-check.ts` checks them.
+- Sizes can be called something else per dish (`dishes.size_label`, migration
+  0021): a noodle dish where the guest picks Pork, Chicken or Seafood shows
+  "Meat", not "Size", to guests and waiters. Empty is "Size".
+- Guest search (`lib/search.ts`, `node scripts/search-check.ts`) matches word
+  starts in names, categories, choices and descriptions, a short English and
+  Filipino synonym list ("kape", "drinks"), and typos in words of 6+ letters.
 - An order line stores what was picked as text (`batch_items.options`), and
   its price already includes the extras.
 - The homepage demo tag (`DEMO_TAG` in `lib/visits.ts`) says ordering is in
@@ -103,7 +113,7 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
 - Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`,
-  `node scripts/palettes-check.ts`, and with the dev
+  `node scripts/palettes-check.ts`, `node scripts/search-check.ts`, and with the dev
   server up, `node scripts/isolation-check.mjs http://localhost:3390`.
 - Deploys are **manual** (`opennextjs-cloudflare build` + `deploy`) from a clean
   copy outside this folder, never by building here while `next dev` runs.

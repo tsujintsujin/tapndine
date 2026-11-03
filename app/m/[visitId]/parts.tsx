@@ -1,10 +1,21 @@
 import type { Dish } from "@/lib/menu";
 import { ChiliIcon, NoChiliIcon, PlateIcon } from "@/app/components/Icons";
 
+// Photos are stored full size (often 1200px wide). Cloudinary makes smaller
+// copies on request, so a 160px card on a phone on mobile data loads a 20 KB
+// photo, not an 80 KB one.
+const DELIVERY = "/upload/f_auto,q_auto/";
+const WIDTHS = [240, 480, 720, 960];
+
+/** The photo at most `width` pixels wide; a URL that isn't one of ours as it is. */
+export const photoUrl = (url: string, width: number) =>
+  url.includes(DELIVERY) ? url.replace(DELIVERY, `/upload/f_auto,q_auto,c_limit,w_${width}/`) : url;
+
 /**
  * A dish photo at a fixed aspect ratio, so the layout never jumps while it
  * loads. No photo yet shows a plain plate. Unavailable dishes are greyed with a
  * label, but stay tappable so the customer can still read about them.
+ * `sizes` says how wide it shows, so the browser picks the smallest copy that is sharp.
  */
 export function DishImage({
   dish,
@@ -12,6 +23,7 @@ export function DishImage({
   eager = false,
   onDark = false,
   soldOutLabel = true,
+  sizes = "(min-width: 1024px) 25vw, 50vw",
 }: {
   dish: Dish;
   className?: string;
@@ -20,13 +32,17 @@ export function DishImage({
   onDark?: boolean;
   /** Off where the photo is too small for the label and the text says it instead. */
   soldOutLabel?: boolean;
+  sizes?: string;
 }) {
+  const url = dish.imageUrl;
   return (
     <div className={`relative overflow-hidden ${onDark ? "bg-forest-soft" : "bg-wash"} ${className}`}>
-      {dish.imageUrl ? (
+      {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={dish.imageUrl}
+          src={photoUrl(url, 960)}
+          srcSet={url.includes(DELIVERY) ? WIDTHS.map((w) => `${photoUrl(url, w)} ${w}w`).join(", ") : undefined}
+          sizes={sizes}
           alt=""
           width={960}
           height={717}

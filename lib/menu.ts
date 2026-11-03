@@ -26,6 +26,8 @@ export type Dish = {
   options: DishOption[];
   /** With sizes: the guest has to pick one before adding. */
   sizeRequired: boolean;
+  /** What the sizes are called when they aren't sizes ("Meat"); null shows "Size". */
+  sizeLabel: string | null;
 };
 
 export type MenuDesign = "a" | "b" | "c";
@@ -65,6 +67,7 @@ type DishRow = {
   best_seller: number;
   is_new: number;
   size_required: number;
+  size_label: string | null;
 };
 
 export type OptionRow = {
@@ -103,7 +106,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url,
-                spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required
+                spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(visit.business_id),
@@ -156,6 +159,7 @@ export async function loadMenu(visit: Visit): Promise<Menu | null> {
       ingredients: [],
       options: [],
       sizeRequired: r.size_required === 1,
+      sizeLabel: r.size_label,
     };
     dishOrder.push(r.id);
   }

@@ -17,6 +17,7 @@ export default function Sheet({
   from,
   label,
   half = false,
+  fit = false,
   children,
 }: {
   open: boolean;
@@ -25,6 +26,8 @@ export default function Sheet({
   label: string;
   /** From the bottom, but only as tall as its content, so what is behind still shows above it. */
   half?: boolean;
+  /** Like half on a phone, and a centred box only as tall as its content on tablets and up. */
+  fit?: boolean;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -71,7 +74,9 @@ export default function Sheet({
   }, [open]);
 
   const panel =
-    from === "bottom" && half
+    from === "bottom" && fit
+      ? "absolute inset-x-0 bottom-0 max-h-[88dvh] rounded-t-[26px] sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px] md:min-h-[360px] md:w-[min(920px,calc(100%-48px))]"
+      : from === "bottom" && half
       ? "absolute inset-x-0 bottom-0 max-h-[85dvh] rounded-t-[26px] sm:mx-auto sm:w-[min(520px,100%)]"
       : from === "bottom"
       ? "absolute inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:w-[min(560px,calc(100%-48px))] sm:rounded-[20px] md:h-[min(620px,88dvh)] md:w-[min(920px,calc(100%-48px))]"
