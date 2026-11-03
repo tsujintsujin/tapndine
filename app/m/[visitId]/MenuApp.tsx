@@ -29,6 +29,7 @@ import {
   BagIcon,
   BellIcon,
   CheckIcon,
+  ChevronLeft,
   ChevronRight,
   ClocheIcon,
   CloseIcon,
@@ -165,13 +166,14 @@ type OpenCall = { kind: CallKind; createdAt: number };
  * the call box is open) it asks again every 10 seconds, so "Waiting for your
  * waiter" turns into "Seen" without a reload.
  */
-function useSent(visitId: string, onDead: () => void, watch: boolean) {
+function useSent(visitId: string, onDead: () => void, watch: boolean, off: boolean) {
   const [sent, setSent] = useState<GuestOrders | null>(null);
   const [calls, setCalls] = useState<OpenCall[]>([]);
   const deadRef = useRef(onDead);
   deadRef.current = onDead;
 
   const load = useCallback(() => {
+    if (off) return;
     fetch(`${BASE_PATH}/api/visits/${visitId}/order`, { cache: "no-store" })
       .then(async (r) => {
         if (r.status === 410) return deadRef.current();
@@ -183,7 +185,7 @@ function useSent(visitId: string, onDead: () => void, watch: boolean) {
       .catch(() => {
         // Offline for a moment: keep what we last had.
       });
-  }, [visitId]);
+  }, [visitId, off]);
 
   useEffect(load, [load]);
   useEffect(() => {
@@ -224,10 +226,11 @@ function useNickname() {
 // A menu link lives 1 h 30 min from the first tap (or until a waiter clears
 // the table). Shows the expired screen once the server says it is dead.
 
-function useVisitAlive(visitId: string, expiresAt: number) {
+function useVisitAlive(visitId: string, expiresAt: number, off: boolean) {
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
+    if (off) return;
     const check = () =>
       fetch(`${BASE_PATH}/api/visits/${visitId}/touch`, { method: "POST" })
         .then((r) => r.json() as Promise<{ alive: boolean }>)
@@ -250,7 +253,7 @@ function useVisitAlive(visitId: string, expiresAt: number) {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [visitId, expiresAt]);
+  }, [visitId, expiresAt, off]);
 
   return { expired, expire: () => setExpired(true) };
 }
@@ -263,6 +266,8 @@ export default function MenuApp({
   expiresAt,
   canSend,
   demo,
+  preview = false,
+  startAt,
 }: {
   visitId: string;
   menu: Menu;
@@ -271,6 +276,10 @@ export default function MenuApp({
   canSend: boolean;
   /** The homepage's demo menu: says ordering is in the real thing. */
   demo: boolean;
+  /** The manager's Homepage preview: no visit behind it, so it never checks in with the server. */
+  preview?: boolean;
+  /** Preview only: the id of the home row to open on (the one the manager just changed). */
+  startAt?: string;
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -279,10 +288,10 @@ export default function MenuApp({
   const orderOpen = params.get("o") === "1";
 
   const [callOpen, setCallOpen] = useState(false);
-  const { expired, expire } = useVisitAlive(visitId, expiresAt);
+  const { expired, expire } = useVisitAlive(visitId, expiresAt, preview);
   const { order, setQty, clear, notes, setNote } = useOrder(visitId);
   const lines = orderLines(menu, order);
-  const { sent, setSent, calls, setCalls, load: loadSent } = useSent(visitId, expire, orderOpen || callOpen);
+  const { sent, setSent, calls, setCalls, load: loadSent } = useSent(visitId, expire, orderOpen || callOpen, preview);
   const { nick, save: saveNick } = useNickname();
   const [nickOpen, setNickOpen] = useState(false);
   // The nickname is asked the first time this phone sends, not on opening the
@@ -334,9 +343,14 @@ export default function MenuApp({
   }, []);
   useLayoutEffect(() => {
     if (view === lastView.current) return;
-    window.scrollTo(0, view === "home" ? homeScroll.current : 0);
+    const row = lastView.current === null && startAt ? document.getElementById(startAt)?.closest("section") : null;
     lastView.current = view;
-  }, [view]);
+    if (row) {
+      window.scrollTo(0, row.getBoundingClientRect().top + window.scrollY - (window.innerHeight - row.offsetHeight) / 2);
+    } else {
+      window.scrollTo(0, view === "home" ? homeScroll.current : 0);
+    }
+  }, [view, startAt]);
 
   const [toast, setToast] = useState<Toast | null>(null);
   /** Adds n of one line (lineKey: the dish plus its picks). */
@@ -1465,8 +1479,8 @@ function GridCard({ dish, onOpen, onAdd }: { dish: Dish; onOpen: () => void; onA
 // ---------------------------------------------------------------------------
 
 /**
- * The landing page: the featured dish big, then three featured dishes, three
- * new ones, and the menu's categories, each a way straight into the menu.
+ * The landing page: the featured dish big, then the featured dishes, the new
+ * ones, and the menu's categories, each a way straight into the menu.
  */
 function HomeView({
   menu,
@@ -1485,8 +1499,8 @@ function HomeView({
   const all = menu.dishOrder.map((id) => menu.dishes[id]);
   if (!all.length) return <MenuSoon name={menu.businessName} />;
   const hero = all.find((d) => d.featured) ?? all[0];
-  const featured = all.filter((d) => d.bestSeller && d.id !== hero?.id).slice(0, 3);
-  const fresh = all.filter((d) => d.isNew && d.id !== hero?.id).slice(0, 3);
+  const featured = all.filter((d) => d.bestSeller && d.id !== hero?.id);
+  const fresh = all.filter((d) => d.isNew && d.id !== hero?.id);
 
   return (
     <div className="mx-auto max-w-3xl md:max-w-5xl md:px-6 md:pt-2 lg:max-w-6xl">
@@ -1694,7 +1708,10 @@ function SectionTitle({ id, children }: { id: string; children: React.ReactNode 
 
 const MINI_TINTS = ["bg-leaf-tint", "bg-mango-soft", "bg-leaf-tint"];
 
-/** Three dishes side by side on tinted tiles, each with its price stamp. */
+/**
+ * Dishes side by side on tinted tiles, each with its price stamp. Up to three
+ * fill the row; more swipe sideways and go round (LoopRow).
+ */
 function MiniRow({
   title,
   rowId,
@@ -1712,38 +1729,170 @@ function MiniRow({
   return (
     <section className="mt-10 px-4 md:px-0" aria-labelledby={titleId}>
       <SectionTitle id={titleId}>{title}</SectionTitle>
-      <ul className="mt-4 grid grid-cols-3 gap-2.5">
-        {dishes.map((d, i) => (
-          <li key={d.id} className={`flex flex-col rounded-[20px] p-1.5 pb-2 ${MINI_TINTS[i % MINI_TINTS.length]}`}>
-            <button type="button" onClick={() => onDish(d.id)} className="relative block text-center">
-              <DishImage dish={d} sizes="(min-width: 1024px) 180px, 33vw" className="aspect-square rounded-[14px]" />
-              <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(59_46_37/0.18)]">
-                {formatPrice(d.priceCents)}
-              </span>
-              <span className="mt-2 line-clamp-2 block min-h-[2.5em] px-0.5 font-display text-[14px] font-bold leading-[1.25]">
-                {d.name}
-              </span>
-            </button>
-            <button
-              type="button"
-              disabled={!d.available}
-              onClick={() => onAdd(d.id)}
-              aria-label={d.available ? `Add ${d.name} to order` : undefined}
-              className="mt-2 flex min-h-10 items-center justify-center gap-1 rounded-full bg-leaf px-1 text-[14px] font-semibold text-white active:bg-leaf-dark disabled:bg-white/70 disabled:text-[11px] disabled:leading-tight disabled:text-muted"
-            >
-              {d.available ? (
-                <>
-                  <PlusIcon width={16} height={16} strokeWidth={2.4} />
-                  Add
-                </>
-              ) : (
-                "Not Available Today"
-              )}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {dishes.length > 3 ? (
+        <LoopRow dishes={dishes} onDish={onDish} onAdd={onAdd} />
+      ) : (
+        <ul className="mt-4 grid grid-cols-3 gap-2.5">
+          {dishes.map((d, i) => (
+            <MiniTile key={d.id} dish={d} tint={MINI_TINTS[i % MINI_TINTS.length]} onDish={onDish} onAdd={onAdd} />
+          ))}
+        </ul>
+      )}
     </section>
+  );
+}
+
+function MiniTile({
+  dish: d,
+  tint,
+  copy,
+  onDish,
+  onAdd,
+}: {
+  dish: Dish;
+  tint: string;
+  /** In a LoopRow: true for the copies around the real set, seen but skipped by screen readers and Tab. */
+  copy?: boolean;
+  onDish: (id: string) => void;
+  onAdd: (id: string) => void;
+}) {
+  return (
+    <li
+      aria-hidden={copy || undefined}
+      inert={copy || undefined}
+      className={`flex flex-col rounded-[20px] p-1.5 pb-2 ${tint} ${
+        copy === undefined ? "" : "shrink-0 grow-0 snap-start basis-[calc((100%-32px)/3.3)] md:basis-[calc((100%-20px)/3)]"
+      }`}
+    >
+      <button type="button" onClick={() => onDish(d.id)} className="relative block text-center">
+        <DishImage dish={d} sizes="(min-width: 1024px) 180px, 33vw" className="aspect-square rounded-[14px]" />
+        <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(59_46_37/0.18)]">
+          {formatPrice(d.priceCents)}
+        </span>
+        <span className="mt-2 line-clamp-2 block min-h-[2.5em] px-0.5 font-display text-[14px] font-bold leading-[1.25]">
+          {d.name}
+        </span>
+      </button>
+      <button
+        type="button"
+        disabled={!d.available}
+        onClick={() => onAdd(d.id)}
+        aria-label={d.available ? `Add ${d.name} to order` : undefined}
+        className="mt-2 flex min-h-10 items-center justify-center gap-1 rounded-full bg-leaf px-1 text-[14px] font-semibold text-white active:bg-leaf-dark disabled:bg-white/70 disabled:text-[11px] disabled:leading-tight disabled:text-muted"
+      >
+        {d.available ? (
+          <>
+            <PlusIcon width={16} height={16} strokeWidth={2.4} />
+            Add
+          </>
+        ) : (
+          "Not Available Today"
+        )}
+      </button>
+    </li>
+  );
+}
+
+// ponytail: enough copies for at least 12 tiles each side of the middle set; a
+// fling longer than that stops at the row's real end, then the loop carries on.
+const LOOP_REACH = 12;
+
+/**
+ * A row that goes round: the dishes are laid out several times over and the
+ * guest starts in the middle set. Whenever a swipe comes to rest outside the
+ * middle set, the row jumps back by one whole set; the tiles in view are the
+ * same dishes, so nothing seems to move. On a phone a sliver of the next tile
+ * shows; from a tablet up there are arrows.
+ */
+function LoopRow({ dishes, onDish, onAdd }: { dishes: Dish[]; onDish: (id: string) => void; onAdd: (id: string) => void }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const n = dishes.length;
+  const mid = Math.ceil(LOOP_REACH / n);
+
+  // One set's width and one tile's step, measured, so fractional tile widths stay exact.
+  const measure = useCallback(() => {
+    const kids = ref.current!.children;
+    const left = (i: number) => kids[i].getBoundingClientRect().left;
+    return { set: left(n) - left(0), step: left(1) - left(0) };
+  }, [n]);
+
+  /** Back into the middle set, by whole sets. */
+  const recentre = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const { set } = measure();
+    let x = el.scrollLeft;
+    while (x < (mid - 0.5) * set) x += set;
+    while (x >= (mid + 0.5) * set) x -= set;
+    if (Math.abs(x - el.scrollLeft) > 1) el.scrollLeft = x;
+  }, [measure, mid]);
+
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    el.scrollLeft = mid * measure().set;
+    // A finger still on the row: wait for it to lift (and the coast after).
+    let touching = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
+      if (!touching) recentre();
+    };
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(settle, 150);
+    };
+    const down = () => {
+      touching = true;
+    };
+    const up = () => {
+      touching = false;
+      onScroll();
+    };
+    // scrollend where the browser has it; a pause after the last scroll event everywhere.
+    el.addEventListener("scrollend", settle);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("touchstart", down, { passive: true });
+    el.addEventListener("touchend", up);
+    el.addEventListener("touchcancel", up);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("scrollend", settle);
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("touchstart", down);
+      el.removeEventListener("touchend", up);
+      el.removeEventListener("touchcancel", up);
+    };
+  }, [measure, recentre, mid]);
+
+  const go = (dir: 1 | -1) => {
+    const el = ref.current;
+    if (!el) return;
+    // Taps faster than the glide never run out of row.
+    recentre();
+    el.scrollBy({ left: dir * measure().step, behavior: "smooth" });
+  };
+  const arrow =
+    "absolute top-[calc(50%-46px)] z-10 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-forest shadow-[0_4px_14px_rgb(59_46_37/0.22)] active:bg-wash md:grid";
+
+  return (
+    <div className="relative mt-4">
+      {/* On a phone the row runs to both screen edges, and the 16px gap matches the side padding so the tile before ends right at the edge. */}
+      <ul
+        ref={ref}
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:gap-2.5 md:px-0"
+      >
+        {Array.from({ length: 2 * mid + 1 }, (_, copy) =>
+          dishes.map((d, i) => (
+            <MiniTile key={`${copy}-${d.id}`} dish={d} tint={MINI_TINTS[i % 2]} copy={copy !== mid} onDish={onDish} onAdd={onAdd} />
+          ))
+        )}
+      </ul>
+      <button type="button" aria-label="Previous dishes" onClick={() => go(-1)} className={`${arrow} -left-3`}>
+        <ChevronLeft width={20} height={20} strokeWidth={2.4} />
+      </button>
+      <button type="button" aria-label="Next dishes" onClick={() => go(1)} className={`${arrow} -right-3`}>
+        <ChevronRight width={20} height={20} strokeWidth={2.4} />
+      </button>
+    </div>
   );
 }
 

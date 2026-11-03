@@ -89,7 +89,7 @@ check(own.status === 200 && own.text.includes("tbl_kusina_1"), "Kusina's manager
 check(!own.text.includes("hikay"), "...and none of Hikay's");
 
 // Pages a manager reads: none may show anything of Hikay's.
-for (const page of ["/admin", "/admin/dashboard", "/admin/menu", "/admin/categories", "/admin/links", "/admin/manage", "/admin/settings"]) {
+for (const page of ["/admin", "/admin/dashboard", "/admin/menu", "/admin/categories", "/admin/links", "/admin/manage", "/admin/settings", "/admin/homepage", "/m/preview"]) {
   const r = await kusina(page);
   const leak = ["Chicken Inasal", "Maria", "tbl_hikay", "k7x9q2mp", "biz_hikay"].find((s) => r.text.includes(s));
   check(r.status === 200 && !leak, `${page} shows only Kusina${leak ? ` (found "${leak}")` : ""}`);
@@ -117,6 +117,7 @@ const attacks = [
   ["POST", "/api/staff/menu/categories", { name: "Under Hikay's", parentId: "cat_pork" }],
   ["DELETE", "/api/staff/menu/categories/cat_pork"],
   ["POST", "/api/staff/menu/categories/order", { ids: ["cat_halal", "cat_veg", "cat_beef", "cat_pork", "cat_chicken", "cat_seafood"] }],
+  ["POST", "/api/staff/homepage", { hero: "d_sisig", featured: [], fresh: [] }],
   // A logo from Hikay's photo folder is not Kusina's to use.
   ["POST", "/api/staff/logo", { logoUrl: "https://res.cloudinary.com/x/image/upload/tapndine/hikay/logo" }],
 ];
@@ -133,6 +134,11 @@ await kusina("/api/staff/tables/tbl_hikay_2/clear", { method: "POST", body: {} }
 check(openOn2() === open2, "Clearing Hikay's table 2 did nothing");
 await kusina("/api/staff/waiters/stf_ana/disable", { method: "POST", body: {} });
 check(sql(`SELECT disabled_at FROM staff WHERE id = 'stf_ana'`).disabled_at === null, "Disabling Hikay's waiter did nothing");
+// Hikay's dishes in Kusina's home rows answer ok too (they are simply not Kusina's).
+const homeOf = () => sql(`SELECT group_concat(id || featured || best_seller || is_new) AS s FROM dishes WHERE business_id = '${HIKAY}'`).s;
+const home = homeOf();
+await kusina("/api/staff/homepage", { method: "POST", body: { hero: null, featured: JSON.parse(hikayDishes), fresh: JSON.parse(hikayDishes) } });
+check(homeOf() === home, "Putting Hikay's dishes in Kusina's home rows did nothing to Hikay's");
 
 // Kusina adds a dish of its own but asks for Hikay's category: the category is dropped.
 const sneak = await kusina("/api/staff/menu/dishes", {
