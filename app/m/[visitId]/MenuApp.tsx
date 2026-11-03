@@ -24,6 +24,7 @@ import {
   type DishOption,
 } from "@/lib/options";
 import Expired from "@/app/components/Expired";
+import { CategoryIcon } from "@/app/components/CategoryIcon";
 import {
   BagIcon,
   BellIcon,
@@ -289,6 +290,18 @@ export default function MenuApp({
   // guest and their send.
   const [sendAfterNick, setSendAfterNick] = useState(false);
   const { active: chapter, jump: jumpToChapter } = useChapterSpy(view === "menu");
+
+  // How tall the sticky header is right now (its search and tabs come and go
+  // with the view and the screen), for what sticks under it.
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const set = () => document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
+    set();
+    const watch = new ResizeObserver(set);
+    watch.observe(header);
+    return () => watch.disconnect();
+  }, [view]);
 
   // Opening My order or the call box picks up anything the waiter did since.
   useEffect(() => {
@@ -1129,7 +1142,17 @@ function useChapterSpy(on: boolean) {
   // A jump to a section too short to reach the top still shows that section:
   // the scroll it causes is not read, the guest's next one is.
   const skipScroll = useRef(false);
-  const line = () => (document.querySelector("header")?.getBoundingClientRect().bottom ?? 0) + 16;
+  const headerBottom = () => document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+  // A category's own row of sub-categories (SubTabs) sticks under the header
+  // while the guest is in it; a section counts as reached once it passes that.
+  const line = () => {
+    let bottom = headerBottom();
+    for (const tabs of document.querySelectorAll<HTMLElement>("[data-subtabs]")) {
+      const r = tabs.getBoundingClientRect();
+      if (r.height && r.top <= bottom + 1 && r.bottom > bottom) bottom = r.bottom;
+    }
+    return bottom + 16;
+  };
 
   useEffect(() => {
     if (!on) return;
@@ -1160,7 +1183,10 @@ function useChapterSpy(on: boolean) {
   const jump = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-chapter="${CSS.escape(id)}"]`);
     if (!el) return;
-    const y = Math.round(el.getBoundingClientRect().top + window.scrollY - line());
+    // A sub-category lands below its category's row of sub-categories, which
+    // will be stuck under the header by then even if it isn't yet.
+    const tabs = el.tagName === "SECTION" ? null : el.closest("section")?.querySelector<HTMLElement>("[data-subtabs]");
+    const y = Math.round(el.getBoundingClientRect().top + window.scrollY - headerBottom() - (tabs?.offsetHeight ?? 0) - 16);
     skipScroll.current = Math.round(window.scrollY) !== Math.min(Math.max(y, 0), document.documentElement.scrollHeight - window.innerHeight);
     window.scrollTo(0, y);
     setActive(id);
@@ -1179,42 +1205,82 @@ function showInList(list: HTMLElement, row: Element | null | undefined) {
   else if (r.bottom > l.bottom) list.scrollTop += r.bottom - l.bottom;
 }
 
-/**
- * Phones and tablets: one row of tabs that follows the scroll, every category
- * and sub-category its own tab, each sub-category right after its main one
- * (Drinks, Beverage, Espresso Based…). The row never changes as the guest
- * scrolls, and every tab looks and works the same, the way foodpanda and
- * GrabFood list a café's drinks (and Nielsen Norman's tab guidelines ask).
- * Adding a category's sub-categories only while inside it made the row grow,
- * slide and push the category itself out of view.
- */
-function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | null; onJump: (id: string) => void }) {
-  const chapters = menuChapters(menu);
-  const tabs = chapters.flatMap((c) => [{ id: c.id, name: c.name }, ...c.subs.map((s) => ({ id: s.id, name: s.name }))]);
-  const current = active ?? tabs[0]?.id;
+/** Scrolls a row of tabs sideways so its current tab sits in the middle. */
+function useCentred(current: string | undefined) {
   const rowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const row = rowRef.current;
-    const chip = row?.querySelector("[aria-current]");
-    if (!row || !chip) return;
-    const c = chip.getBoundingClientRect();
+    const tab = row?.querySelector("[aria-current]");
+    if (!row || !tab) return;
+    const t = tab.getBoundingClientRect();
     const r = row.getBoundingClientRect();
-    row.scrollLeft += c.left + c.width / 2 - (r.left + r.width / 2);
+    row.scrollLeft += t.left + t.width / 2 - (r.left + r.width / 2);
   }, [current]);
-  if (!tabs.length) return null;
+  return rowRef;
+}
+
+/**
+ * Phones and tablets: the main categories only, each with a food icon, in one
+ * row that follows the scroll and never changes. A category's sub-categories
+ * are a second, lighter row inside its own section (SubTabs), the primary and
+ * secondary tabs of Material Design: in one row, "Drinks" and "Beverage" read
+ * as two equal categories.
+ */
+function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | null; onJump: (id: string) => void }) {
+  const chapters = menuChapters(menu);
+  // In one of Drinks' sub-categories, Drinks is the tab that is lit.
+  const current = chapters.find((c) => c.id === active || c.subs.some((s) => s.id === active))?.id ?? chapters[0]?.id;
+  const rowRef = useCentred(current);
+  if (!chapters.length) return null;
   return (
     <div ref={rowRef} role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-2 flex items-center gap-1 overflow-x-auto px-4 motion-safe:scroll-smooth md:-mx-6 md:px-6">
-      {tabs.map((t) => (
+      {chapters.map((c) => (
         <button
-          key={t.id}
+          key={c.id}
           type="button"
-          aria-current={t.id === current ? "location" : undefined}
-          onClick={() => onJump(t.id)}
-          className={`h-11 shrink-0 rounded-lg px-3.5 text-[15px] font-semibold ${t.id === current ? "bg-leaf text-white" : "text-muted active:bg-wash"}`}
+          aria-current={c.id === current ? "location" : undefined}
+          onClick={() => onJump(c.id)}
+          className={`flex h-11 shrink-0 items-center gap-1.5 rounded-lg pl-3 pr-3.5 text-[15px] font-semibold ${
+            c.id === current ? "bg-leaf text-white" : "text-muted active:bg-wash"
+          }`}
         >
-          {t.name}
+          <CategoryIcon name={c.name} />
+          {c.name}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Phones and tablets: a category's sub-categories, as a row of plain words
+ * with a line under the one the guest is in, right under the category's dark
+ * band. It sticks under the header while the guest scrolls through that
+ * category and leaves with it, so the header never changes height. Desktop
+ * has them indented in the side list instead.
+ */
+function SubTabs({ chapter, active, onJump }: { chapter: Chapter; active: string | null; onJump: (id: string) => void }) {
+  const current = chapter.subs.find((s) => s.id === active)?.id;
+  const rowRef = useCentred(current);
+  return (
+    <div data-subtabs className="sticky z-[5] border-b border-ink/10 bg-white lg:hidden" style={{ top: "var(--header-h, 0px)" }}>
+      <div ref={rowRef} role="group" aria-label={`${chapter.name}: sections`} className="no-scrollbar flex overflow-x-auto px-1.5 motion-safe:scroll-smooth">
+        {chapter.subs.map((s) => {
+          const on = s.id === current;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              aria-current={on ? "location" : undefined}
+              onClick={() => onJump(s.id)}
+              className={`relative h-11 shrink-0 px-3 text-[14px] font-semibold ${on ? "text-ink" : "text-muted active:bg-wash"}`}
+            >
+              {s.name}
+              {on && <span aria-hidden="true" className="absolute inset-x-3 bottom-0 h-[3px] rounded-t-full bg-mango" />}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1292,7 +1358,10 @@ function WholeMenu({
                   c.id === open?.id ? "bg-leaf text-white" : "hover:bg-wash"
                 }`}
               >
-                <span className="truncate">{c.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <CategoryIcon name={c.name} className="shrink-0" />
+                  <span className="truncate">{c.name}</span>
+                </span>
                 <span className={`shrink-0 text-[13px] font-medium ${c.id === open?.id ? "text-white/70" : "text-muted"}`}>{c.count}</span>
               </button>
               {c.id === open?.id &&
@@ -1328,13 +1397,15 @@ function WholeMenu({
           </p>
         )}
         {chapters.map((c) => (
-          <section key={c.id} data-chapter={c.id} tabIndex={-1} aria-labelledby={`ch-${c.id}`} className="overflow-hidden rounded-[14px] border border-ink/15 bg-white">
+          // clip, not hidden: hidden would stop its row of sub-categories from sticking.
+          <section key={c.id} data-chapter={c.id} tabIndex={-1} aria-labelledby={`ch-${c.id}`} className="overflow-clip rounded-[14px] border border-ink/15 bg-white">
             <div className="flex items-baseline justify-between gap-3 bg-forest px-3.5 py-2.5 text-white sm:px-5 sm:py-3">
               <h2 id={`ch-${c.id}`} className="min-w-0 font-display text-[21px] font-bold leading-tight sm:text-[23px]">
                 {c.name}
               </h2>
               <span className="shrink-0 text-[14px] text-white/70">{dishCount(c.count)}</span>
             </div>
+            {c.subs.length > 0 && <SubTabs chapter={c} active={active} onJump={onJump} />}
             {c.direct.length > 0 && grid(c.direct)}
             {c.subs.map((s, i) => (
               <div key={s.id} data-chapter={s.id} tabIndex={-1}>
@@ -1441,8 +1512,9 @@ function HomeView({
 
 /**
  * Every main category as a tile with a photo from it and how many dishes it
- * has, after the whole menu's own tile: a guest who came for a drink goes
- * straight to Drinks instead of scrolling past everything else.
+ * has: a guest who came for a drink goes straight to Drinks instead of
+ * scrolling past everything else. A last row that isn't full sits centred,
+ * over the way into the whole menu.
  */
 function BrowseMenu({
   menu,
@@ -1460,25 +1532,15 @@ function BrowseMenu({
   return (
     <section className="mt-10 px-4 md:px-0" aria-labelledby="row-browse">
       <SectionTitle id="row-browse">Browse the menu</SectionTitle>
-      <ul className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
-        <li>
-          <button type="button" onClick={onMenu} className={`${tile} w-full bg-forest text-white active:bg-forest-soft`}>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15">
-              <MenuIcon width={22} height={22} />
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className="block font-display text-[15px] font-bold">Whole menu</span>
-              <span className="block text-[13px] text-white/70">{dishCount(total)}</span>
-            </span>
-          </button>
-        </li>
+      {/* Two, three, then four across; the 10px gaps come out of each tile's width. */}
+      <ul className="mt-4 flex flex-wrap justify-center gap-2.5">
         {chapters.map((c) => {
           // Its first dish with a photo, one on today's menu if any (a sold-out one shows grey).
           const inIt = [...c.direct, ...c.subs.flatMap((s) => s.dishIds)].map((id) => menu.dishes[id]).filter((d) => d.imageUrl);
           const photo = inIt.find((d) => d.available) ?? inIt[0];
           return (
-            <li key={c.id}>
-              <button type="button" onClick={() => onCategory(c.id)} className={`${tile} w-full border border-ink/10 bg-white active:bg-wash`}>
+            <li key={c.id} className="flex-none basis-[calc(50%-5px)] md:basis-[calc((100%-20px)/3)] lg:basis-[calc((100%-30px)/4)]">
+              <button type="button" onClick={() => onCategory(c.id)} className={`${tile} h-full w-full border border-ink/10 bg-white active:bg-wash`}>
                 {photo ? (
                   <DishImage dish={photo} soldOutLabel={false} sizes="44px" className="h-10 w-10 shrink-0 rounded-xl min-[380px]:h-11 min-[380px]:w-11" />
                 ) : (
@@ -1494,6 +1556,17 @@ function BrowseMenu({
           );
         })}
       </ul>
+      <div className="mb-4 mt-5 flex justify-center">
+        <button
+          type="button"
+          onClick={onMenu}
+          className="flex h-[56px] items-center gap-3 rounded-full bg-forest pl-5 pr-6 text-white active:bg-forest-soft"
+        >
+          <MenuIcon width={22} height={22} />
+          <span className="font-display text-[18px] font-bold">Whole menu</span>
+          <span className="text-[14px] text-white/70">{dishCount(total)}</span>
+        </button>
+      </div>
     </section>
   );
 }
