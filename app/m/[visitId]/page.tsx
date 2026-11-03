@@ -17,11 +17,11 @@ const load = cache(async (visitId: string) => {
   return visit && menu ? { visit, menu } : null;
 });
 
-// The menu's header is light, so the phone's status bar is too: the page's
-// background, in the restaurant's palette when it picked one.
+// The menu's header is a dark band, and the phone's status bar continues it,
+// in the restaurant's palette when it picked one.
 export async function generateViewport({ params }: { params: Promise<{ visitId: string }> }): Promise<Viewport> {
   const c = palette((await load((await params).visitId))?.menu.palette);
-  return { themeColor: c ? hex(c.paper) : "#FFF9E7" };
+  return { themeColor: c ? hex(c.forest) : "#3B2E25" };
 }
 
 export default async function MenuPage({ params }: { params: Promise<{ visitId: string }> }) {

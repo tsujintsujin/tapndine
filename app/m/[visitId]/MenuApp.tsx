@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
-import type { Dish, Menu } from "@/lib/menu";
+import type { Dish, Menu, SubCategory } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
 import { fold, formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
@@ -43,6 +43,9 @@ import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
 import MenuC from "./MenuC";
 import { DishImage, SpiceMeter } from "./parts";
+
+// The whole menu's header and its boxes line up at this width.
+const MENU_WIDTH = "max-w-3xl md:max-w-5xl lg:max-w-[1400px]";
 
 // ---------------------------------------------------------------------------
 // The list being built lives on this phone until Send to waiter; then it is a
@@ -280,8 +283,7 @@ export default function MenuApp({
   // menu: looking comes first. True while that question stands between the
   // guest and their send.
   const [sendAfterNick, setSendAfterNick] = useState(false);
-  // The category tag picked on the whole menu; null is All.
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const { active: chapter, jump: jumpToChapter } = useChapterSpy(view === "menu");
 
   // Opening My order or the call box picks up anything the waiter did since.
   useEffect(() => {
@@ -424,18 +426,10 @@ export default function MenuApp({
     addOne(lineKey(id, resolvePicks(d, []) ?? []));
   };
   const openOrder = () => setParams((p) => p.set("o", "1"), "push");
-  const openMenu = () => {
-    setCategoryId(null);
-    setParams((p) => p.set("v", "menu"), "push");
-  };
+  const openMenu = () => setParams((p) => p.set("v", "menu"), "push");
   const goHome = () => {
     if (view === "menu") closeParam("v");
     else window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const pickCategory = (id: string | null) => {
-    setCategoryId(id);
-    // The tags stay put at the top; the dishes start again from the first.
-    window.scrollTo(0, 0);
   };
 
   const itemCount = lines.reduce((a, l) => a + l.qty, 0);
@@ -542,6 +536,8 @@ export default function MenuApp({
 
   return (
     <>
+      {/* The whole menu's white boxes sit on a darker page, over the home page's backdrop. */}
+      {view === "menu" && <div aria-hidden="true" className="fixed inset-0 -z-10 bg-wash" />}
       <Header
         nickname={nick || ""}
         businessName={menu.businessName}
@@ -560,7 +556,7 @@ export default function MenuApp({
         {view === "menu" && (
           <>
             <DishSearch menu={menu} onDish={openDish} />
-            <CategoryTags menu={menu} current={categoryId} onPick={pickCategory} />
+            <ChapterChips menu={menu} active={chapter} onJump={jumpToChapter} />
           </>
         )}
       </Header>
@@ -569,10 +565,10 @@ export default function MenuApp({
           screen without the address bar (100lvh) while the bar sits above the
           address bar, so a short page ends that much under the bar and can't
           scroll further: add the difference (0 on desktop). */}
-      <main className="pb-[calc(112px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)] md:pb-16">
+      <main className="pb-[calc(84px_+_env(safe-area-inset-bottom)_+_100lvh_-_100svh)] md:pb-16">
         <div key={view} className="view-in">
           {view === "menu" ? (
-            <WholeMenu menu={menu} categoryId={categoryId} onDish={openDish} onAdd={quickAdd} onPick={pickCategory} />
+            <WholeMenu menu={menu} active={chapter} onJump={jumpToChapter} onDish={openDish} onAdd={quickAdd} />
           ) : (
             <HomeView menu={menu} onDish={openDish} onAdd={quickAdd} onMenu={openMenu} />
           )}
@@ -800,8 +796,8 @@ function CallPrompt({
 /**
  * The restaurant's logo and name, then the table and the guest's name, with
  * the call button opposite (the order button where there is no waiter).
- * Stays at the top while the page scrolls; on the whole menu it also holds
- * the search and the category tags (`children`).
+ * Stays at the top while the page scrolls, a dark band edge to edge; on the
+ * whole menu a white strip under it holds the search and the chapters (`children`).
  */
 function Header({
   nickname,
@@ -838,33 +834,33 @@ function Header({
   children?: React.ReactNode;
 }) {
   const navTab = (on: boolean) =>
-    `flex h-11 items-center gap-2 rounded-full px-4 text-[15px] font-semibold ${
-      on ? "bg-leaf-tint text-ink" : "text-muted hover:bg-wash hover:text-ink"
+    `flex h-11 items-center gap-2 rounded-lg px-4 text-[15px] font-semibold ${
+      on ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
     }`;
   const who = [tableLabel, nickname ? `Hi ${nickname}` : null].filter(Boolean).join(" · ");
   return (
-    <header className="sticky top-0 z-20 bg-paper/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-      <div className="mx-auto max-w-3xl px-4 md:max-w-5xl md:px-6 lg:max-w-6xl">
-        <div className="flex h-[72px] items-center justify-between gap-3 md:h-20">
+    <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
+      <div className={`mx-auto px-4 md:px-6 ${view === "menu" ? MENU_WIDTH : "max-w-3xl md:max-w-5xl lg:max-w-6xl"}`}>
+        <div className="flex h-[60px] items-center justify-between gap-3 md:h-[72px]">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="h-11 w-11 shrink-0 rounded-full bg-white object-contain ring-1 ring-line" />
+              <img src={logoUrl} alt="" className="h-10 w-10 shrink-0 rounded-full bg-white object-contain" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-[22px] font-bold leading-tight">{businessName}</p>
+              <p className="truncate font-display text-[20px] font-bold leading-tight md:text-[22px]">{businessName}</p>
               {onNickname ? (
                 <button
                   type="button"
                   onClick={onNickname}
-                  className="-mx-1.5 -my-1 flex min-h-8 max-w-full items-center gap-1 rounded-lg px-1.5 text-[14px] leading-tight text-muted active:bg-wash"
+                  className="-mx-1.5 -my-1 flex min-h-8 max-w-full items-center gap-1 rounded-lg px-1.5 text-[14px] leading-tight text-white/70 active:bg-white/10"
                 >
                   <span className="truncate">{who || "Add your name"}</span>
-                  <span className="shrink-0 font-semibold text-leaf">{nickname ? "Edit" : who ? "· Add name" : ""}</span>
+                  <span className="shrink-0 font-semibold text-mango">{nickname ? "Edit" : who ? "· Add name" : ""}</span>
                   <span className="sr-only">Change your nickname</span>
                 </button>
               ) : (
-                who && <p className="truncate text-[14px] leading-tight text-muted">{who}</p>
+                who && <p className="truncate text-[14px] leading-tight text-white/70">{who}</p>
               )}
             </div>
           </div>
@@ -882,14 +878,14 @@ function Header({
               type="button"
               onClick={onOrder}
               aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-              className="ml-2 flex h-12 items-center gap-2.5 rounded-full border border-line bg-white pl-4 pr-5 text-[15px] font-semibold hover:border-leaf"
+              className="ml-2 flex h-11 items-center gap-2.5 rounded-lg bg-mango pl-3.5 pr-4 text-[15px] font-semibold text-forest hover:brightness-105"
             >
               <span className="relative">
                 <BagIcon width={20} height={20} />
                 {itemCount > 0 && <CountBadge count={itemCount} />}
               </span>
               My order
-              {itemCount > 0 && <span className="text-muted">{formatPrice(orderTotal)}</span>}
+              {itemCount > 0 && <span className="font-bold">{formatPrice(orderTotal)}</span>}
             </button>
           </nav>
           {onCall ? (
@@ -897,33 +893,38 @@ function Header({
               type="button"
               onClick={onCall}
               aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
-              className="relative flex h-12 shrink-0 items-center gap-1.5 rounded-full bg-leaf pl-3 pr-4 text-[15px] font-semibold text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark"
+              className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-white/15 pl-2.5 pr-3.5 text-[15px] font-semibold text-white hover:bg-white/25 active:bg-white/25"
             >
               <BellIcon width={22} height={22} />
               Waiter
-              {calling && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-paper" aria-hidden />}
+              {calling && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-forest" aria-hidden />}
             </button>
           ) : (
             <button
               type="button"
               onClick={onOrder}
               aria-label={itemCount ? `My order, ${itemCount} items` : "My order"}
-              className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leaf text-white shadow-[0_6px_16px_rgb(59_46_37/0.3)] active:bg-leaf-dark md:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-mango text-forest active:brightness-95 md:hidden"
             >
               <BagIcon width={22} height={22} />
               {itemCount > 0 && <CountBadge count={itemCount} />}
             </button>
           )}
         </div>
-        {children && <div className="pb-3 lg:hidden">{children}</div>}
       </div>
+      {children && (
+        <div className="border-b border-ink/15 bg-white pb-2 pt-2 text-ink lg:hidden">
+          <div className="mx-auto max-w-3xl px-4 md:max-w-5xl md:px-6">{children}</div>
+        </div>
+      )}
     </header>
   );
 }
 
+/** Sits on the mango order button. */
 function CountBadge({ count }: { count: number }) {
   return (
-    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold leading-none text-forest ring-2 ring-paper">
+    <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-forest px-1 text-[12px] font-bold leading-none text-white ring-2 ring-mango">
       {count}
     </span>
   );
@@ -1004,7 +1005,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
         placeholder="Search dishes"
         enterKeyHint="search"
         autoComplete="off"
-        className="h-12 w-full rounded-full border border-line bg-white pl-11 pr-11 text-[16px] outline-none placeholder:text-muted/80 focus:border-leaf focus:ring-2 focus:ring-leaf/20 [&::-webkit-search-cancel-button]:hidden"
+        className="h-11 w-full rounded-lg border border-ink/15 bg-white pl-11 pr-11 text-[16px] outline-none placeholder:text-muted/80 focus:border-leaf focus:ring-2 focus:ring-leaf/20 [&::-webkit-search-cancel-button]:hidden"
       />
       {q && (
         <button
@@ -1065,208 +1066,289 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
   );
 }
 
-/** Which main category and sub-category an id points at; the state holds either kind. */
-function findCategory(menu: Menu, id: string | null) {
-  const main = menu.categories.find((c) => c.id === id || c.subs.some((s) => s.id === id));
-  return { main, sub: main?.subs.find((s) => s.id === id) };
+/** A block of the whole menu: a main category, or the dishes in none ("other"). */
+type Chapter = { id: string; name: string; count: number; direct: string[]; subs: SubCategory[] };
+
+/**
+ * The menu in reading order. A main category's own dishes come first, then one
+ * strip per sub-category. A dish in no category still gets a place at the end.
+ */
+function menuChapters(menu: Menu): Chapter[] {
+  const chapters: Chapter[] = menu.categories.map((c) => {
+    const inSub = new Set(c.subs.flatMap((s) => s.dishIds));
+    return { id: c.id, name: c.name, count: c.dishIds.length, direct: c.dishIds.filter((id) => !inSub.has(id)), subs: c.subs };
+  });
+  const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
+  const rest = menu.dishOrder.filter((id) => !placed.has(id));
+  if (rest.length) chapters.push({ id: "other", name: chapters.length ? "More dishes" : "All dishes", count: rest.length, direct: rest, subs: [] });
+  return chapters;
+}
+
+const dishCount = (n: number) => `${n} ${n === 1 ? "dish" : "dishes"}`;
+
+/**
+ * Which chapter or sub-category the guest has scrolled to (the last one whose
+ * top has passed under the sticky header), and how to jump to one. Jumps are
+ * instant: a smooth scroll would light up every section on the way past.
+ */
+function useChapterSpy(on: boolean) {
+  const [active, setActive] = useState<string | null>(null);
+  // A jump to a section too short to reach the top still shows that section:
+  // the scroll it causes is not read, the guest's next one is.
+  const skipScroll = useRef(false);
+  const line = () => (document.querySelector("header")?.getBoundingClientRect().bottom ?? 0) + 16;
+
+  useEffect(() => {
+    if (!on) return;
+    let frame = 0;
+    const read = () => {
+      frame = 0;
+      let current: string | null = null;
+      for (const el of document.querySelectorAll<HTMLElement>("[data-chapter]")) {
+        if (el.getBoundingClientRect().top > line()) break;
+        current = el.dataset.chapter!;
+      }
+      setActive(current);
+    };
+    const onScroll = () => {
+      if (skipScroll.current) skipScroll.current = false;
+      else frame ||= requestAnimationFrame(read);
+    };
+    read();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [on]);
+
+  const jump = (id: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-chapter="${CSS.escape(id)}"]`);
+    if (!el) return;
+    const y = Math.round(el.getBoundingClientRect().top + window.scrollY - line());
+    skipScroll.current = Math.round(window.scrollY) !== Math.min(Math.max(y, 0), document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, y);
+    setActive(id);
+    el.focus({ preventScroll: true });
+  };
+
+  return { active, jump };
+}
+
+/** Moves a scrolling list only as far as it takes to show this row, never the page. */
+function showInList(list: HTMLElement, row: Element | null | undefined) {
+  if (!row) return;
+  const r = row.getBoundingClientRect();
+  const l = list.getBoundingClientRect();
+  if (r.top < l.top) list.scrollTop -= l.top - r.top;
+  else if (r.bottom > l.bottom) list.scrollTop += r.bottom - l.bottom;
 }
 
 /**
- * All, then each main category. Picking one swaps the dishes below in place;
- * one with sub-categories opens a second row of them.
+ * Phones and tablets: one row of chapters that follows the scroll. The open
+ * chapter's sub-categories sit in the same row, so the sticky header never
+ * changes height, which would move the page under the guest's thumb.
  */
-function CategoryTags({
-  menu,
-  current,
-  onPick,
-}: {
-  menu: Menu;
-  current: string | null;
-  onPick: (id: string | null) => void;
-}) {
-  const tags = [{ id: null, name: "All" }, ...menu.categories];
-  const { main, sub } = findCategory(menu, current);
+function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | null; onJump: (id: string) => void }) {
+  const chapters = menuChapters(menu);
+  const current = active ?? chapters[0]?.id;
+  const open = chapters.find((c) => c.id === current || c.subs.some((s) => s.id === current));
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = rowRef.current;
+    const chip = row?.querySelector("[aria-current]");
+    if (!row || !chip) return;
+    const c = chip.getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    row.scrollLeft += c.left + c.width / 2 - (r.left + r.width / 2);
+  }, [current]);
+  if (!chapters.length) return null;
   return (
-    <>
-    <div role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-3 flex gap-1 overflow-x-auto px-4">
-      {tags.map((t) => {
-        const on = t.id === (main?.id ?? null);
-        return (
+    <div ref={rowRef} role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-2 flex items-center gap-1 overflow-x-auto px-4 motion-safe:scroll-smooth md:-mx-6 md:px-6">
+      {chapters.map((c) => (
+        <Fragment key={c.id}>
           <button
-            key={t.id ?? "all"}
             type="button"
-            aria-pressed={on}
-            onClick={(e) => {
-              onPick(t.id);
-              e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
-            }}
-            className={`h-10 shrink-0 rounded-xl px-4 text-[15px] font-semibold ${
-              on ? "bg-leaf text-white" : "text-muted active:bg-wash"
-            }`}
+            aria-current={c.id === current ? "location" : undefined}
+            onClick={() => onJump(c.id)}
+            className={`h-10 shrink-0 rounded-lg px-3.5 text-[15px] font-semibold ${c.id === open?.id ? "bg-leaf text-white" : "text-muted active:bg-wash"}`}
           >
-            {t.name}
+            {c.name}
           </button>
-        );
-      })}
+          {c.id === open?.id &&
+            c.subs.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-current={s.id === current ? "location" : undefined}
+                onClick={() => onJump(s.id)}
+                className={`h-10 shrink-0 rounded-lg border px-3 text-[14px] font-semibold ${s.id === current ? "border-mango bg-leaf-tint text-ink" : "border-ink/15 text-muted active:bg-wash"}`}
+              >
+                {s.name}
+              </button>
+            ))}
+        </Fragment>
+      ))}
     </div>
-    {main && main.subs.length > 0 && (
-      <div key={main.id} role="group" aria-label={`${main.name} sub-categories`} className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
-        {[{ id: main.id, name: "All" }, ...main.subs].map((s) => {
-          const on = s.id === (sub?.id ?? main.id);
-          return (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={on}
-              onClick={(e) => {
-                onPick(s.id);
-                e.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
-              }}
-              className={`h-9 shrink-0 rounded-full border px-3.5 text-[14px] font-semibold ${
-                on ? "border-leaf bg-leaf-tint text-leaf" : "border-line text-muted active:bg-wash"
-              }`}
-            >
-              {s.name}
-            </button>
-          );
-        })}
-      </div>
-    )}
-    </>
   );
 }
 
 // ---------------------------------------------------------------------------
 
 /**
- * Every dish, or one category's: two to a row on phones, three on tablets.
- * On desktop the search and categories leave the header for a rail on the
- * left, and the dishes fill the rest, up to four to a row.
+ * The whole menu on one scroll, each category in its own box under a dark band
+ * and each sub-category under its own strip. On desktop a panel on the left
+ * holds the search and the list of chapters, which follows the scroll; on
+ * phones and tablets those are in the header (ChapterChips).
  */
 function WholeMenu({
   menu,
-  categoryId,
+  active,
+  onJump,
   onDish,
   onAdd,
-  onPick,
 }: {
   menu: Menu;
-  categoryId: string | null;
+  active: string | null;
+  onJump: (id: string) => void;
   onDish: (id: string) => void;
   onAdd: (id: string) => void;
-  onPick: (id: string | null) => void;
 }) {
-  const { main, sub } = findCategory(menu, categoryId);
-  const category = sub ?? main;
-  const ids = category ? category.dishIds : menu.dishOrder;
-  // The sub-categories of the open main category sit right under it.
-  const rail = [
-    { id: null as string | null, name: "All dishes", count: menu.dishOrder.length, isSub: false },
-    ...menu.categories.flatMap((c) => [
-      { id: c.id as string | null, name: c.name, count: c.dishIds.length, isSub: false },
-      ...(c.id === main?.id ? c.subs.map((s) => ({ id: s.id as string | null, name: s.name, count: s.dishIds.length, isSub: true })) : []),
-    ]),
-  ];
-  // A long rail scrolls by itself; opening a main category brings its
-  // sub-categories into view, or they could open below the fold.
-  const railRef = useRef<HTMLDivElement>(null);
+  const chapters = menuChapters(menu);
+  const current = active ?? chapters[0]?.id;
+  const open = chapters.find((c) => c.id === current || c.subs.some((s) => s.id === current));
+  // A long list scrolls by itself; keep the open chapter and its sub-categories in view.
+  const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    railRef.current?.querySelector("[data-sub]:last-child, [data-sub]:has(+ :not([data-sub]))")?.scrollIntoView({ block: "nearest" });
-  }, [main?.id]);
+    const list = listRef.current;
+    if (!list) return;
+    showInList(list, [...list.querySelectorAll("[data-sub]")].at(-1));
+    showInList(list, list.querySelector("[aria-current]"));
+  }, [current]);
+
+  const grid = (ids: string[]) => (
+    <ul className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-3 sm:gap-3 sm:p-4 xl:grid-cols-4">
+      {ids.map((id) => (
+        <li key={id}>
+          <GridCard dish={menu.dishes[id]} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-2 md:max-w-5xl md:px-6 lg:grid lg:max-w-6xl lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:pt-4">
-      <aside className="hidden lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:self-start">
-        <DishSearch menu={menu} onDish={onDish} />
-        <div ref={railRef} role="group" aria-label="Categories" className="mt-5 flex min-h-0 flex-col gap-0.5 overflow-y-auto">
-          {rail.map((t) => {
-            const on = t.id === categoryId;
-            return (
+    <div className={`${MENU_WIDTH} mx-auto px-2.5 pt-2.5 md:px-6 md:pt-4 lg:grid lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-4`}>
+      <aside className="hidden rounded-[14px] border border-ink/15 bg-white lg:sticky lg:top-[88px] lg:flex lg:max-h-[calc(100dvh-104px)] lg:flex-col lg:self-start">
+        <div className="shrink-0 border-b border-ink/15 p-3">
+          <DishSearch menu={menu} onDish={onDish} />
+        </div>
+        <div ref={listRef} role="group" aria-label="Categories" className="flex min-h-0 flex-col overflow-y-auto rounded-b-[13px] [scrollbar-width:thin]">
+          {chapters.map((c) => (
+            <Fragment key={c.id}>
               <button
-                key={t.id ?? "all"}
                 type="button"
-                aria-pressed={on}
-                onClick={() => onPick(t.id)}
-                data-sub={t.isSub || undefined}
-                className={`flex h-11 shrink-0 items-center justify-between rounded-xl pr-4 text-left text-[15px] font-semibold ${t.isSub ? "ml-4 pl-3" : "pl-4"} ${
-                  on ? "bg-leaf text-white" : t.id === main?.id ? "bg-leaf-tint text-leaf" : "text-ink hover:bg-wash"
+                aria-current={c.id === current ? "location" : undefined}
+                onClick={() => onJump(c.id)}
+                className={`flex h-11 shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-4 text-left text-[15px] font-semibold last:border-b-0 ${
+                  c.id === open?.id ? "bg-leaf text-white" : "hover:bg-wash"
                 }`}
               >
-                <span className="truncate">{t.name}</span>
-                <span className={`shrink-0 text-[13px] font-medium ${on ? "text-white/70" : "text-muted"}`}>{t.count}</span>
+                <span className="truncate">{c.name}</span>
+                <span className={`shrink-0 text-[13px] font-medium ${c.id === open?.id ? "text-white/70" : "text-muted"}`}>{c.count}</span>
               </button>
-            );
-          })}
+              {c.id === open?.id &&
+                c.subs.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    data-sub
+                    aria-current={s.id === current ? "location" : undefined}
+                    onClick={() => onJump(s.id)}
+                    className={`flex h-11 shrink-0 items-center justify-between gap-2 border-b border-ink/10 pl-8 pr-4 text-left text-[15px] font-medium last:border-b-0 ${
+                      s.id === current ? "bg-leaf-tint shadow-[inset_3px_0_0_rgb(var(--mango))]" : "bg-paper hover:bg-wash"
+                    }`}
+                  >
+                    <span className="truncate">{s.name}</span>
+                    <span className="shrink-0 text-[13px] text-muted">{s.dishIds.length}</span>
+                  </button>
+                ))}
+            </Fragment>
+          ))}
         </div>
       </aside>
-      <section aria-label={category?.name ?? "All dishes"} className="min-w-0">
-        <h2 className="mb-5 hidden font-display text-[28px] font-bold leading-tight lg:block">{category?.name ?? "All dishes"}</h2>
-        {ids.length === 0 && (
-          <div className="pb-6 pt-2">
-            <ul aria-hidden="true" className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
-              {[1, 0.7, 0.45, 0.25].map((o, i) => (
-                <li key={i} style={{ opacity: o }} className={i > 1 ? "hidden sm:block" : ""}>
-                  <span className="block rounded-[22px] bg-leaf-tint p-2">
-                    <span className="block aspect-square rounded-2xl bg-white/70" />
-                  </span>
-                  <span className="mt-4 block h-4 w-3/4 rounded-full bg-wash" />
-                  <span className="mt-2 block h-3.5 w-1/3 rounded-full bg-wash" />
-                </li>
-              ))}
-            </ul>
-            <p className="mt-8 text-center text-[16px] text-muted">
-              {category ? "No dishes here yet." : "No dishes yet. They show up here as soon as the restaurant adds them."}
-            </p>
-          </div>
+      <div className="min-w-0 space-y-3 md:space-y-4">
+        {chapters.length === 0 && (
+          <p className="rounded-[14px] border border-ink/15 bg-white px-4 py-12 text-center text-[16px] text-muted">
+            No dishes yet. They show up here as soon as the restaurant adds them.
+          </p>
         )}
-        <ul key={categoryId ?? "all"} className="view-in grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:gap-x-5 lg:gap-y-8 xl:grid-cols-4">
-          {ids.map((id) => (
-            <li key={id}>
-              <GridCard dish={menu.dishes[id]} onOpen={() => onDish(id)} onAdd={() => onAdd(id)} />
-            </li>
-          ))}
-        </ul>
-      </section>
+        {chapters.map((c) => (
+          <section key={c.id} data-chapter={c.id} tabIndex={-1} aria-labelledby={`ch-${c.id}`} className="overflow-hidden rounded-[14px] border border-ink/15 bg-white">
+            <div className="flex items-baseline justify-between gap-3 bg-forest px-3.5 py-2.5 text-white sm:px-5 sm:py-3">
+              <h2 id={`ch-${c.id}`} className="min-w-0 font-display text-[21px] font-bold leading-tight sm:text-[23px]">
+                {c.name}
+              </h2>
+              <span className="shrink-0 text-[14px] text-white/70">{dishCount(c.count)}</span>
+            </div>
+            {c.direct.length > 0 && grid(c.direct)}
+            {c.subs.map((s, i) => (
+              <div key={s.id} data-chapter={s.id} tabIndex={-1}>
+                <div className={`flex items-baseline gap-2 border-b border-ink/10 bg-leaf-tint px-3.5 py-2 sm:px-5 ${i > 0 || c.direct.length > 0 ? "border-t" : ""}`}>
+                  <h3 className="min-w-0 font-display text-[17px] font-bold leading-tight">{s.name}</h3>
+                  <span className="shrink-0 text-[13px] text-muted">{s.dishIds.length}</span>
+                </div>
+                {grid(s.dishIds)}
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
 
 /**
- * The photo on a pale tile with the add button on its corner, then the name,
- * price and how many it feeds. The photo and name open the details.
+ * A bordered card: the photo edge to edge, then the name and description, then
+ * a row with the price, how many it feeds and the add button. The photo and
+ * name open the details.
  */
 function GridCard({ dish, onOpen, onAdd }: { dish: Dish; onOpen: () => void; onAdd: () => void }) {
   return (
-    <article className="flex h-full flex-col">
-      <div className="relative">
-        <button type="button" onClick={onOpen} aria-label={dish.name} className="block w-full rounded-[22px] bg-leaf-tint p-2">
-          <DishImage dish={dish} className="aspect-square rounded-2xl" />
-        </button>
-        {dish.isNew && dish.available && (
-          <span className="pointer-events-none absolute left-3.5 top-3.5 rounded-full bg-mango px-2.5 py-1 text-[12px] font-bold leading-none text-forest">
-            New
-          </span>
-        )}
+    <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-ink/15 bg-white">
+      <button type="button" onClick={onOpen} aria-label={dish.name} className="block w-full">
+        <DishImage dish={dish} className="aspect-[4/3]" />
+      </button>
+      {dish.isNew && dish.available && (
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-mango px-2.5 py-1 text-[12px] font-bold leading-none text-forest">
+          New
+        </span>
+      )}
+      <button type="button" onClick={onOpen} tabIndex={-1} className="block flex-1 px-3 pb-1 pt-2.5 text-left">
+        <h3 className="font-display text-[15px] font-bold leading-tight sm:text-[16px]">{dish.name}</h3>
+        {dish.shortDescription && <p className="mt-0.5 line-clamp-1 text-[13px] text-muted">{dish.shortDescription}</p>}
+      </button>
+      <div className="flex min-h-[52px] items-center justify-between gap-2 pb-2 pl-3 pr-2">
+        <div className="min-w-0 leading-tight">
+          <p className="text-[16px] font-bold">{formatPrice(dish.priceCents)}</p>
+          <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
+            <PeopleIcon width={15} height={15} />
+            {servesLabel(dish.servesMin, dish.servesMax).replace(/ (people|person)$/, "")}
+          </p>
+        </div>
         {dish.available && (
           <button
             type="button"
             onClick={onAdd}
             aria-label={`Add ${dish.name} to order`}
-            className="absolute -bottom-3 right-2 grid h-11 w-11 place-items-center rounded-full bg-leaf text-white ring-4 ring-paper active:bg-leaf-dark"
+            className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-lg bg-leaf text-[14px] font-semibold text-white hover:bg-leaf-dark active:bg-leaf-dark sm:px-3"
           >
-            <PlusIcon width={22} height={22} strokeWidth={2.4} />
+            <PlusIcon width={20} height={20} strokeWidth={2.4} />
+            <span className="hidden sm:inline">Add</span>
           </button>
         )}
       </div>
-      <button type="button" onClick={onOpen} tabIndex={-1} className="mt-4 block flex-1 text-left">
-        <h3 className="font-display text-[17px] font-bold leading-tight">{dish.name}</h3>
-      </button>
-      <p className="mt-1 flex items-baseline justify-between gap-2">
-        <span className="text-[16px] font-semibold text-leaf">{formatPrice(dish.priceCents)}</span>
-        <span className="flex items-center gap-1 text-[13px] text-muted">
-          <PeopleIcon width={15} height={15} />
-          {servesLabel(dish.servesMin, dish.servesMax).replace(/ (people|person)$/, "")}
-        </span>
-      </p>
     </article>
   );
 }
@@ -2042,9 +2124,8 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Home on the left, the whole menu in the middle, the order on the right. It sits on a strip of the page
- * colour that fades in above it, so dishes scrolling past slip under the
- * fade instead of showing in pieces around the bar.
+ * Home on the left, the whole menu in the middle, the order on the right, on a
+ * dark band edge to edge.
  * Once anything is in the order the right side grows into the running
  * total, so the customer always knows what they will pay.
  */
@@ -2064,52 +2145,29 @@ function BottomNav({
   onOrder: () => void;
 }) {
   const tab = (on: boolean) =>
-    `grid h-12 w-12 shrink-0 place-items-center rounded-full ${on ? "bg-white text-leaf" : "active:bg-white/15"}`;
+    `flex h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-[12px] font-semibold ${on ? "text-mango" : "text-white/80 active:bg-white/10"}`;
   return (
-    <nav
-      aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-paper from-60% to-paper/0 px-4 pb-[calc(10px+env(safe-area-inset-bottom))] pt-6 md:hidden"
-    >
-      <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full bg-leaf px-2 text-white shadow-[0_10px_28px_rgb(59_46_37/0.35)]">
-        <button
-          type="button"
-          onClick={onHome}
-          aria-label="Home"
-          aria-current={view === "home" ? "page" : undefined}
-          className={tab(view === "home")}
-        >
-          <HomeIcon width={24} height={24} />
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-10 bg-forest pb-[env(safe-area-inset-bottom)] text-white md:hidden">
+      <div className="mx-auto grid h-[60px] max-w-md grid-cols-[1fr_1fr_1.5fr] items-center gap-1 px-2">
+        <button type="button" onClick={onHome} aria-current={view === "home" ? "page" : undefined} className={tab(view === "home")}>
+          <HomeIcon width={22} height={22} />
+          Home
         </button>
-        <button
-          type="button"
-          onClick={onMenu}
-          aria-label="All menu"
-          aria-current={view === "menu" ? "page" : undefined}
-          className={tab(view === "menu")}
-        >
-          <ClocheIcon width={24} height={24} />
+        <button type="button" onClick={onMenu} aria-current={view === "menu" ? "page" : undefined} className={tab(view === "menu")}>
+          <ClocheIcon width={22} height={22} />
+          Menu
         </button>
         <button
           type="button"
           onClick={onOrder}
           aria-label={count ? `My order, ${count} items, ${formatPrice(total)}` : "My order"}
-          className={
-            count
-              ? "flex h-12 min-w-0 items-center gap-2.5 justify-self-end rounded-full bg-white pl-1.5 pr-4 text-leaf active:bg-white/90"
-              : "grid h-12 w-12 place-items-center justify-self-end rounded-full active:bg-white/15"
-          }
+          className="flex h-11 min-w-0 items-center justify-center gap-2.5 rounded-lg bg-mango px-2 text-[15px] font-bold text-forest active:brightness-95"
         >
-          {count ? (
-            <>
-              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-leaf-tint">
-                <BagIcon width={20} height={20} />
-                <CountBadge count={count} />
-              </span>
-              <span className="font-display text-[18px] font-bold">{formatPrice(total)}</span>
-            </>
-          ) : (
-            <BagIcon width={24} height={24} />
-          )}
+          <span className="relative shrink-0">
+            <BagIcon width={20} height={20} />
+            {count > 0 && <CountBadge count={count} />}
+          </span>
+          <span className="truncate">{count ? formatPrice(total) : "My order"}</span>
         </button>
       </div>
     </nav>
