@@ -47,13 +47,16 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - A category can sit under a main one (`categories.parent_id`, migration 0020),
   one level deep. A main category's dishes on the guest menu include its
   sub-categories'; Designs B and C just see the main categories.
-- Guests, phone: one fixed row of tabs, every main category and sub-category
-  its own tab, each sub right after its main one (Drinks, Beverage, Espresso
-  Based…), the way foodpanda and GrabFood list a café's drinks. Showing a
-  main one's subs only while inside it made the row grow, slide and push the
-  main one out of view (audit 2026-11-03). Desktop rail: subs indented under
-  the open main one. Managers: "Sits under" on the category page and in the
-  add dialog. Deleting a main one makes its subs main ones.
+- Guests, phone: the top row of tabs has only the main categories, each with
+  an icon picked from its name, English or Filipino (`app/components/CategoryIcon.tsx`;
+  a chef's hat when nothing matches). A category with subs gets a second row
+  of tabs under its heading, which sticks under the header while the guest is
+  in it. (A single row with every sub as its own tab was tried and replaced,
+  2026-11-03.) Desktop rail: subs indented under the open main one. Home:
+  category tiles, then a centred "Whole menu" button. No dish counts anywhere
+  on the guest menu (Justin, 2026-11-03). Managers: "Sits under" on the
+  category page and in the add dialog. Deleting a main one makes its subs
+  main ones.
 
 ## Dish options (Stage 1 Build 1, live 2026-10-21)
 

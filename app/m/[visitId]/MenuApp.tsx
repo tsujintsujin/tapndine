@@ -1074,7 +1074,8 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
             <p className="px-3 py-3 text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;. Try a dish or a category, like rice or drinks.</p>
           ) : (
             <>
-            <p className="px-2.5 pb-1 pt-1.5 text-[13px] font-semibold text-muted" aria-live="polite">
+            {/* Not shown, but a screen reader still says how many matched. */}
+            <p className="sr-only" aria-live="polite">
               {dishCount(matches.length)}
             </p>
             <ul id="dish-suggest" role="listbox" aria-label="Matching dishes">
@@ -1113,7 +1114,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
 }
 
 /** A block of the whole menu: a main category, or the dishes in none ("other"). */
-type Chapter = { id: string; name: string; count: number; direct: string[]; subs: SubCategory[] };
+type Chapter = { id: string; name: string; direct: string[]; subs: SubCategory[] };
 
 /**
  * The menu in reading order. A main category's own dishes come first, then one
@@ -1122,11 +1123,11 @@ type Chapter = { id: string; name: string; count: number; direct: string[]; subs
 function menuChapters(menu: Menu): Chapter[] {
   const chapters: Chapter[] = menu.categories.map((c) => {
     const inSub = new Set(c.subs.flatMap((s) => s.dishIds));
-    return { id: c.id, name: c.name, count: c.dishIds.length, direct: c.dishIds.filter((id) => !inSub.has(id)), subs: c.subs };
+    return { id: c.id, name: c.name, direct: c.dishIds.filter((id) => !inSub.has(id)), subs: c.subs };
   });
   const placed = new Set(menu.categories.flatMap((c) => c.dishIds));
   const rest = menu.dishOrder.filter((id) => !placed.has(id));
-  if (rest.length) chapters.push({ id: "other", name: chapters.length ? "More dishes" : "All dishes", count: rest.length, direct: rest, subs: [] });
+  if (rest.length) chapters.push({ id: "other", name: chapters.length ? "More dishes" : "All dishes", direct: rest, subs: [] });
   return chapters;
 }
 
@@ -1161,7 +1162,8 @@ function useChapterSpy(on: boolean) {
       frame = 0;
       let current: string | null = null;
       for (const el of document.querySelectorAll<HTMLElement>("[data-chapter]")) {
-        if (el.getBoundingClientRect().top > line()) break;
+        // A jump puts a section's top on the line; rounding can leave it a fraction below.
+        if (el.getBoundingClientRect().top > line() + 1) break;
         current = el.dataset.chapter!;
       }
       setActive(current);
@@ -1354,15 +1356,12 @@ function WholeMenu({
                 type="button"
                 aria-current={c.id === current ? "location" : undefined}
                 onClick={() => onJump(c.id)}
-                className={`flex h-[34px] shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-4 text-left text-[15px] font-semibold last:border-b-0 ${
+                className={`flex h-[34px] shrink-0 items-center gap-2 border-b border-ink/10 px-4 text-left text-[15px] font-semibold last:border-b-0 ${
                   c.id === open?.id ? "bg-leaf text-white" : "hover:bg-wash"
                 }`}
               >
-                <span className="flex min-w-0 items-center gap-2">
-                  <CategoryIcon name={c.name} className="shrink-0" />
-                  <span className="truncate">{c.name}</span>
-                </span>
-                <span className={`shrink-0 text-[13px] font-medium ${c.id === open?.id ? "text-white/70" : "text-muted"}`}>{c.count}</span>
+                <CategoryIcon name={c.name} className="shrink-0" />
+                <span className="truncate">{c.name}</span>
               </button>
               {c.id === open?.id &&
                 c.subs.map((s) => (
@@ -1372,12 +1371,11 @@ function WholeMenu({
                     data-sub
                     aria-current={s.id === current ? "location" : undefined}
                     onClick={() => onJump(s.id)}
-                    className={`flex h-[34px] shrink-0 items-center justify-between gap-2 border-b border-ink/10 pl-8 pr-4 text-left text-[15px] font-medium last:border-b-0 ${
+                    className={`flex h-[34px] shrink-0 items-center border-b border-ink/10 pl-8 pr-4 text-left text-[15px] font-medium last:border-b-0 ${
                       s.id === current ? "bg-leaf-tint shadow-[inset_3px_0_0_rgb(var(--mango))]" : "bg-paper hover:bg-wash"
                     }`}
                   >
                     <span className="truncate">{s.name}</span>
-                    <span className="shrink-0 text-[13px] text-muted">{s.dishIds.length}</span>
                   </button>
                 ))}
             </Fragment>
@@ -1399,20 +1397,16 @@ function WholeMenu({
         {chapters.map((c) => (
           // clip, not hidden: hidden would stop its row of sub-categories from sticking.
           <section key={c.id} data-chapter={c.id} tabIndex={-1} aria-labelledby={`ch-${c.id}`} className="overflow-clip rounded-[14px] border border-ink/15 bg-white">
-            <div className="flex items-baseline justify-between gap-3 bg-forest px-3.5 py-2.5 text-white sm:px-5 sm:py-3">
-              <h2 id={`ch-${c.id}`} className="min-w-0 font-display text-[21px] font-bold leading-tight sm:text-[23px]">
-                {c.name}
-              </h2>
-              <span className="shrink-0 text-[14px] text-white/70">{dishCount(c.count)}</span>
-            </div>
+            <h2 id={`ch-${c.id}`} className="bg-forest px-3.5 py-2.5 font-display text-[21px] font-bold leading-tight text-white sm:px-5 sm:py-3 sm:text-[23px]">
+              {c.name}
+            </h2>
             {c.subs.length > 0 && <SubTabs chapter={c} active={active} onJump={onJump} />}
             {c.direct.length > 0 && grid(c.direct)}
             {c.subs.map((s, i) => (
               <div key={s.id} data-chapter={s.id} tabIndex={-1}>
-                <div className={`flex items-baseline gap-2 border-b border-ink/10 bg-leaf-tint px-3.5 py-2 sm:px-5 ${i > 0 || c.direct.length > 0 ? "border-t" : ""}`}>
-                  <h3 className="min-w-0 font-display text-[17px] font-bold leading-tight">{s.name}</h3>
-                  <span className="shrink-0 text-[13px] text-ink/75">{dishCount(s.dishIds.length)}</span>
-                </div>
+                <h3 className={`border-b border-ink/10 bg-leaf-tint px-3.5 py-2 font-display text-[17px] font-bold leading-tight sm:px-5 ${i > 0 || c.direct.length > 0 ? "border-t" : ""}`}>
+                  {s.name}
+                </h3>
                 {grid(s.dishIds)}
               </div>
             ))}
@@ -1505,25 +1499,22 @@ function HomeView({
         {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
       </div>
 
-      <BrowseMenu menu={menu} total={all.length} onMenu={onMenu} onCategory={onCategory} />
+      <BrowseMenu menu={menu} onMenu={onMenu} onCategory={onCategory} />
     </div>
   );
 }
 
 /**
- * Every main category as a tile with a photo from it and how many dishes it
- * has: a guest who came for a drink goes straight to Drinks instead of
- * scrolling past everything else. A last row that isn't full sits centred,
- * over the way into the whole menu.
+ * Every main category as a tile with a photo from it: a guest who came for a
+ * drink goes straight to Drinks instead of scrolling past everything else.
+ * A last row that isn't full sits centred, over the way into the whole menu.
  */
 function BrowseMenu({
   menu,
-  total,
   onMenu,
   onCategory,
 }: {
   menu: Menu;
-  total: number;
   onMenu: () => void;
   onCategory: (id: string) => void;
 }) {
@@ -1547,10 +1538,7 @@ function BrowseMenu({
                   <span className="h-10 w-10 shrink-0 rounded-xl bg-wash min-[380px]:h-11 min-[380px]:w-11" />
                 )}
                 {/* A step smaller on a narrow phone so "Sandwiches" fits; a longer word still wraps instead of being cut. */}
-                <span className="min-w-0 leading-tight">
-                  <span className="line-clamp-2 font-display text-[14px] font-bold [overflow-wrap:anywhere] min-[380px]:text-[15px]">{c.name}</span>
-                  <span className="block text-[13px] text-muted">{dishCount(c.count)}</span>
-                </span>
+                <span className="line-clamp-2 min-w-0 font-display text-[14px] font-bold leading-tight [overflow-wrap:anywhere] min-[380px]:text-[15px]">{c.name}</span>
               </button>
             </li>
           );
@@ -1564,7 +1552,6 @@ function BrowseMenu({
         >
           <MenuIcon width={22} height={22} />
           <span className="font-display text-[18px] font-bold">Whole menu</span>
-          <span className="text-[14px] text-white/70">{dishCount(total)}</span>
         </button>
       </div>
     </section>
