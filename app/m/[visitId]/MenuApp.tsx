@@ -542,7 +542,6 @@ export default function MenuApp({
         nickname={nick || ""}
         businessName={menu.businessName}
         logoUrl={menu.logoUrl}
-        tableLabel={menu.tableLabel}
         itemCount={itemCount}
         calling={calls.length > 0}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
@@ -803,7 +802,6 @@ function Header({
   nickname,
   businessName,
   logoUrl,
-  tableLabel,
   itemCount,
   calling,
   onNickname,
@@ -818,7 +816,6 @@ function Header({
   nickname: string;
   businessName: string;
   logoUrl: string | null;
-  tableLabel: string | null;
   itemCount: number;
   /** A call from this table is waiting for the waiter. */
   calling: boolean;
@@ -837,7 +834,11 @@ function Header({
     `flex h-11 items-center gap-2 rounded-lg px-4 text-[15px] font-semibold ${
       on ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
     }`;
-  const who = [tableLabel, nickname ? `Hi ${nickname}` : null].filter(Boolean).join(" · ");
+  const hi = nickname && (
+    <span className="truncate">
+      Hi <span className="font-semibold text-mango">{nickname}</span>
+    </span>
+  );
   return (
     <header className="sticky top-0 z-20 bg-forest pt-[env(safe-area-inset-top)] text-white">
       <div className={`mx-auto px-4 md:px-6 ${view === "menu" ? MENU_WIDTH : "max-w-3xl md:max-w-5xl lg:max-w-6xl"}`}>
@@ -855,12 +856,11 @@ function Header({
                   onClick={onNickname}
                   className="-mx-1.5 -my-1 flex min-h-8 max-w-full items-center gap-1 rounded-lg px-1.5 text-[14px] leading-tight text-white/70 active:bg-white/10"
                 >
-                  <span className="truncate">{who || "Add your name"}</span>
-                  <span className="shrink-0 font-semibold text-mango">{nickname ? "Edit" : who ? "· Add name" : ""}</span>
+                  {hi || <span className="truncate font-semibold text-mango">Add your name</span>}
                   <span className="sr-only">Change your nickname</span>
                 </button>
               ) : (
-                who && <p className="truncate text-[14px] leading-tight text-white/70">{who}</p>
+                hi && <p className="flex text-[14px] leading-tight text-white/70">{hi}</p>
               )}
             </div>
           </div>
