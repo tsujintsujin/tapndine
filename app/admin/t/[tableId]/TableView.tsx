@@ -10,6 +10,7 @@ import {
   offered,
   OPTION_KINDS,
   resolvePicks,
+  sizeTitle,
   startPicks,
   togglePick,
   type DishOption,
@@ -583,7 +584,7 @@ function AddDish({ dishes, busy, onAdd }: { dishes: WaiterDish[]; busy: boolean;
 /** The picker's sections in order: Size, each set-meal list ("Drink"), Add-ons, Spice. */
 function pickSections(d: Pickable) {
   return [
-    { title: "Size", list: offered(d, "size"), required: d.sizeRequired, many: false },
+    { title: sizeTitle(d), list: offered(d, "size"), required: d.sizeRequired, many: false },
     ...choiceLists(d).map((l) => ({ title: l.name, list: l.options, required: true, many: false })),
     { title: "Add-ons", list: offered(d, "addon"), required: false, many: true },
     { title: "Spice", list: offered(d, "spice"), required: false, many: false },

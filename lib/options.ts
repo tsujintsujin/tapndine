@@ -12,8 +12,14 @@ export const OPTION_KINDS: OptionKind[] = ["size", "choice", "addon", "spice"];
  */
 export type DishOption = { id: string; kind: OptionKind; group: string | null; ref?: string | null; name: string; priceCents: number };
 
-/** The parts of a dish the rules need. Options in their menu order. */
-export type Pickable = { options: DishOption[]; sizeRequired: boolean; spiceLevel: number | null };
+/**
+ * The parts of a dish the rules need. Options in their menu order. sizeLabel:
+ * what its sizes are called when they aren't sizes ("Meat"); missing is "Size".
+ */
+export type Pickable = { options: DishOption[]; sizeRequired: boolean; spiceLevel: number | null; sizeLabel?: string | null };
+
+/** The heading over a dish's sizes: "Size", or what the manager called them ("Meat"). */
+export const sizeTitle = (d: { sizeLabel?: string | null }) => d.sizeLabel?.trim() || "Size";
 
 /** Spice choices only make sense on a spicy dish; the rest always show. */
 export const offered = (d: Pickable, kind: OptionKind) =>
@@ -69,10 +75,10 @@ export function resolvePicks(d: Pickable, ids: readonly string[]): DishOption[] 
   return want.size === 0 ? picks : null;
 }
 
-/** What still needs picking before Add works ("size", "drink"), or null when nothing does. */
+/** What still needs picking before Add works ("size", "meat", "drink"), or null when nothing does. */
 export function missingPick(d: Pickable, picked: ReadonlySet<string>): string | null {
   const sizes = offered(d, "size");
-  if (d.sizeRequired && sizes.length && !sizes.some((o) => picked.has(o.id))) return "size";
+  if (d.sizeRequired && sizes.length && !sizes.some((o) => picked.has(o.id))) return sizeTitle(d).toLowerCase();
   const list = choiceLists(d).find((l) => !l.options.some((o) => picked.has(o.id)));
   return list ? list.name.toLowerCase() : null;
 }

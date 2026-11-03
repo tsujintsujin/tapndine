@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
 import type { Dish, Menu, SubCategory } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
-import { fold, formatPrice, formatTime, servesLabel } from "@/lib/format";
+import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
+import { searchDishes } from "@/lib/search";
 import {
   choiceLists,
   extraCents,
@@ -17,6 +18,7 @@ import {
   optionsLabel,
   parseLineKey,
   resolvePicks,
+  sizeTitle,
   startPicks,
   togglePick,
   type DishOption,
@@ -26,6 +28,7 @@ import {
   BagIcon,
   BellIcon,
   CheckIcon,
+  ChevronRight,
   ClocheIcon,
   CloseIcon,
   HomeIcon,
@@ -33,16 +36,18 @@ import {
   INGREDIENT_LABELS,
   MenuIcon,
   MinusIcon,
+  PencilIcon,
   PeopleIcon,
   PlusIcon,
   ReceiptIcon,
   SearchIcon,
+  TrashIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
 import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
 import MenuC from "./MenuC";
-import { DishImage, SpiceMeter } from "./parts";
+import { DishImage, photoUrl, SpiceMeter } from "./parts";
 
 // The whole menu's header and its boxes line up at this width.
 const MENU_WIDTH = "max-w-3xl md:max-w-5xl lg:max-w-[1400px]";
@@ -427,6 +432,20 @@ export default function MenuApp({
   };
   const openOrder = () => setParams((p) => p.set("o", "1"), "push");
   const openMenu = () => setParams((p) => p.set("v", "menu"), "push");
+  // A category tapped on home: open the menu, then jump there once it is laid out.
+  const jumpAfterOpen = useRef<string | null>(null);
+  const openMenuAt = (id: string) => {
+    jumpAfterOpen.current = id;
+    openMenu();
+  };
+  // Only on arriving at the menu.
+  useEffect(() => {
+    const id = jumpAfterOpen.current;
+    if (view !== "menu" || !id) return;
+    jumpAfterOpen.current = null;
+    const frame = requestAnimationFrame(() => jumpToChapter(id));
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
   const goHome = () => {
     if (view === "menu") closeParam("v");
     else window.scrollTo({ top: 0, behavior: "smooth" });
@@ -453,6 +472,10 @@ export default function MenuApp({
             setSendAfterNick(false);
             send(v || null);
           }
+        }}
+        onCancel={() => {
+          setNickOpen(false);
+          setSendAfterNick(false);
         }}
       />
       <CallPrompt
@@ -569,7 +592,7 @@ export default function MenuApp({
           {view === "menu" ? (
             <WholeMenu menu={menu} active={chapter} onJump={jumpToChapter} onDish={openDish} onAdd={quickAdd} />
           ) : (
-            <HomeView menu={menu} onDish={openDish} onAdd={quickAdd} onMenu={openMenu} />
+            <HomeView menu={menu} onDish={openDish} onAdd={quickAdd} onMenu={openMenu} onCategory={openMenuAt} />
           )}
         </div>
       </main>
@@ -583,7 +606,7 @@ export default function MenuApp({
         onOrder={openOrder}
       />
 
-      <Sheet open={!!dish} onClose={() => closeParam("d")} from="bottom" label={dish?.name ?? "Dish"}>
+      <Sheet open={!!dish} onClose={() => closeParam("d")} from="bottom" fit label={dish?.name ?? "Dish"}>
         {dish && (
           <DishDetails
             key={dish.id}
@@ -619,20 +642,24 @@ export default function MenuApp({
 }
 
 /**
- * "What should we call you?" A small native dialog over the menu. Skip (or
- * Esc) keeps whatever name the phone had, or none: the waiter then sees Guest #.
+ * "What should we call you?" A small native dialog over the menu. Skip keeps
+ * whatever name the phone had, or none: the waiter then sees Guest #.
+ * Closing it (×, Esc, the phone's Back) changes nothing and, on the way to
+ * Send to waiter, sends nothing: the guest is back at their order.
  */
 function NicknamePrompt({
   open,
   initial,
   sending,
   onDone,
+  onCancel,
 }: {
   open: boolean;
   initial: string;
   /** Asked on the way to Send to waiter: the buttons say so. */
   sending: boolean;
   onDone: (v: string) => void;
+  onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [value, setValue] = useState(initial);
@@ -654,7 +681,7 @@ function NicknamePrompt({
       aria-labelledby="nick-title"
       onCancel={(e) => {
         e.preventDefault();
-        onDone(initial);
+        onCancel();
       }}
       className="m-auto w-[min(380px,calc(100%-32px))] rounded-[20px] border-0 bg-white p-0 text-ink shadow-[0_20px_50px_rgb(59_46_37/0.35)] backdrop:bg-forest/60"
     >
@@ -665,9 +692,19 @@ function NicknamePrompt({
           onDone(value.replace(/\s+/g, " ").trim());
         }}
       >
-        <h2 id="nick-title" className="font-display text-[24px] font-bold leading-tight">
-          What should we call you?
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="nick-title" className="pt-1 font-display text-[24px] font-bold leading-tight">
+            What should we call you?
+          </h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={sending ? "Back to my order" : "Close"}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line"
+          >
+            <CloseIcon width={20} height={20} />
+          </button>
+        </div>
         <p className="mt-1.5 text-[15px] text-muted">Your waiter sees this name on your orders, so they know whose food is whose.</p>
         <label className="mt-4 block text-[15px] font-medium">
           Nickname
@@ -851,12 +888,15 @@ function Header({
             <div className="min-w-0 flex-1">
               <p className="truncate font-display text-[20px] font-bold leading-tight md:text-[22px]">{businessName}</p>
               {onNickname ? (
+                // Tall enough for a thumb while the header stays 60px: the
+                // padding reaches into the space around the line.
                 <button
                   type="button"
                   onClick={onNickname}
-                  className="-mx-1.5 -my-1 flex min-h-8 max-w-full items-center gap-1 rounded-lg px-1.5 text-[14px] leading-tight text-white/70 active:bg-white/10"
+                  className="-mx-1.5 -my-3 flex min-h-11 max-w-full items-center gap-1.5 rounded-lg px-1.5 text-[14px] leading-tight text-white/70 active:bg-white/10"
                 >
                   {hi || <span className="truncate font-semibold text-mango">Add your name</span>}
+                  <PencilIcon width={14} height={14} className="shrink-0 text-white/60" aria-hidden />
                   <span className="sr-only">Change your nickname</span>
                 </button>
               ) : (
@@ -933,9 +973,9 @@ function CountBadge({ count }: { count: number }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Type and the matching dishes drop down under the box; picking one opens it.
- * Names that start with what was typed come first, then names that contain
- * it, then dishes whose one-line description does.
+ * Type and every matching dish drops down under the box, best first, with how
+ * many there are; picking one opens it. Matching (lib/search.ts) takes in the
+ * category, synonyms and typos: "coffee", "drinks", "capuccino" all find.
  */
 function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void }) {
   const [q, setQ] = useState("");
@@ -943,21 +983,9 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const needle = fold(q.trim());
-  const matches = needle
-    ? menu.dishOrder
-        .map((id) => menu.dishes[id])
-        .map((d) => {
-          const name = fold(d.name);
-          const rank = name.startsWith(needle) ? 0 : name.includes(needle) ? 1 : fold(d.shortDescription).includes(needle) ? 2 : 3;
-          return { d, rank };
-        })
-        .filter((m) => m.rank < 3)
-        .sort((a, b) => a.rank - b.rank)
-        .slice(0, 6)
-        .map((m) => m.d)
-    : [];
-  const show = open && needle !== "";
+  const typed = q.trim() !== "";
+  const matches = typed ? searchDishes(menu, q).map((id) => menu.dishes[id]) : [];
+  const show = open && typed;
 
   const pick = (d: Dish) => {
     // Blur first: the dish sheet hands focus back on close, and a focused box
@@ -1030,8 +1058,12 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
           className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-[60dvh] overflow-y-auto rounded-2xl bg-white p-1.5 shadow-[0_14px_36px_rgb(59_46_37/0.2)] ring-1 ring-line"
         >
           {matches.length === 0 ? (
-            <p className="px-3 py-3 text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;.</p>
+            <p className="px-3 py-3 text-[15px] text-muted">No dishes match &ldquo;{q.trim()}&rdquo;. Try a dish or a category, like rice or drinks.</p>
           ) : (
+            <>
+            <p className="px-2.5 pb-1 pt-1.5 text-[13px] font-semibold text-muted" aria-live="polite">
+              {dishCount(matches.length)}
+            </p>
             <ul id="dish-suggest" role="listbox" aria-label="Matching dishes">
               {matches.map((d, i) => (
                 <li
@@ -1046,7 +1078,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
                   <span className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-wash">
                     {d.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={d.imageUrl} alt="" className={`h-full w-full object-cover ${d.available ? "" : "grayscale"}`} />
+                      <img src={photoUrl(d.imageUrl, 120)} alt="" className={`h-full w-full object-cover ${d.available ? "" : "grayscale"}`} />
                     )}
                   </span>
                   <span className="min-w-0 flex-1 leading-tight">
@@ -1059,6 +1091,7 @@ function DishSearch({ menu, onDish }: { menu: Menu; onDish: (id: string) => void
                 </li>
               ))}
             </ul>
+            </>
           )}
         </div>
       )}
@@ -1147,14 +1180,18 @@ function showInList(list: HTMLElement, row: Element | null | undefined) {
 }
 
 /**
- * Phones and tablets: one row of chapters that follows the scroll. The open
- * chapter's sub-categories sit in the same row, so the sticky header never
- * changes height, which would move the page under the guest's thumb.
+ * Phones and tablets: one row of tabs that follows the scroll, every category
+ * and sub-category its own tab, each sub-category right after its main one
+ * (Drinks, Beverage, Espresso Based…). The row never changes as the guest
+ * scrolls, and every tab looks and works the same, the way foodpanda and
+ * GrabFood list a café's drinks (and Nielsen Norman's tab guidelines ask).
+ * Adding a category's sub-categories only while inside it made the row grow,
+ * slide and push the category itself out of view.
  */
 function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | null; onJump: (id: string) => void }) {
   const chapters = menuChapters(menu);
-  const current = active ?? chapters[0]?.id;
-  const open = chapters.find((c) => c.id === current || c.subs.some((s) => s.id === current));
+  const tabs = chapters.flatMap((c) => [{ id: c.id, name: c.name }, ...c.subs.map((s) => ({ id: s.id, name: s.name }))]);
+  const current = active ?? tabs[0]?.id;
   const rowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const row = rowRef.current;
@@ -1164,32 +1201,19 @@ function ChapterChips({ menu, active, onJump }: { menu: Menu; active: string | n
     const r = row.getBoundingClientRect();
     row.scrollLeft += c.left + c.width / 2 - (r.left + r.width / 2);
   }, [current]);
-  if (!chapters.length) return null;
+  if (!tabs.length) return null;
   return (
     <div ref={rowRef} role="group" aria-label="Categories" className="no-scrollbar -mx-4 mt-2 flex items-center gap-1 overflow-x-auto px-4 motion-safe:scroll-smooth md:-mx-6 md:px-6">
-      {chapters.map((c) => (
-        <Fragment key={c.id}>
-          <button
-            type="button"
-            aria-current={c.id === current ? "location" : undefined}
-            onClick={() => onJump(c.id)}
-            className={`h-10 shrink-0 rounded-lg px-3.5 text-[15px] font-semibold ${c.id === open?.id ? "bg-leaf text-white" : "text-muted active:bg-wash"}`}
-          >
-            {c.name}
-          </button>
-          {c.id === open?.id &&
-            c.subs.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                aria-current={s.id === current ? "location" : undefined}
-                onClick={() => onJump(s.id)}
-                className={`h-10 shrink-0 rounded-lg border px-3 text-[14px] font-semibold ${s.id === current ? "border-mango bg-leaf-tint text-ink" : "border-ink/15 text-muted active:bg-wash"}`}
-              >
-                {s.name}
-              </button>
-            ))}
-        </Fragment>
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          aria-current={t.id === current ? "location" : undefined}
+          onClick={() => onJump(t.id)}
+          className={`h-11 shrink-0 rounded-lg px-3.5 text-[15px] font-semibold ${t.id === current ? "bg-leaf text-white" : "text-muted active:bg-wash"}`}
+        >
+          {t.name}
+        </button>
       ))}
     </div>
   );
@@ -1221,12 +1245,23 @@ function WholeMenu({
   const open = chapters.find((c) => c.id === current || c.subs.some((s) => s.id === current));
   // A long list scrolls by itself; keep the open chapter and its sub-categories in view.
   const listRef = useRef<HTMLDivElement>(null);
+  // More rows below the list's edge (a laptop screen): a fade says so.
+  const [more, setMore] = useState(false);
+  const readMore = useCallback(() => {
+    const l = listRef.current;
+    setMore(!!l && l.scrollTop + l.clientHeight < l.scrollHeight - 4);
+  }, []);
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
     showInList(list, [...list.querySelectorAll("[data-sub]")].at(-1));
     showInList(list, list.querySelector("[aria-current]"));
-  }, [current]);
+    readMore();
+  }, [current, readMore]);
+  useEffect(() => {
+    window.addEventListener("resize", readMore);
+    return () => window.removeEventListener("resize", readMore);
+  }, [readMore]);
 
   const grid = (ids: string[]) => (
     <ul className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-3 sm:gap-3 sm:p-4 xl:grid-cols-4">
@@ -1244,14 +1279,16 @@ function WholeMenu({
         <div className="shrink-0 border-b border-ink/15 p-3">
           <DishSearch menu={menu} onDish={onDish} />
         </div>
-        <div ref={listRef} role="group" aria-label="Categories" className="flex min-h-0 flex-col overflow-y-auto rounded-b-[13px] [scrollbar-width:thin]">
+        <div className="relative flex min-h-0 flex-col">
+        <div ref={listRef} onScroll={readMore} role="group" aria-label="Categories" className="flex min-h-0 flex-col overflow-y-auto rounded-b-[13px] [scrollbar-width:thin]">
           {chapters.map((c) => (
             <Fragment key={c.id}>
+              {/* 34px rows (a mouse, not a thumb) so a whole menu's list fits more laptop screens. */}
               <button
                 type="button"
                 aria-current={c.id === current ? "location" : undefined}
                 onClick={() => onJump(c.id)}
-                className={`flex h-11 shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-4 text-left text-[15px] font-semibold last:border-b-0 ${
+                className={`flex h-[34px] shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-4 text-left text-[15px] font-semibold last:border-b-0 ${
                   c.id === open?.id ? "bg-leaf text-white" : "hover:bg-wash"
                 }`}
               >
@@ -1266,7 +1303,7 @@ function WholeMenu({
                     data-sub
                     aria-current={s.id === current ? "location" : undefined}
                     onClick={() => onJump(s.id)}
-                    className={`flex h-11 shrink-0 items-center justify-between gap-2 border-b border-ink/10 pl-8 pr-4 text-left text-[15px] font-medium last:border-b-0 ${
+                    className={`flex h-[34px] shrink-0 items-center justify-between gap-2 border-b border-ink/10 pl-8 pr-4 text-left text-[15px] font-medium last:border-b-0 ${
                       s.id === current ? "bg-leaf-tint shadow-[inset_3px_0_0_rgb(var(--mango))]" : "bg-paper hover:bg-wash"
                     }`}
                   >
@@ -1276,6 +1313,12 @@ function WholeMenu({
                 ))}
             </Fragment>
           ))}
+        </div>
+        {more && (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center rounded-b-[13px] bg-[linear-gradient(to_top,white_35%,rgb(255_255_255/0))] pb-1 text-muted">
+            <ChevronRight width={18} height={18} className="rotate-90" />
+          </div>
+        )}
         </div>
       </aside>
       <div className="min-w-0 space-y-3 md:space-y-4">
@@ -1297,7 +1340,7 @@ function WholeMenu({
               <div key={s.id} data-chapter={s.id} tabIndex={-1}>
                 <div className={`flex items-baseline gap-2 border-b border-ink/10 bg-leaf-tint px-3.5 py-2 sm:px-5 ${i > 0 || c.direct.length > 0 ? "border-t" : ""}`}>
                   <h3 className="min-w-0 font-display text-[17px] font-bold leading-tight">{s.name}</h3>
-                  <span className="shrink-0 text-[13px] text-muted">{s.dishIds.length}</span>
+                  <span className="shrink-0 text-[13px] text-ink/75">{dishCount(s.dishIds.length)}</span>
                 </div>
                 {grid(s.dishIds)}
               </div>
@@ -1318,23 +1361,24 @@ function GridCard({ dish, onOpen, onAdd }: { dish: Dish; onOpen: () => void; onA
   return (
     <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-ink/15 bg-white">
       <button type="button" onClick={onOpen} aria-label={dish.name} className="block w-full">
-        <DishImage dish={dish} className="aspect-[4/3]" />
+        <DishImage dish={dish} className="aspect-[4/3]" sizes="(min-width: 1280px) 260px, (min-width: 640px) 33vw, 50vw" />
       </button>
       {dish.isNew && dish.available && (
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-mango px-2.5 py-1 text-[12px] font-bold leading-none text-forest">
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-mango px-2.5 py-1 text-[13px] font-bold leading-none text-forest">
           New
         </span>
       )}
+      {/* Two lines of description: enough to tell one dish from the next without opening it. */}
       <button type="button" onClick={onOpen} tabIndex={-1} className="block flex-1 px-3 pb-1 pt-2.5 text-left">
         <h3 className="font-display text-[15px] font-bold leading-tight sm:text-[16px]">{dish.name}</h3>
-        {dish.shortDescription && <p className="mt-0.5 line-clamp-1 text-[13px] text-muted">{dish.shortDescription}</p>}
+        {dish.shortDescription && <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted">{dish.shortDescription}</p>}
       </button>
       <div className="flex min-h-[52px] items-center justify-between gap-2 pb-2 pl-3 pr-2">
         <div className="min-w-0 leading-tight">
           <p className="text-[16px] font-bold">{formatPrice(dish.priceCents)}</p>
           <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
-            <PeopleIcon width={15} height={15} />
-            {servesLabel(dish.servesMin, dish.servesMax).replace(/ (people|person)$/, "")}
+            <PeopleIcon width={15} height={15} aria-hidden />
+            <span className="truncate">{servesLabel(dish.servesMin, dish.servesMax)}</span>
           </p>
         </div>
         {dish.available && (
@@ -1357,18 +1401,21 @@ function GridCard({ dish, onOpen, onAdd }: { dish: Dish; onOpen: () => void; onA
 
 /**
  * The landing page: the featured dish big, then three featured dishes, three
- * new ones, and the way into the whole menu.
+ * new ones, and the menu's categories, each a way straight into the menu.
  */
 function HomeView({
   menu,
   onDish,
   onAdd,
   onMenu,
+  onCategory,
 }: {
   menu: Menu;
   onDish: (id: string) => void;
   onAdd: (id: string) => void;
   onMenu: () => void;
+  /** Opens the whole menu at this category. */
+  onCategory: (id: string) => void;
 }) {
   const all = menu.dishOrder.map((id) => menu.dishes[id]);
   if (!all.length) return <MenuSoon name={menu.businessName} />;
@@ -1387,18 +1434,67 @@ function HomeView({
         {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
       </div>
 
-      <div className="mt-10 px-4 md:mx-auto md:max-w-md md:px-0">
-        <button
-          type="button"
-          onClick={onMenu}
-          className="flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-forest text-white active:bg-forest-soft"
-        >
-          <MenuIcon width={22} height={22} />
-          <span className="font-display text-[19px] font-bold">View whole menu</span>
-          <span className="text-[14px] text-white/60">{all.length} dishes</span>
-        </button>
-      </div>
+      <BrowseMenu menu={menu} total={all.length} onMenu={onMenu} onCategory={onCategory} />
     </div>
+  );
+}
+
+/**
+ * Every main category as a tile with a photo from it and how many dishes it
+ * has, after the whole menu's own tile: a guest who came for a drink goes
+ * straight to Drinks instead of scrolling past everything else.
+ */
+function BrowseMenu({
+  menu,
+  total,
+  onMenu,
+  onCategory,
+}: {
+  menu: Menu;
+  total: number;
+  onMenu: () => void;
+  onCategory: (id: string) => void;
+}) {
+  const chapters = menuChapters(menu);
+  const tile = "flex min-h-[64px] items-center gap-2 rounded-2xl p-2 text-left min-[380px]:gap-2.5 min-[380px]:pr-2.5";
+  return (
+    <section className="mt-10 px-4 md:px-0" aria-labelledby="row-browse">
+      <SectionTitle id="row-browse">Browse the menu</SectionTitle>
+      <ul className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
+        <li>
+          <button type="button" onClick={onMenu} className={`${tile} w-full bg-forest text-white active:bg-forest-soft`}>
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15">
+              <MenuIcon width={22} height={22} />
+            </span>
+            <span className="min-w-0 leading-tight">
+              <span className="block font-display text-[15px] font-bold">Whole menu</span>
+              <span className="block text-[13px] text-white/70">{dishCount(total)}</span>
+            </span>
+          </button>
+        </li>
+        {chapters.map((c) => {
+          // Its first dish with a photo, one on today's menu if any (a sold-out one shows grey).
+          const inIt = [...c.direct, ...c.subs.flatMap((s) => s.dishIds)].map((id) => menu.dishes[id]).filter((d) => d.imageUrl);
+          const photo = inIt.find((d) => d.available) ?? inIt[0];
+          return (
+            <li key={c.id}>
+              <button type="button" onClick={() => onCategory(c.id)} className={`${tile} w-full border border-ink/10 bg-white active:bg-wash`}>
+                {photo ? (
+                  <DishImage dish={photo} soldOutLabel={false} sizes="44px" className="h-10 w-10 shrink-0 rounded-xl min-[380px]:h-11 min-[380px]:w-11" />
+                ) : (
+                  <span className="h-10 w-10 shrink-0 rounded-xl bg-wash min-[380px]:h-11 min-[380px]:w-11" />
+                )}
+                {/* A step smaller on a narrow phone so "Sandwiches" fits; a longer word still wraps instead of being cut. */}
+                <span className="min-w-0 leading-tight">
+                  <span className="line-clamp-2 font-display text-[14px] font-bold [overflow-wrap:anywhere] min-[380px]:text-[15px]">{c.name}</span>
+                  <span className="block text-[13px] text-muted">{dishCount(c.count)}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -1461,7 +1557,7 @@ function Hero({ dish, onOpen, onAdd, onMenu }: { dish: Dish; onOpen: () => void;
       className="relative isolate h-[min(74svh,640px)] min-h-[460px] overflow-hidden rounded-b-[32px] bg-forest text-white sm:mx-4 sm:rounded-[32px] md:mx-0 md:grid md:h-[min(60vh,480px)] md:min-h-[420px] lg:h-[min(72vh,540px)] lg:min-h-[440px] md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
     >
       <button type="button" onClick={onOpen} aria-label={`${dish.name}, see details`} className="absolute inset-0 -z-10 block md:relative md:z-auto md:h-full">
-        <DishImage dish={dish} eager onDark className="h-full w-full" />
+        <DishImage dish={dish} eager onDark sizes="(min-width: 1024px) 60vw, (min-width: 768px) 50vw, 100vw" className="h-full w-full" />
       </button>
       <div
         aria-hidden="true"
@@ -1560,7 +1656,7 @@ function MiniRow({
         {dishes.map((d, i) => (
           <li key={d.id} className={`flex flex-col rounded-[20px] p-1.5 pb-2 ${MINI_TINTS[i % MINI_TINTS.length]}`}>
             <button type="button" onClick={() => onDish(d.id)} className="relative block text-center">
-              <DishImage dish={d} className="aspect-square rounded-[14px]" />
+              <DishImage dish={d} sizes="(min-width: 1024px) 180px, 33vw" className="aspect-square rounded-[14px]" />
               <span className="absolute -right-1 -top-1 grid h-[50px] w-[50px] place-items-center rounded-full bg-white font-display text-[13px] font-bold text-forest shadow-[0_4px_12px_rgb(59_46_37/0.18)]">
                 {formatPrice(d.priceCents)}
               </span>
@@ -1635,6 +1731,8 @@ function DishDetails({
   const unit = dish.priceCents + extraCents(picks ?? []);
 
   const pick = (o: DishOption) => setPicked((prev) => togglePick(dish, prev, o));
+  // Many dishes have the same one line and full text: say it once, beside the price.
+  const full = dish.description.trim() !== dish.shortDescription.trim() ? dish.description.trim() : "";
 
   const addRow = (
     <>
@@ -1695,9 +1793,9 @@ function DishDetails({
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {/* Tablets and up: the photo takes the left half, full height. */}
-      <DishImage dish={dish} eager className="hidden md:block md:w-[46%] md:shrink-0" />
+      <DishImage dish={dish} eager sizes="420px" className="hidden md:block md:w-[46%] md:shrink-0" />
       <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-[calc(12px+env(safe-area-inset-top))] sm:pt-3 md:pl-6 md:pr-3 md:pt-5">
+      <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-3 md:pl-6 md:pr-3 md:pt-5">
         <h2 className="pt-1.5 font-display text-[26px] font-bold leading-tight">{dish.name}</h2>
         <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
           <CloseIcon width={20} height={20} />
@@ -1709,11 +1807,11 @@ function DishDetails({
           hasOptions ? "pb-6" : "pb-[calc(24px+env(safe-area-inset-bottom))]"
         }`}
       >
-        <DishImage dish={dish} eager className="mx-4 aspect-[4/3] rounded-2xl md:hidden" />
+        <DishImage dish={dish} eager sizes="100vw" className="mx-4 aspect-[4/3] rounded-2xl md:hidden" />
 
         <div className="px-4 md:px-6">
           <div className="mt-4 flex items-baseline justify-between gap-4">
-            <p className="text-[15px] text-muted">{dish.shortDescription}</p>
+            <p className={`text-[15px] ${full ? "text-muted" : "text-ink"}`}>{dish.shortDescription}</p>
             <p className="shrink-0 font-display text-[26px] font-bold">{formatPrice(dish.priceCents)}</p>
           </div>
 
@@ -1725,10 +1823,10 @@ function DishDetails({
             {dish.spiceLevel !== null && <SpiceMeter level={dish.spiceLevel} />}
           </div>
 
-          <p className="mt-4 text-[16px] leading-relaxed">{dish.description}</p>
+          {full && <p className="mt-4 text-[16px] leading-relaxed">{full}</p>}
 
           {sizes.length > 0 && (
-            <PickList title="Size" required={dish.sizeRequired} options={sizes} picked={picked} onPick={pick} />
+            <PickList title={sizeTitle(dish)} required={dish.sizeRequired} options={sizes} picked={picked} onPick={pick} />
           )}
           {/* Set meals: one pick from each list ("Drink", "Side"), always required. */}
           {lists.map((l) => (
@@ -1921,9 +2019,38 @@ function OrderList({
   const total = lines.reduce((sum, l) => sum + l.unitCents * l.qty, 0);
   const hasSent = !!sent && sent.batches.length > 0;
 
+  // The last one of a dish taken off: it can come back, note and all, for a few seconds.
+  const [removed, setRemoved] = useState<{ key: string; qty: number; note: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!removed) return;
+    const t = setTimeout(() => setRemoved(null), 6000);
+    return () => clearTimeout(t);
+  }, [removed]);
+  const remove = (key: string, name: string) => {
+    setRemoved({ key, qty: 1, note: notes[key] ?? "", name });
+    setQty(key, 0);
+  };
+  const undo = () => {
+    if (!removed) return;
+    setQty(removed.key, removed.qty);
+    if (removed.note) setNote(removed.key, removed.note);
+    setRemoved(null);
+  };
+
   return (
     <>
       <PanelTitle title="My order" onClose={onClose} closeLabel="Close my order" />
+
+      {removed && (
+        <div role="status" className="flex shrink-0 items-center justify-between gap-3 bg-mango-soft py-1.5 pl-4 pr-2 text-[15px]">
+          <span className="min-w-0 truncate">
+            Removed <span className="font-semibold">{removed.name}</span>
+          </span>
+          <button type="button" onClick={undo} className="h-10 shrink-0 rounded-lg px-3 font-semibold text-forest underline underline-offset-2 active:bg-white/50">
+            Undo
+          </button>
+        </div>
+      )}
 
       {lines.length === 0 && !hasSent ? (
         <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
@@ -1948,9 +2075,16 @@ function OrderList({
                           <p className="text-sm text-muted">{formatPrice(unitCents * qty)}</p>
                         </div>
                         <div className="flex shrink-0 items-center rounded-full border border-line">
-                          <button type="button" onClick={() => setQty(key, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
-                            <MinusIcon width={18} height={18} />
-                          </button>
+                          {/* At one, the minus says what it does: takes the dish off. */}
+                          {qty > 1 ? (
+                            <button type="button" onClick={() => setQty(key, qty - 1)} aria-label={`One less ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
+                              <MinusIcon width={18} height={18} />
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => remove(key, dish.name)} aria-label={`Remove ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full text-chili active:bg-wash">
+                              <TrashIcon width={18} height={18} />
+                            </button>
+                          )}
                           <span className="w-5 text-center font-semibold tabular-nums">{qty}</span>
                           <button type="button" onClick={() => setQty(key, qty + 1)} aria-label={`One more ${dish.name}`} className="grid h-10 w-10 place-items-center rounded-full active:bg-wash">
                             <PlusIcon width={18} height={18} />
@@ -2167,7 +2301,15 @@ function BottomNav({
             <BagIcon width={20} height={20} />
             {count > 0 && <CountBadge count={count} />}
           </span>
-          <span className="truncate">{count ? formatPrice(total) : "My order"}</span>
+          {/* With something in it, still "My order", the total under it. */}
+          {count ? (
+            <span className="min-w-0 text-left leading-none">
+              <span className="block truncate text-[12px] font-semibold">My order</span>
+              <span className="mt-0.5 block truncate text-[15px]">{formatPrice(total)}</span>
+            </span>
+          ) : (
+            <span className="truncate">My order</span>
+          )}
         </button>
       </div>
     </nav>

@@ -595,7 +595,7 @@ export async function dishList(businessId: string) {
   const [dishes, options] = await d.batch([
     d
       .prepare(
-        `SELECT id, name, price_cents, spice_level, size_required FROM dishes
+        `SELECT id, name, price_cents, spice_level, size_required, size_label FROM dishes
          WHERE business_id = ? AND available = 1 AND removed_at IS NULL ORDER BY name`
       )
       .bind(businessId),
@@ -608,13 +608,14 @@ export async function dishList(businessId: string) {
       )
       .bind(businessId),
   ]);
-  type Row = { id: string; name: string; price_cents: number; spice_level: number | null; size_required: number };
+  type Row = { id: string; name: string; price_cents: number; spice_level: number | null; size_required: number; size_label: string | null };
   const list = (dishes.results as Row[]).map((x) => ({
     id: x.id,
     name: x.name,
     priceCents: x.price_cents,
     spiceLevel: x.spice_level,
     sizeRequired: x.size_required === 1,
+    sizeLabel: x.size_label,
     options: [] as DishOption[],
   }));
   const byId = new Map(list.map((x) => [x.id, x]));

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AdminCategory, AdminDish, DishInput } from "@/lib/menu-admin";
 import { randomId } from "@/lib/ids";
-import { OPTION_KINDS, type DishOption, type OptionKind } from "@/lib/options";
+import { OPTION_KINDS, sizeTitle, type DishOption, type OptionKind } from "@/lib/options";
 import { formatPrice, servesLabel } from "@/lib/format";
 import {
   ChevronLeft,
@@ -39,6 +39,7 @@ const EMPTY: DishInput = {
   ingredients: [],
   options: [],
   sizeRequired: true,
+  sizeLabel: null,
 };
 const KINDS = Object.keys(INGREDIENT_LABELS);
 const MAX_PHOTO = 10 * 1024 * 1024; // Cloudinary's free-plan limit per image
@@ -360,10 +361,12 @@ export default function DishEditor({
             rows={optRows}
             on={optOn}
             sizeRequired={x.sizeRequired}
+            sizeLabel={x.sizeLabel ?? ""}
             spiceLevel={x.spiceLevel}
             onRows={setOptRows}
             onOn={setOptOn}
             onSizeRequired={(v) => set("sizeRequired", v)}
+            onSizeLabel={(v) => set("sizeLabel", v || null)}
             menu={menu.filter((m) => m.id !== dish?.id)}
           />
 
@@ -661,6 +664,7 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
     return { gid, name: items[0].group.trim() || "List", items };
   });
   const locked = (sizes.length > 0 && x.sizeRequired) || lists.length > 0;
+  const sizesTitle = sizeTitle(x);
   const extras = rows.filter((r) => r.kind === "addon" || (r.kind === "spice" && (x.spiceLevel ?? 0) > 0));
   const extrasTitle = [
     rows.some((r) => r.kind === "addon") && "Add-ons",
@@ -699,7 +703,7 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
           {sizes.length > 0 && (
             <>
               <p className="flex items-center justify-between font-bold">
-                Size
+                {sizesTitle}
                 {x.sizeRequired && <span className="rounded-full bg-mango px-2 py-0.5 text-[11px] text-forest">Required</span>}
               </p>
               <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
@@ -746,7 +750,7 @@ function Preview({ x, price, rows }: { x: DishInput; price: string; rows: OptRow
               locked ? "bg-wash text-muted" : "bg-leaf text-white"
             }`}
           >
-            {!locked ? "Add to order" : sizes.length && x.sizeRequired ? "Choose a size" : `Choose a ${lists[0].name.toLowerCase()}`}
+            {!locked ? "Add to order" : `Choose a ${(sizes.length && x.sizeRequired ? sizesTitle : lists[0].name).toLowerCase()}`}
           </p>
         </div>
       )}
@@ -782,21 +786,27 @@ function OptionsCard({
   rows,
   on,
   sizeRequired,
+  sizeLabel,
   spiceLevel,
   onRows,
   onOn,
   onSizeRequired,
+  onSizeLabel,
   menu,
 }: {
   rows: OptRow[];
   on: OptsOn;
   sizeRequired: boolean;
+  /** What the sizes are called, as typed; "" is "Size". */
+  sizeLabel: string;
   spiceLevel: number | null;
   onRows: (rows: OptRow[]) => void;
   onOn: (on: OptsOn) => void;
   onSizeRequired: (v: boolean) => void;
+  onSizeLabel: (v: string) => void;
   menu: MenuPick[];
 }) {
+  const sizeWord = sizeTitle({ sizeLabel }).toLowerCase();
   const seg = (active: boolean) =>
     `flex h-9 min-w-[52px] items-center justify-center rounded-full px-3.5 text-[14px] font-semibold ${
       active ? "bg-forest text-white" : "text-muted hover:text-ink"
@@ -943,14 +953,29 @@ function OptionsCard({
                     </p>
                   )}
                   {kind === "size" && (
+                    <label className="mt-3 block rounded-xl bg-white px-3 py-2.5 text-[14px] font-semibold">
+                      Called
+                      <input
+                        maxLength={20}
+                        value={sizeLabel}
+                        onChange={(e) => onSizeLabel(e.target.value)}
+                        placeholder="Size"
+                        className={`${field} h-11 sm:max-w-xs`}
+                      />
+                      <span className="mt-1 block text-[13px] font-normal text-muted">
+                        The heading guests see. Leave it as Size, or name what they pick: Meat, Flavor.
+                      </span>
+                    </label>
+                  )}
+                  {kind === "size" && (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5">
                       <span className="min-w-0 text-[14px]">
-                        <span className="block font-semibold">Guest must pick a size</span>
+                        <span className="block font-semibold">Guest must pick a {sizeWord}</span>
                         <span className="block text-[13px] text-muted">
-                          {sizeRequired ? "Add stays locked until they pick." : "The first size is picked for them; they can change it."}
+                          {sizeRequired ? "Add stays locked until they pick." : `The first ${sizeWord} is picked for them; they can change it.`}
                         </span>
                       </span>
-                      <span role="group" aria-label="Guest must pick a size" className="flex shrink-0 rounded-full bg-paper p-1">
+                      <span role="group" aria-label={`Guest must pick a ${sizeWord}`} className="flex shrink-0 rounded-full bg-paper p-1">
                         <button type="button" aria-pressed={sizeRequired} onClick={() => onSizeRequired(true)} className={seg(sizeRequired)}>
                           Yes
                         </button>

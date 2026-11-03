@@ -2,7 +2,7 @@
 // Run: node scripts/options-check.ts
 import assert from "node:assert/strict";
 // @ts-expect-error -- Node runs this .ts file as is, so the import names the .ts file.
-import { lineKey, missingPick, mustPick, optionsLabel, parseLineKey, resolvePicks, startPicks, togglePick, type DishOption } from "../lib/options.ts";
+import { lineKey, missingPick, mustPick, optionsLabel, parseLineKey, resolvePicks, sizeTitle, startPicks, togglePick, type DishOption } from "../lib/options.ts";
 
 const o = (id: string, kind: DishOption["kind"], priceCents = 0, group: string | null = null): DishOption => ({ id, kind, group, name: id, priceCents });
 const options = [o("solo", "size"), o("sharing", "size", 16000), o("egg", "addon", 2000), o("rice", "addon", 4500), o("less", "spice"), o("extra", "spice")];
@@ -51,4 +51,8 @@ m = togglePick(meal, m, meal.options[3]);
 m = togglePick(meal, m, meal.options[1]);
 assert.deepEqual([...m].sort(), ["coke", "plain"], "picking in one list leaves the other list alone");
 assert.deepEqual([...startPicks({ ...meal, options: [o("reg", "size"), ...meal.options] })], ["reg"], "an optional size still starts picked");
+// Sizes the manager called something else ("Meat") are asked for by that name.
+assert.equal(missingPick(sisig, new Set()), "size");
+assert.equal(missingPick({ ...sisig, sizeLabel: "Meat" }, new Set()), "meat");
+assert.equal(sizeTitle({ sizeLabel: " " }), "Size", "a blank name is Size");
 console.log("options-check: all good");
