@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
-import { ENTERPRISE, EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
+import { EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { SiteFooter } from "@/app/components/SiteFooter";
@@ -230,7 +230,7 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `One yearly price: ${PLAN_LIST}. ${ENTERPRISE.name} has unlimited tables and priority support, priced with you. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
+    a: `One yearly price: ${PLAN_LIST}. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
@@ -651,36 +651,36 @@ export default async function Home() {
           >
             Try it free for 7 days on 1 table &rarr;
           </Link>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {PLANS.map((p) => (
-              <div key={p.name} className="flex flex-col rounded-3xl bg-white p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
-                <h3 className="text-lg font-bold">{p.name}</h3>
-                <p className="mt-1 text-sm font-semibold text-home-orange">{p.tables ? `${p.tables} tables` : "Menu only"}</p>
-                <p className="mt-6">
-                  <span className="text-4xl font-extrabold tracking-tight">{peso(p.price)}</span>
-                  <span className="text-sm font-semibold opacity-60"> / year</span>
-                </p>
-                <p className="mt-1 text-sm font-medium text-home-cocoa/70">
-                  {p.tables ? `${perTableMonth(p)} per table a month` : `${peso(Math.round(p.price / 12))} a month`}
-                </p>
-                <PlanList includes={p.includes} without={("without" in p && p.without) || []} />
-                <a href={`${CONTACT}%20(${encodeURIComponent(p.name)})`} className={`${PILL} mt-8 bg-home-orange text-center hover:brightness-95`}>
-                  Choose {p.name}
-                </a>
-              </div>
-            ))}
-            <div className="flex flex-col rounded-3xl bg-home-cocoa p-6 text-home-shell shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
-              <h3 className="text-lg font-bold">{ENTERPRISE.name}</h3>
-              <p className="mt-1 text-sm font-semibold text-home-butter">Unlimited tables</p>
-              <p className="mt-6 text-4xl font-extrabold tracking-tight">Let&apos;s talk</p>
-              <p className="mt-1 text-sm font-medium text-home-shell/70">Priced for your restaurant</p>
-              <PlanList includes={ENTERPRISE.includes} without={[]} dark />
-              <a href={`${CONTACT}%20(${ENTERPRISE.name})`} className={`${PILL} mt-8 bg-home-butter text-center text-home-cocoa hover:brightness-95`}>
-                Contact us
-              </a>
-            </div>
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
+            {PLANS.map((p) => {
+              // The plan most restaurants pick: drawn dark to stand out (Justin, 2026-11-07).
+              const hi = p.name === "Standard";
+              return (
+                <div
+                  key={p.name}
+                  className={`flex flex-col rounded-3xl p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] ${hi ? "bg-home-cocoa text-home-shell" : "bg-white"}`}
+                >
+                  <h3 className="text-lg font-bold">{p.name}</h3>
+                  <p className={`mt-1 text-sm font-semibold ${hi ? "text-home-butter" : "text-home-orange"}`}>{p.tables ? `${p.tables} tables` : "Menu only"}</p>
+                  <p className="mt-6">
+                    <span className="text-4xl font-extrabold tracking-tight">{peso(p.price)}</span>
+                    <span className="text-sm font-semibold opacity-60"> / year</span>
+                  </p>
+                  <p className={`mt-1 text-sm font-medium ${hi ? "text-home-shell/70" : "text-home-cocoa/70"}`}>
+                    {p.tables ? `${perTableMonth(p)} per table a month` : `${peso(Math.round(p.price / 12))} a month`}
+                  </p>
+                  <PlanList includes={p.includes} without={("without" in p && p.without) || []} dark={hi} />
+                  <a
+                    href={`${CONTACT}%20(${encodeURIComponent(p.name)})`}
+                    className={`${PILL} mt-8 text-center hover:brightness-95 ${hi ? "bg-home-butter text-home-cocoa" : "bg-home-orange"}`}
+                  >
+                    Choose {p.name}
+                  </a>
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-3xl bg-white px-6 py-5 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] sm:flex-row sm:text-left">
+          <div className="mx-auto mt-5 flex max-w-5xl flex-col items-center justify-between gap-2 rounded-3xl bg-white px-6 py-5 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] sm:flex-row sm:text-left">
             <div>
               <h3 className="text-lg font-bold">Extra tables</h3>
               <p className="text-sm font-medium text-home-cocoa/70">Add tables to {PLANS[1].name} or {PLANS[2].name}, one at a time.</p>
