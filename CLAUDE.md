@@ -93,8 +93,9 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 - There is no email-code login any more (only sign-up and reset use codes).
 - **Paying**: QR Ph through PayMongo, the same account and code shape as
   TheJobStash. A plan bought on the site runs a year plus 7 days and becomes a
-  contract with a "QR Ph" payment. **Every plan charges ₱1 (`CHARGE_PESOS` in
-  lib/plans.ts) until Justin says to change it.** Webhook: `/api/billing/webhook`.
+  contract with a "QR Ph" payment. Plans charge their real prices since
+  2026-11-07 (after a ₱1 test; `CHARGE_PESOS` in lib/plans.ts sets a test
+  price). Webhook: `/api/billing/webhook`.
   A trial restaurant buys from the trial bar's "Buy a plan" (`/admin/plan`) or
   `/trial-over`; renewals are still done in Billing.
 - The login card is one fixed height on desktop (720px) so the photo never re-crops.
