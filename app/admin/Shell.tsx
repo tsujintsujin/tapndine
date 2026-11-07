@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import {
+  CardIcon,
   ClocheIcon,
   CloseIcon,
   GridIcon,
+  HelpIcon,
   HomeIcon,
   HomepageIcon,
   LogoutIcon,
@@ -19,7 +21,7 @@ import {
   TableIcon,
   TagIcon,
 } from "@/app/components/Icons";
-import { daysLeft, TRIAL_STAFF, TRIAL_TABLES } from "@/lib/trial";
+import { daysLeft } from "@/lib/trial";
 import { useAlerts } from "./Alerts";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
@@ -37,10 +39,18 @@ const GROUPS = [
       { href: "/admin/menu", label: "Menu", Icon: ClocheIcon },
       { href: "/admin/homepage", label: "Homepage", Icon: HomepageIcon },
       { href: "/admin/categories", label: "Categories", Icon: TagIcon },
-      { href: "/admin/settings", label: "Settings", Icon: SlidersIcon },
     ],
   },
   { label: "Team", links: [{ href: "/admin/manage", label: "Staff", Icon: PeopleIcon }] },
+  {
+    label: "Settings",
+    links: [
+      { href: "/admin/settings", label: "General", Icon: SlidersIcon },
+      // On the free trial this link reads "Free trial: N days" instead (Nav).
+      { href: "/admin/plan", label: "Subscription", Icon: CardIcon },
+      { href: "/admin/support", label: "Support", Icon: HelpIcon },
+    ],
+  },
 ];
 /** Above every restaurant, for developers only. */
 const DEVELOPER = {
@@ -63,8 +73,10 @@ const isHere = (href: string, path: string) =>
 function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
-  const { developer, restaurant } = useStaffInfo();
+  const { developer, restaurant, trialEndsAt } = useStaffInfo();
   const { needYou } = useAlerts();
+  const left = trialEndsAt === null ? null : daysLeft(trialEndsAt);
+  const trial = left === null ? null : left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days`}`;
   // A developer sees their own group, plus the restaurant they have open.
   const groups = [
     ...(developer ? [DEVELOPER] : []),
@@ -91,7 +103,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                       }`}
                     >
                       <Icon width={21} height={21} className={here ? "text-forest" : ""} />
-                      {label}
+                      {href === "/admin/plan" && trial ? trial : label}
                       {href === "/admin" && needYou > 0 && (
                         <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-full bg-mango px-1.5 text-[13px] font-bold text-forest">
                           {needYou}
@@ -127,32 +139,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   );
 }
 
-/** Above every manager page while the restaurant is on its free trial: how long is left, and what it covers. */
-function TrialBar({ endsAt }: { endsAt: number }) {
-  const left = daysLeft(endsAt);
-  return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-mango-soft px-4 py-3 text-[15px] text-forest">
-      <p>
-        <span className="font-semibold">
-          {left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days left`}`}
-        </span>
-        <span className="text-forest/75">
-          {" "}
-          · {TRIAL_TABLES} table and {TRIAL_STAFF} staff logins besides yours
-        </span>
-      </p>
-      <Link
-        href="/admin/plan"
-        className="inline-flex h-9 items-center rounded-full bg-forest px-4 text-[14px] font-semibold text-white hover:bg-forest-soft"
-      >
-        Buy a plan
-      </Link>
-    </div>
-  );
-}
-
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
-  const { trialEndsAt } = useStaffInfo();
   const { needYou } = useAlerts();
   const [open, setOpen] = useState(false);
   const path = usePathname();
@@ -167,7 +154,7 @@ export default function Shell({ name, children }: { name: string; children: Reac
   return (
     <div className="theme-green min-h-dvh bg-white text-ink lg:flex lg:gap-3 lg:p-3">
       {/* Desktop sidebar */}
-      <aside className="sticky top-3 hidden h-[calc(100dvh-24px)] w-64 shrink-0 flex-col rounded-[28px] bg-paper px-5 py-6 lg:flex">
+      <aside className="sticky top-3 hidden h-[calc(100dvh-24px)] w-64 shrink-0 flex-col overflow-y-auto rounded-[28px] bg-paper px-5 py-6 lg:flex">
         <Logo />
         <Nav name={name} />
       </aside>
@@ -193,7 +180,7 @@ export default function Shell({ name, children }: { name: string; children: Reac
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" aria-label="Close menu" tabIndex={-1} onClick={() => setOpen(false)} className="absolute inset-0 bg-forest/50" />
-          <div className="absolute inset-y-0 left-0 flex w-[min(300px,85vw)] flex-col bg-paper px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
+          <div className="absolute inset-y-0 left-0 flex w-[min(300px,85vw)] flex-col overflow-y-auto bg-paper px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
               <Logo />
               <button
@@ -211,8 +198,6 @@ export default function Shell({ name, children }: { name: string; children: Reac
       )}
 
       <main className="min-w-0 flex-1 bg-paper px-4 pb-12 pt-5 sm:px-6 lg:rounded-[28px] lg:px-8 lg:pt-7">
-        {/* Not on the developers' own pages: there it would describe whichever restaurant is open. */}
-        {trialEndsAt !== null && !path.startsWith("/admin/dev") && <TrialBar endsAt={trialEndsAt} />}
         {children}
       </main>
     </div>

@@ -7,7 +7,7 @@ import LogoCard from "./LogoCard";
 import PaletteCard from "./PaletteCard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Settings · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "General · tapndine", robots: { index: false, follow: false } };
 
 export default async function SettingsPage() {
   const me = await requireStaff("manager");
@@ -18,7 +18,7 @@ export default async function SettingsPage() {
   ]);
   return (
     <Shell name={me.name}>
-      <PageHead title="Settings" sub="How your menu looks to guests." />
+      <PageHead title="General" sub="How your menu looks to guests." />
       <LogoCard name={name ?? ""} logoUrl={logoUrl} />
       {/* DesignCard is hidden until Designs B and C are reworked; guests all get A (lib/menu.ts). */}
       <PaletteCard palette={palette} design="a" />

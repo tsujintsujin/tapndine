@@ -165,6 +165,22 @@ export const ReceiptIcon = (p: P) => (
   </Svg>
 );
 
+/** A card: the restaurant's subscription. */
+export const CardIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+    <path d="M3 10h18M7 15h4" />
+  </Svg>
+);
+
+/** A question in a circle: support. */
+export const HelpIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 17h.01" />
+  </Svg>
+);
+
 export const NfcIcon = (p: P) => (
   <Svg {...p}>
     <circle cx="6" cy="12" r="1.6" />
