@@ -141,14 +141,12 @@ function TrialBar({ endsAt }: { endsAt: number }) {
           · {TRIAL_TABLES} table and {TRIAL_STAFF} staff logins besides yours
         </span>
       </p>
-      <a
-        href={`${BASE_PATH}/#pricing`}
-        target="_blank"
-        rel="noopener"
+      <Link
+        href="/admin/plan"
         className="inline-flex h-9 items-center rounded-full bg-forest px-4 text-[14px] font-semibold text-white hover:bg-forest-soft"
       >
-        See plans
-      </a>
+        Buy a plan
+      </Link>
     </div>
   );
 }

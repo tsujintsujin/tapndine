@@ -17,6 +17,8 @@ export type Env = {
   /** "Continue with Google" on the sign-up page (lib/signup.ts); without them the button is hidden. Worker secrets; .dev.vars locally. */
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Buying a plan with QR Ph (lib/checkout.ts); the same PayMongo account as TheJobStash. Worker secret; .dev.vars locally. */
+  PAYMONGO_SECRET_KEY?: string;
 };
 
 export const env = () => getCloudflareContext().env as unknown as Env;
