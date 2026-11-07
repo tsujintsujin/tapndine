@@ -29,7 +29,10 @@ export default function BuyPlan({
   owner,
   onBack,
   heading = "Pick your plan",
+  onPlanChange,
 }: {
+  /** Told the plan's name each time another plan is picked (the Plan page shows its details beside). */
+  onPlanChange?: (name: string) => void;
   /** A new owner at sign-up: what they typed, sent with the plan. */
   owner?: { restaurant: string; name: string };
   /** Shown as "Back" while picking (sign-up: back to the trial-or-buy step). */
@@ -189,7 +192,10 @@ export default function BuyPlan({
                   name="plan"
                   value={p.name}
                   checked={on}
-                  onChange={() => setPlan(p.name)}
+                  onChange={() => {
+                    setPlan(p.name);
+                    onPlanChange?.(p.name);
+                  }}
                   className="h-5 w-5 shrink-0 accent-[rgb(var(--leaf))]"
                 />
                 <span className="min-w-0 flex-1">
