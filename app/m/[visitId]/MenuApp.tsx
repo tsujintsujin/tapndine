@@ -49,7 +49,7 @@ import Sheet from "./Sheet";
 import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
 import MenuC from "./MenuC";
-import { DishImage, photoUrl, SpiceMeter } from "./parts";
+import { DishImage, DishPhotos, photoUrl, SpiceMeter } from "./parts";
 
 // The whole menu's header and its boxes line up at this width.
 const MENU_WIDTH = "max-w-3xl md:max-w-5xl lg:max-w-[1400px]";
@@ -2002,7 +2002,7 @@ function DishDetails({
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {/* Tablets and up: the photo takes the left half, full height. */}
-      <DishImage dish={dish} eager sizes="420px" className="hidden md:block md:w-[46%] md:shrink-0" />
+      <DishPhotos key={dish.id} dish={dish} sizes="420px" className="hidden md:block md:w-[46%] md:shrink-0" />
       <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-start justify-between gap-2 pb-3 pl-4 pr-2 pt-3 md:pl-6 md:pr-3 md:pt-5">
         <h2 className="pt-1.5 font-display text-[26px] font-bold leading-tight">{dish.name}</h2>
@@ -2016,7 +2016,7 @@ function DishDetails({
           hasOptions ? "pb-6" : "pb-[calc(24px+env(safe-area-inset-bottom))]"
         }`}
       >
-        <DishImage dish={dish} eager sizes="100vw" className="mx-4 aspect-[4/3] rounded-2xl md:hidden" />
+        <DishPhotos key={dish.id} dish={dish} sizes="100vw" className="mx-4 aspect-[4/3] rounded-2xl md:hidden" />
 
         <div className="px-4 md:px-6">
           <div className="mt-4 flex items-baseline justify-between gap-4">

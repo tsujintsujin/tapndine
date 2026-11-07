@@ -11,6 +11,8 @@ export type Dish = {
   description: string;
   priceCents: number;
   imageUrl: string | null;
+  /** Photos 2 and 3, swiped to after the cover in the dish sheet. */
+  moreImages: string[];
   /** 0-5, or null when it does not apply (drinks). */
   spiceLevel: number | null;
   /** How many people one order feeds. */
@@ -62,6 +64,7 @@ type DishRow = {
   description: string;
   price_cents: number;
   image_url: string | null;
+  more_images: string;
   spice_level: number | null;
   serves_min: number;
   serves_max: number;
@@ -97,6 +100,16 @@ export const toOption = (o: OptionRow): DishOption => ({
  */
 export const CHOICE_ON_MENU = "(o.ref_dish_id IS NULL OR (r.available = 1 AND r.removed_at IS NULL))";
 
+/** The more_images column: a JSON list of URLs, read defensively. */
+export function parsePhotos(raw: string | null): string[] {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.filter((u): u is string => typeof u === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Everything the menu screens need, for the business the visit belongs to. */
 export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): Promise<Menu | null> {
   const d = db();
@@ -108,7 +121,7 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
       .bind(visit.business_id),
     d
       .prepare(
-        `SELECT id, name, short_description, description, price_cents, image_url,
+        `SELECT id, name, short_description, description, price_cents, image_url, more_images,
                 spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
@@ -152,6 +165,7 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
       priceCents: r.price_cents,
       // Full Cloudinary URLs (cloud ipp6vibv, folder tapndine/).
       imageUrl: r.image_url,
+      moreImages: parsePhotos(r.more_images),
       spiceLevel: r.spice_level,
       servesMin: r.serves_min,
       servesMax: r.serves_max,

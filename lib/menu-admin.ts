@@ -1,7 +1,7 @@
 import { INGREDIENT_LABELS } from "@/app/components/Icons";
 import { db } from "./cf";
 import { randomId } from "./ids";
-import { toOption, type Ingredient, type OptionRow } from "./menu";
+import { parsePhotos, toOption, type Ingredient, type OptionRow } from "./menu";
 import { OPTION_KINDS, type DishOption, type OptionKind } from "./options";
 
 // The manager's menu editor: dishes, the categories they sit in, and the
@@ -14,7 +14,10 @@ export type AdminDish = {
   shortDescription: string;
   description: string;
   priceCents: number;
+  /** The cover: menu cards, the home page and the dashboard show this one. */
   imageUrl: string | null;
+  /** Up to two more, in swipe order. */
+  moreImages: string[];
   spiceLevel: number | null;
   servesMin: number;
   servesMax: number;
@@ -44,6 +47,7 @@ type Row = {
   description: string;
   price_cents: number;
   image_url: string | null;
+  more_images: string;
   spice_level: number | null;
   serves_min: number;
   serves_max: number;
@@ -61,7 +65,7 @@ export async function loadMenuAdmin(businessId: string) {
   const [dishes, cats, links, ingredients, options] = await d.batch([
     d
       .prepare(
-        `SELECT id, name, short_description, description, price_cents, image_url, spice_level,
+        `SELECT id, name, short_description, description, price_cents, image_url, more_images, spice_level,
                 serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
@@ -99,6 +103,7 @@ export async function loadMenuAdmin(businessId: string) {
     description: r.description,
     priceCents: r.price_cents,
     imageUrl: r.image_url,
+    moreImages: parsePhotos(r.more_images),
     spiceLevel: r.spice_level,
     servesMin: r.serves_min,
     servesMax: r.serves_max,
@@ -144,6 +149,9 @@ export async function loadMenuAdmin(businessId: string) {
 
 export type DishInput = Omit<AdminDish, "id">;
 
+/** Photos per dish, cover included. */
+export const MAX_PHOTOS = 3;
+
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const int = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? v : NaN);
 
@@ -158,8 +166,12 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
   if (description.length > 600) return "Keep the full description under 600 characters.";
   const priceCents = int(b.priceCents);
   if (!(priceCents >= 0 && priceCents <= 10_000_000)) return "Enter a price.";
-  const imageUrl = str(b.imageUrl) || null;
-  if (imageUrl && !imageUrl.startsWith("https://res.cloudinary.com/")) return "Upload the photo again.";
+  // Up to 3 photos; the first is the cover. A gap left by a removed cover closes up.
+  const photos = [b.imageUrl, ...(Array.isArray(b.moreImages) ? b.moreImages : [])].map(str).filter(Boolean);
+  if (photos.length > MAX_PHOTOS) return `Up to ${MAX_PHOTOS} photos.`;
+  if (photos.some((u) => !u.startsWith("https://res.cloudinary.com/"))) return "Upload the photo again.";
+  const imageUrl = photos[0] ?? null;
+  const moreImages = photos.slice(1);
   const spiceLevel = b.spiceLevel === null ? null : int(b.spiceLevel);
   if (spiceLevel !== null && !(spiceLevel >= 0 && spiceLevel <= 5)) return "Spice level is 0 to 5.";
   const servesMin = int(b.servesMin);
@@ -206,6 +218,7 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     description,
     priceCents,
     imageUrl,
+    moreImages,
     spiceLevel,
     servesMin,
     servesMax,
@@ -265,17 +278,17 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
   }
 
   const values = [
-    x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, x.spiceLevel,
+    x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, JSON.stringify(x.moreImages), x.spiceLevel,
     x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.sizeRequired, x.sizeLabel,
   ];
   await d.batch([
     d
       .prepare(
-        `INSERT INTO dishes (id, business_id, sort, name, short_description, description, price_cents, image_url,
+        `INSERT INTO dishes (id, business_id, sort, name, short_description, description, price_cents, image_url, more_images,
                              spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, short_description = excluded.short_description,
-           description = excluded.description, price_cents = excluded.price_cents, image_url = excluded.image_url,
+           description = excluded.description, price_cents = excluded.price_cents, image_url = excluded.image_url, more_images = excluded.more_images,
            spice_level = excluded.spice_level, serves_min = excluded.serves_min, serves_max = excluded.serves_max,
            available = excluded.available, featured = excluded.featured, best_seller = excluded.best_seller,
            is_new = excluded.is_new, size_required = excluded.size_required, size_label = excluded.size_label`

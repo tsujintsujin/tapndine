@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { AdminCategory, AdminDish, DishInput } from "@/lib/menu-admin";
+import { MAX_PHOTOS, type AdminCategory, type AdminDish, type DishInput } from "@/lib/menu-admin";
 import { randomId } from "@/lib/ids";
 import { OPTION_KINDS, sizeTitle, type DishOption, type OptionKind } from "@/lib/options";
 import { formatPrice, servesLabel } from "@/lib/format";
 import {
   ChevronLeft,
+  ChevronRight,
   ChiliIcon,
   CloseIcon,
   ImageIcon,
@@ -28,6 +29,7 @@ const EMPTY: DishInput = {
   description: "",
   priceCents: 0,
   imageUrl: null,
+  moreImages: [],
   spiceLevel: 0,
   servesMin: 1,
   servesMax: 1,
@@ -105,11 +107,29 @@ export default function DishEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const upload = async (file: File) => {
+  // The cover is imageUrl; the rest are moreImages. Edited as one list.
+  const photos = [x.imageUrl, ...x.moreImages].filter((u): u is string => !!u);
+  const setPhotos = (f: (list: string[]) => string[]) =>
+    setX((p) => {
+      const list = f([p.imageUrl, ...p.moreImages].filter((u): u is string => !!u));
+      return { ...p, imageUrl: list[0] ?? null, moreImages: list.slice(1) };
+    });
+  /** Swaps photo i with the one after it. */
+  const swap = (i: number) => setPhotos((l) => l.map((u, n) => (n === i ? l[i + 1] : n === i + 1 ? l[i] : u)));
+
+  const uploadAll = async (files: File[]) => {
+    const room = MAX_PHOTOS - photos.length;
+    if (!files.length || room <= 0) return;
     setError("");
-    if (!file.type.startsWith("image/")) return setError("That file isn't a photo. Use a JPG, PNG or WebP.");
-    if (file.size > MAX_PHOTO) return setError("That photo is over 10 MB. Use a smaller one.");
+    for (const f of files.slice(0, room)) if (!(await upload(f))) return;
+    if (files.length > room) setError(`Up to ${MAX_PHOTOS} photos. Only the first ${room === 1 ? "one was" : `${room} were`} added.`);
+  };
+
+  const upload = async (file: File): Promise<boolean> => {
+    if (!file.type.startsWith("image/")) return (setError("That file isn't a photo. Use a JPG, PNG or WebP."), false);
+    if (file.size > MAX_PHOTO) return (setError("That photo is over 10 MB. Use a smaller one."), false);
     setUploading(true);
+    let ok = false;
     try {
       const s = await api<{ url: string; apiKey: string; timestamp: number; signature: string; folder: string }>(
         "/api/staff/menu/upload",
@@ -125,11 +145,14 @@ export default function DishEditor({
       const j = (await r.json().catch(() => ({}))) as { secure_url?: string; error?: { message?: string } };
       if (!r.ok || !j.secure_url) throw new Error(j.error?.message ?? "The photo didn't upload. Try again.");
       // Same delivery as the other photos: best format and quality per phone.
-      set("imageUrl", j.secure_url.replace("/upload/", "/upload/f_auto,q_auto/"));
+      const url = j.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
+      setPhotos((l) => [...l, url].slice(0, MAX_PHOTOS));
+      ok = true;
     } catch (e) {
       setError(e instanceof TypeError ? "No connection. Check the internet and try again." : (e as Error).message);
     }
     setUploading(false);
+    return ok;
   };
 
   const save = async () => {
@@ -437,67 +460,98 @@ export default function DishEditor({
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-6">
-          <section className={card}>
-            <h2 className="font-display text-[19px] font-bold">Photo</h2>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                const f = e.dataTransfer.files[0];
-                if (f) upload(f);
-              }}
-              className={`relative mt-3 aspect-[4/3] overflow-hidden rounded-2xl ${
-                dragOver ? "ring-2 ring-leaf ring-offset-2" : ""
-              } ${x.imageUrl ? "bg-wash" : "border-2 border-dashed border-line bg-paper"}`}
-            >
-              {x.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={x.imageUrl} alt="" className={`h-full w-full object-cover ${x.available ? "" : "grayscale"}`} />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="absolute inset-0 grid place-items-center text-center text-muted"
-                >
-                  <span>
-                    <ImageIcon width={36} height={36} className="mx-auto" />
-                    <span className="mt-2 block text-[14px] font-semibold text-ink">Upload a photo</span>
-                    <span className="block text-[13px]">or drop one here</span>
-                  </span>
-                </button>
-              )}
-              {uploading && (
-                <div className="absolute inset-0 grid place-items-center bg-white/80 text-[15px] font-semibold text-forest" role="status">
-                  Uploading…
-                </div>
-              )}
+          <section
+            className={`${card} ${dragOver ? "ring-2 ring-leaf" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (!uploading) uploadAll([...e.dataTransfer.files]);
+            }}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="font-display text-[19px] font-bold">Photos</h2>
+              <span className="text-[13px] text-muted">
+                {photos.length} of {MAX_PHOTOS}
+              </span>
             </div>
+            <ul className="mt-3 grid grid-cols-3 gap-2">
+              {photos.map((u, i) => (
+                <li key={u}>
+                  <div className="relative aspect-square overflow-hidden rounded-xl bg-wash">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={u} alt={i === 0 ? "Cover photo" : `Photo ${i + 1}`} className={`h-full w-full object-cover ${x.available ? "" : "grayscale"}`} />
+                    {i === 0 && (
+                      <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-forest">Cover</span>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex gap-1">
+                    {/* Swapping neighbours left or right reaches every order. */}
+                    {photos.length > 1 && (
+                      <button
+                        type="button"
+                        disabled={uploading}
+                        onClick={() => swap(i === 0 ? 0 : i - 1)}
+                        aria-label={i === 0 ? "Move cover photo right" : i === 1 ? "Make photo 2 the cover" : `Move photo ${i + 1} left`}
+                        className="grid h-11 min-w-0 flex-1 place-items-center rounded-full border border-forest/80 bg-white text-forest hover:bg-leaf-tint disabled:opacity-60"
+                      >
+                        {i === 0 ? <ChevronRight width={18} height={18} /> : <ChevronLeft width={18} height={18} />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => setPhotos((l) => l.filter((_, n) => n !== i))}
+                      aria-label={i === 0 ? "Remove cover photo" : `Remove photo ${i + 1}`}
+                      className={`grid h-11 shrink-0 place-items-center rounded-full text-chili hover:bg-chili/10 disabled:opacity-60 ${photos.length > 1 ? "w-11" : "flex-1"}`}
+                    >
+                      <TrashIcon width={17} height={17} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {photos.length < MAX_PHOTOS && (
+                <li>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                    className="relative grid aspect-square w-full place-items-center rounded-xl border-2 border-dashed border-line bg-paper text-center text-muted hover:border-leaf/60"
+                  >
+                    {uploading ? (
+                      <span className="text-[13px] font-semibold text-forest" role="status">
+                        Uploading…
+                      </span>
+                    ) : (
+                      <span>
+                        <ImageIcon width={26} height={26} className="mx-auto" />
+                        <span className="mt-1 block text-[13px] font-semibold text-ink">Add photo</span>
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )}
+            </ul>
             <input
               ref={fileRef}
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) upload(f);
+                uploadAll([...(e.target.files ?? [])]);
                 e.target.value = "";
               }}
             />
-            {x.imageUrl && (
-              <div className="mt-3 flex gap-2">
-                <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} className={`${btn.secondary} h-10 flex-1`}>
-                  Replace photo
-                </button>
-                <button type="button" disabled={uploading} onClick={() => set("imageUrl", null)} className={`${btn.danger} h-10`}>
-                  Remove
-                </button>
-              </div>
-            )}
+            <p className="mt-3 text-[13px] text-muted">
+              Guests swipe through these on the dish. The cover also shows on the menu, the home page and your dashboard. Drop photos here or tap Add photo.
+            </p>
           </section>
 
           <section className={card}>
