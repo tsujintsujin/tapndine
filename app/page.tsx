@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
-import { EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
+import { ENTERPRISE, EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
 import { SiteFooter } from "@/app/components/SiteFooter";
@@ -45,13 +45,6 @@ const STATS_V = "2";
 /** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
 const ANIM_V = "3";
 
-const EVERY_PLAN = [
-  "Menu with photos, online",
-  "Orders straight to the waiter",
-  "A QR code for every table",
-  "Waiter and manager logins",
-  "Sales and busy-hour statistics",
-];
 /** Where restaurants get NFC tags for their tables free (Justin, 2026-10-25). */
 const NFC_AREA = "Davao City, Davao del Sur, Davao del Norte and Davao de Oro";
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
@@ -202,7 +195,7 @@ const STEPS = [
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
 
-const PLAN_LIST = PLANS.map((p) => `${peso(p.price)} a year for ${p.tables} tables`).join(", ");
+const PLAN_LIST = PLANS.map((p) => `${p.name} ${peso(p.price)} a year (${p.tables ? `${p.tables} tables with ordering` : "menu only, no ordering"})`).join(", ");
 const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,]*)$/, " or $1");
 
 // Plain-text answers: the FAQ section shows them and Google reads them (FAQPage below).
@@ -237,7 +230,7 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `One yearly price by number of tables: ${PLAN_LIST}. Extra tables on any plan are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Every plan includes a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
+    a: `One yearly price: ${PLAN_LIST}. ${ENTERPRISE.name} has unlimited tables and priority support, priced with you. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
@@ -281,7 +274,7 @@ const JSON_LD = {
       provider: { "@id": "https://tapndine.online/#org" },
       offers: PLANS.map((p) => ({
         "@type": "Offer",
-        name: `${p.name} (${p.tables} tables, 1 year)`,
+        name: `${p.name} (${p.tables ? `${p.tables} tables` : "menu only"}, 1 year)`,
         price: p.price,
         priceCurrency: "PHP",
       })),
@@ -292,6 +285,30 @@ const JSON_LD = {
     },
   ],
 };
+
+/** A plan card's checklist: what it includes, then what it leaves out. */
+function PlanList({ includes, without, dark }: { includes: string[]; without: string[]; dark?: boolean }) {
+  return (
+    <ul className={`mt-6 flex-1 space-y-2.5 border-t pt-6 text-sm font-medium ${dark ? "border-white/15" : "border-home-cocoa/10"}`}>
+      {includes.map((f) => (
+        <li key={f} className="flex items-start gap-2.5">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-sage text-white">
+            <CheckIcon className="h-3.5 w-3.5" />
+          </span>
+          {f}
+        </li>
+      ))}
+      {without.map((f) => (
+        <li key={f} className={`flex items-start gap-2.5 ${dark ? "text-home-shell/60" : "text-home-cocoa/55"}`}>
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-cream text-home-cocoa/60" aria-hidden>
+            &ndash;
+          </span>
+          {f}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
 /** The light blue the flat illustrations are drawn on (videos/wait-race). */
@@ -584,7 +601,7 @@ export default async function Home() {
               aria-label="QR code that opens the demo menu"
               dangerouslySetInnerHTML={{ __html: demoQr }}
             />
-            <div className="min-w-0">
+            <div className="w-full min-w-0 flex-1">
               <h3 className="text-2xl font-extrabold tracking-tight">Try the menu yourself</h3>
               <p className="mt-2 font-medium leading-relaxed text-home-cocoa/80">
                 <span className="hidden sm:inline">Scan the code with your phone camera, or open it here. </span>
@@ -592,7 +609,7 @@ export default async function Home() {
               </p>
               <a
                 href={`${BASE_PATH}${DEMO_PATH}`}
-                className={`${PILL} mt-5 bg-home-cocoa text-home-shell hover:bg-black`}
+                className={`${PILL} mt-5 block w-full text-center bg-home-cocoa text-home-shell hover:bg-black`}
               >
                 Open the demo menu
               </a>
@@ -625,8 +642,8 @@ export default async function Home() {
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
           <h2 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl">Pricing</h2>
           <p className="mx-auto mt-4 max-w-md text-center font-medium text-home-cocoa/75">
-            One price a year for your restaurant or cafe, by how many tables you have. Renew at the same rate to keep
-            your menu online.
+            One price a year for your restaurant or cafe: your menu online on its own, or with ordering by how many
+            tables you have. Renew at the same rate to keep your menu online.
           </p>
           <Link
             href="/start"
@@ -638,41 +655,41 @@ export default async function Home() {
             {PLANS.map((p) => (
               <div key={p.name} className="flex flex-col rounded-3xl bg-white p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
                 <h3 className="text-lg font-bold">{p.name}</h3>
-                <p className="mt-1 text-sm font-semibold text-home-orange">{p.tables} tables</p>
+                <p className="mt-1 text-sm font-semibold text-home-orange">{p.tables ? `${p.tables} tables` : "Menu only"}</p>
                 <p className="mt-6">
                   <span className="text-4xl font-extrabold tracking-tight">{peso(p.price)}</span>
                   <span className="text-sm font-semibold opacity-60"> / year</span>
                 </p>
-                <p className="mt-1 text-sm font-medium text-home-cocoa/70">{perTableMonth(p)} per table a month</p>
+                <p className="mt-1 text-sm font-medium text-home-cocoa/70">
+                  {p.tables ? `${perTableMonth(p)} per table a month` : `${peso(Math.round(p.price / 12))} a month`}
+                </p>
+                <PlanList includes={p.includes} without={("without" in p && p.without) || []} />
                 <a href={`${CONTACT}%20(${encodeURIComponent(p.name)})`} className={`${PILL} mt-8 bg-home-orange text-center hover:brightness-95`}>
                   Choose {p.name}
                 </a>
               </div>
             ))}
+            <div className="flex flex-col rounded-3xl bg-home-cocoa p-6 text-home-shell shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)]">
+              <h3 className="text-lg font-bold">{ENTERPRISE.name}</h3>
+              <p className="mt-1 text-sm font-semibold text-home-butter">Unlimited tables</p>
+              <p className="mt-6 text-4xl font-extrabold tracking-tight">Let&apos;s talk</p>
+              <p className="mt-1 text-sm font-medium text-home-shell/70">Priced for your restaurant</p>
+              <PlanList includes={ENTERPRISE.includes} without={[]} dark />
+              <a href={`${CONTACT}%20(${ENTERPRISE.name})`} className={`${PILL} mt-8 bg-home-butter text-center text-home-cocoa hover:brightness-95`}>
+                Contact us
+              </a>
+            </div>
           </div>
           <div className="mt-5 flex flex-col items-center justify-between gap-2 rounded-3xl bg-white px-6 py-5 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] sm:flex-row sm:text-left">
             <div>
               <h3 className="text-lg font-bold">Extra tables</h3>
-              <p className="text-sm font-medium text-home-cocoa/70">Add tables to any plan, one at a time.</p>
+              <p className="text-sm font-medium text-home-cocoa/70">Add tables to {PLANS[1].name} or {PLANS[2].name}, one at a time.</p>
             </div>
             <p>
               <span className="text-2xl font-extrabold tracking-tight">{peso(EXTRA_TABLE / 12)}</span>
               <span className="text-sm font-semibold opacity-60"> per table a month</span>
               <span className="block text-sm font-medium text-home-cocoa/70">{peso(EXTRA_TABLE)} a year</span>
             </p>
-          </div>
-          <div className="mt-8 rounded-3xl bg-white/70 px-6 py-6 ring-1 ring-home-cream">
-            <h3 className="text-center font-bold">Every plan includes</h3>
-            <ul className="mt-4 grid gap-x-6 gap-y-3 text-sm font-medium sm:grid-cols-2 lg:grid-cols-3">
-              {EVERY_PLAN.map((f) => (
-                <li key={f} className="flex items-start gap-2.5">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-sage text-white">
-                    <CheckIcon className="h-3.5 w-3.5" />
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
           </div>
           <p className="mx-auto mt-5 max-w-2xl text-balance text-center text-sm font-semibold text-home-cocoa/75">
             Free NFC tags for restaurants in {NFC_AREA}: guests just tap the table instead of scanning.

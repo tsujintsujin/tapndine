@@ -235,7 +235,7 @@ function ContractForm({
           <input
             name="tables"
             type="number"
-            min={1}
+            min={0}
             max={500}
             required
             value={tables}
@@ -244,7 +244,7 @@ function ContractForm({
               // A plan's price plus its extra tables, if they signed for more than it covers.
               const p = PLANS.find((x) => x.name === plan);
               const n = Number(e.target.value);
-              if (p && n > 0) setPrice(String(p.price + Math.max(0, n - p.tables) * EXTRA_TABLE));
+              if (p && n >= 0) setPrice(String(p.price + Math.max(0, n - p.tables) * EXTRA_TABLE));
             }}
             className={field}
           />

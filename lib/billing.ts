@@ -251,7 +251,7 @@ export function parseContract(b: Record<string, unknown> | null): ContractInput 
   const plan = str(b.plan, 60);
   if (!plan) return "Pick or name the plan.";
   const tables = Number(b.tables);
-  if (!Number.isInteger(tables) || tables < 1 || tables > 500) return "Tables: a whole number from 1.";
+  if (!Number.isInteger(tables) || tables < 0 || tables > 500) return "Tables: a whole number from 0 (0 is menu only).";
   const priceCents = cents(b.price);
   if (!(priceCents >= 0 && priceCents <= 100_000_000)) return "Enter the price in pesos.";
   if (!isDay(b.signedOn)) return "Pick the day it was signed.";

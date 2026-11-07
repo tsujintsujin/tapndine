@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     text:
       `Hi ${name},\n\nThanks for booking a tapndine demo. We have you down for ${day} at ${label12(min)} (Philippine time).\n\n` +
       `We'll email you before then with how we'll meet. To change the time or ask anything, just reply to this email.\n\n` +
-      `Want a look now? Open the demo menu: https://tapndine.online/t/h3nd6vya\n\ntapndine`,
+      `Want a look now? Open the demo menu: https://tapndine.online/t/b3744013e9f6\n\ntapndine`,
   });
   return NextResponse.json({ ok: true });
 }
