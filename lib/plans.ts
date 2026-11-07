@@ -17,10 +17,10 @@ export const EXTRA_TABLE = 420;
 /** How a restaurant can pay us; a payment records one. "QR Ph" is a plan bought on the site (lib/checkout.ts). */
 export const METHODS = ["QR Ph", "GCash", "Maya", "Bank transfer", "Cash", "Other"] as const;
 
-// ponytail: every plan bought on the site charges this many pesos while
-// checkout is being tested. Justin set ₱1 on 2026-11-07, "keep it at 1 peso
-// until i say to change". Set to null to charge the plan prices above.
-export const CHARGE_PESOS: number | null = 1;
+// A test price: every plan bought on the site charges this many pesos instead
+// of its own. null charges the plan prices above (real prices since 2026-11-07,
+// after Justin's ₱1 test: "the qr works. now move to proper amount").
+export const CHARGE_PESOS: number | null = null;
 
 /** What buying a plan on the site charges, in centavos. */
 export const chargeCents = (p: { price: number }) => (CHARGE_PESOS ?? p.price) * 100;
