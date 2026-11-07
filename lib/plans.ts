@@ -10,11 +10,6 @@ export const PLANS = [
   { name: "Grand", tables: 20, price: 8500, includes: ["Online menu", "Full customizable menu", "20 tables", "Ordering", "Waiter accounts", "Manager accounts"] },
 ];
 
-/** Shown after the plans: no fixed price, the restaurant contacts us. */
-export const ENTERPRISE = {
-  name: "Enterprise",
-  includes: ["Online menu", "Full customizable menu", "Unlimited tables", "Ordering", "Waiter accounts", "Manager accounts", "Priority support"],
-};
 
 /** A table beyond the plan's count, added to Standard or Grand: ₱35 a month, in whole pesos a year. */
 export const EXTRA_TABLE = 420;

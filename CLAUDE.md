@@ -83,9 +83,8 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 ## Plans (lib/plans.ts)
 
 Single ₱3,000/yr (menu only: 0 tables, no ordering), Standard 10 tables ₱5,000/yr,
-Grand 20 tables ₱8,500/yr. Enterprise: unlimited tables and priority support, priced per
-restaurant ("Contact us", in `ENTERPRISE`, not in `PLANS`). Each plan card lists what it
-includes. Extra tables on Standard or Grand: ₱35 per table a month (₱420/yr). Set by
+Grand 20 tables ₱8,500/yr (no Enterprise: extra tables cover bigger places). Each plan
+card lists what it includes; Standard is drawn dark as the highlighted plan. Extra tables on Standard or Grand: ₱35 per table a month (₱420/yr). Set by
 Justin 2026-11-07.
 A restaurant's table limit comes from its current contract; with no contract,
 a self sign-up trial gets 1 and one a developer added the biggest plan's count.
