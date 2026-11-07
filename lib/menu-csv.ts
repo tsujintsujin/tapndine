@@ -132,6 +132,7 @@ export function readMenuCsv(text: string): { dishes: CsvDish[]; errors: string[]
         description: get("description"),
         priceCents,
         imageUrl: null,
+        moreImages: [],
         spiceLevel,
         servesMin,
         servesMax,
