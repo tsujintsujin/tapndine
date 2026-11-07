@@ -4,7 +4,7 @@
 -- Tag links to try (npm run dev, then open):
 --   http://127.0.0.1:3300/t/k7x9q2mp   -> Table 1
 --   http://127.0.0.1:3300/t/r4tb8wzc   -> Table 2
---   http://127.0.0.1:3300/t/h3nd6vya   -> not placed at a table yet
+--   http://127.0.0.1:3300/t/b3744013e9f6   -> not placed at a table yet
 
 INSERT INTO businesses (id, slug, name, created_at) VALUES
   ('biz_hikay', 'hikay', 'Hikay', 1759104000000);
@@ -16,7 +16,7 @@ INSERT INTO tables (id, business_id, label, sort) VALUES
 INSERT INTO tags (id, business_id, table_id, created_at) VALUES
   ('k7x9q2mp', 'biz_hikay', 'tbl_hikay_1', 1759104000000),
   ('r4tb8wzc', 'biz_hikay', 'tbl_hikay_2', 1759104000000),
-  ('h3nd6vya', 'biz_hikay', NULL,          1759104000000);
+  ('b3744013e9f6', 'biz_hikay', NULL,          1759104000000);
 
 INSERT INTO categories (id, business_id, name, sort) VALUES
   ('cat_seafood', 'biz_hikay', 'Seafood',    1),

@@ -24,10 +24,10 @@ export type Visit = {
 };
 
 /**
- * The demo restaurant's "Menu for show" tag: the homepage's "Try the menu".
+ * The demo restaurant's tag: the homepage's "Try the menu" (Justin, 2026-11-07).
  * Same id on the live site and in the seed data (seed/dev.sql).
  */
-export const DEMO_TAG = "h3nd6vya";
+export const DEMO_TAG = "b3744013e9f6";
 
 /** Tag ids are what is written on the physical tag. Reject anything else early. */
 export const isTagId = (id: string) => /^[a-z0-9]{4,32}$/.test(id);

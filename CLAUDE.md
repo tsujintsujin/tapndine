@@ -82,10 +82,11 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 ## Plans (lib/plans.ts)
 
-Starter 5 tables ₱3,000/yr, Small Cafe 10 ₱5,000/yr, Standard 15 ₱7,100/yr,
-High-end 20 ₱8,500/yr. Extra tables on any plan: ₱35 per table a month
-(₱420/yr). Set 2026-10-19 (₱50 a table a month base, less for bigger plans and
-for paying yearly; still under Qashier ₱590/mo and MenuTiger ~₱1,000/mo).
+Single ₱3,000/yr (menu only: 0 tables, no ordering), Standard 10 tables ₱5,000/yr,
+Grand 20 tables ₱8,500/yr. Enterprise: unlimited tables and priority support, priced per
+restaurant ("Contact us", in `ENTERPRISE`, not in `PLANS`). Each plan card lists what it
+includes. Extra tables on Standard or Grand: ₱35 per table a month (₱420/yr). Set by
+Justin 2026-11-07.
 A restaurant's table limit comes from its current contract; with no contract,
 a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 
@@ -113,8 +114,8 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   (Moved off Next 15 on 2026-10-22: OpenNext refuses to build a Next major past
   its two-year support date.)
 - Local DB: `npm run db:reset` (migrate + seed into `.localdb`). Seed restaurant
-  is Hikay; its "Menu for show" demo tag is `h3nd6vya` (also on live; the homepage's
-  "Try the menu" opens it).
+  is Hikay; its demo tag is `b3744013e9f6` (also on live, set 2026-11-07; the
+  homepage's "Try the menu" opens it).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
 - Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`,
