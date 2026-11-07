@@ -80,6 +80,25 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   the real version instead of "show it to your waiter".
 - **Developers** (TSUJIN): every restaurant, billing (contracts and payments).
 
+## Accounts and buying a plan (set by Justin 2026-11-07)
+
+- **Owners** sign up at `/start` with an email and password (the email proven
+  once with an emailed 6-digit code) or with Google, then name the restaurant
+  and pick **Free trial** (account made at once) or **Buy a plan**. A bought
+  plan's restaurant and owner login are made only once PayMongo says it's paid
+  (`lib/checkout.ts`). Owners log in with their email; Google opens the same
+  account. "Forgot password?" emails an owner a reset code.
+- **Staff** never sign up or buy: the manager makes their username and password.
+  Their "Forgot password?" still emails Justin.
+- There is no email-code login any more (only sign-up and reset use codes).
+- **Paying**: QR Ph through PayMongo, the same account and code shape as
+  TheJobStash. A plan bought on the site runs a year plus 7 days and becomes a
+  contract with a "QR Ph" payment. **Every plan charges ₱1 (`CHARGE_PESOS` in
+  lib/plans.ts) until Justin says to change it.** Webhook: `/api/billing/webhook`.
+  A trial restaurant buys from the trial bar's "Buy a plan" (`/admin/plan`) or
+  `/trial-over`; renewals are still done in Billing.
+- The login card is one fixed height on desktop (720px) so the photo never re-crops.
+
 ## Plans (lib/plans.ts)
 
 Single ₱3,000/yr (menu only: 0 tables, no ordering), Standard 10 tables ₱5,000/yr,

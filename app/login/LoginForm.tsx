@@ -3,14 +3,20 @@
 import { useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
+import BuyPlan from "@/app/components/BuyPlan";
 import { Logo } from "@/app/admin/kit";
+import { BONUS_DAYS } from "@/lib/plans";
+import { OWNER_MIN_PASSWORD, TRIAL_DAYS, TRIAL_STAFF, TRIAL_TABLES } from "@/lib/trial";
 
 // Two panels on one card: the photo with the brand on the left, the form on
 // the right. Below md the photo shrinks to a banner above the form.
-// "Forgot password?" swaps the form for a reset request emailed to Justin.
-// The same card signs a restaurant up for the free trial (/start), and logs
-// its manager back in, with Google or a code emailed to them: "start", then
-// "code", then for a new email "restaurant" (lib/signup.ts).
+//
+// Log in (/login): an owner's email or a staff username, and the password; or
+// Google for owners. Create an account (/start): email and password, proven
+// once with an emailed code ("code"), or Google; then "restaurant" names it
+// and picks the free trial or a plan to buy ("plans", paid with QR Ph; the
+// account is made once it's paid). "Forgot password?" emails an owner a code
+// ("reset"); a staff username's request goes to Justin as before.
 
 const field =
   "mt-1.5 block h-12 w-full rounded-xl border border-line bg-white px-3 text-[17px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20";
@@ -20,6 +26,7 @@ const textLink = "rounded font-semibold text-leaf underline-offset-4 hover:under
 const outline =
   "flex h-[52px] w-full items-center justify-center gap-3 rounded-xl border border-line bg-white text-[17px] font-semibold text-ink hover:bg-paper active:bg-wash";
 const heading = "font-display text-[28px] font-bold leading-tight tracking-tight";
+const sub = "mt-1 text-[15px] leading-snug text-muted";
 
 /** POST as JSON: the route's error message ("" when it worked) and its answer. */
 async function post(path: string, body: unknown): Promise<{ error: string; data: Record<string, unknown> }> {
@@ -47,14 +54,68 @@ function GoogleMark() {
   );
 }
 
-/** A thin rule with "or" in the middle. */
-function OrRule() {
+/** "Continue with Google", then a rule with "or". */
+function GoogleFirst() {
   return (
-    <div className="my-5 flex items-center gap-3 text-[14px] text-muted" aria-hidden="true">
-      <span className="h-px flex-1 bg-line" />
-      or
-      <span className="h-px flex-1 bg-line" />
-    </div>
+    <>
+      <a href={`${BASE_PATH}/api/auth/google`} className={`${outline} mt-7`}>
+        <GoogleMark />
+        Continue with Google
+      </a>
+      <div className="my-5 flex items-center gap-3 text-[14px] text-muted" aria-hidden="true">
+        <span className="h-px flex-1 bg-line" />
+        or
+        <span className="h-px flex-1 bg-line" />
+      </div>
+    </>
+  );
+}
+
+/** A password box with a Show/Hide button inside it. */
+function PasswordField({
+  label,
+  name,
+  autoComplete,
+  hint,
+  minLength,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  autoComplete: "current-password" | "new-password";
+  hint?: string;
+  minLength?: number;
+  value?: string;
+  onChange?: (v: string) => void;
+}) {
+  const [shown, setShown] = useState(false);
+  return (
+    <label className="mt-4 block text-[15px] font-medium">
+      {label}
+      <span className="relative mt-1.5 block">
+        <input
+          name={name}
+          type={shown ? "text" : "password"}
+          required
+          minLength={minLength}
+          maxLength={200}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={onChange && ((e) => onChange(e.target.value))}
+          className={`${field} mt-0 pr-20`}
+        />
+        <button
+          type="button"
+          onClick={() => setShown(!shown)}
+          aria-label={shown ? "Hide password" : "Show password"}
+          className="absolute inset-y-1 right-1 rounded-lg px-3 text-[14px] font-semibold text-leaf hover:bg-paper"
+        >
+          {shown ? "Hide" : "Show"}
+        </button>
+      </span>
+      {hint && <span className="mt-1.5 block text-[14px] font-normal text-muted">{hint}</span>}
+    </label>
   );
 }
 
@@ -80,10 +141,10 @@ function ErrorNote({ error }: { error: string }) {
   );
 }
 
-type Mode = "login" | "forgot" | "sent" | "start" | "code" | "restaurant";
+type Mode = "login" | "forgot" | "sent" | "reset" | "start" | "code" | "restaurant" | "plans";
 
 /**
- * start: open on the trial sign-up. pending: an email that is proven but has
+ * start: open on creating an account. pending: an email that is proven but has
  * no restaurant yet (opens on naming it). google: show "Continue with Google".
  */
 export default function LoginForm({
@@ -103,18 +164,23 @@ export default function LoginForm({
   const [username, setUsername] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState(pending ?? "");
+  const [password, setPassword] = useState("");
   const [resent, setResent] = useState(false);
+  const [restaurant, setRestaurant] = useState("");
+  const [name, setName] = useState("");
+  const [choice, setChoice] = useState<"trial" | "buy">("trial");
 
   const go = (m: Mode) => {
     setMode(m);
     setError("");
   };
+  const ownerReset = username.includes("@");
 
-  /** Emails a code. firstAsk: from the email step, where a code sent a moment ago counts as sent. */
+  /** Emails the sign-up code. firstAsk: from the form, where a code sent a moment ago counts as sent. */
   const sendCode = async (firstAsk = false) => {
     setBusy(true);
     setError("");
-    const r = await post("/api/auth/email", { email });
+    const r = await post("/api/auth/email", { email, password });
     setBusy(false);
     if (firstAsk && r.data.recent) return true;
     if (r.error) setError(r.error);
@@ -124,8 +190,9 @@ export default function LoginForm({
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-8 sm:py-10">
       <WarmBackdrop />
-      <div className="grid w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_-20px_rgb(59_46_37/0.35)] ring-1 ring-black/5 md:max-w-5xl md:grid-cols-[1.1fr_1fr]">
-        <div className="relative h-48 md:h-auto md:min-h-[600px]">
+      {/* One fixed height on desktop for every step, so the card never resizes and the photo never re-crops. */}
+      <div className="grid w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_-20px_rgb(59_46_37/0.35)] ring-1 ring-black/5 md:h-[720px] md:max-w-5xl md:grid-cols-[1.1fr_1fr]">
+        <div className="relative h-48 md:h-auto">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${BASE_PATH}/login/photo.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/0 to-black/10" />
@@ -136,7 +203,8 @@ export default function LoginForm({
           </div>
         </div>
 
-        <div className="flex flex-col justify-center px-6 py-8 sm:px-10 md:px-14 md:py-12">
+        <div className="flex flex-col px-6 py-8 sm:px-10 md:overflow-y-auto md:px-14 md:py-12">
+          <div className="my-auto">
           {mode === "login" && (
             <form
               onSubmit={async (e) => {
@@ -145,7 +213,7 @@ export default function LoginForm({
                 setBusy(true);
                 setError("");
                 // Plain fetch, not api(): api() treats a 401 as "logged out" and
-                // reloads this page, which would swallow "Wrong username or password."
+                // reloads this page, which would swallow "Wrong email, username or password."
                 try {
                   const res = await fetch(`${BASE_PATH}/api/staff/login`, {
                     method: "POST",
@@ -164,10 +232,11 @@ export default function LoginForm({
                 setBusy(false);
               }}
             >
-              <h2 className="font-display text-[28px] font-bold leading-tight tracking-tight">Log in</h2>
-              <p className="mt-1 text-[15px] text-muted">For your restaurant&apos;s staff and managers.</p>
-              <label className="mt-7 block text-[15px] font-medium">
-                Username
+              <h2 className={heading}>Log in</h2>
+              <p className={sub}>Owners use their email. Staff use the username their manager gave them.</p>
+              {google && <GoogleFirst />}
+              <label className={`${google ? "" : "mt-7 "}block text-[15px] font-medium`}>
+                Email or username
                 <input
                   name="username"
                   required
@@ -179,10 +248,7 @@ export default function LoginForm({
                   className={field}
                 />
               </label>
-              <label className="mt-4 block text-[15px] font-medium">
-                Password
-                <input name="password" type="password" required autoComplete="current-password" className={field} />
-              </label>
+              <PasswordField label="Password" name="password" autoComplete="current-password" />
               <div className="mt-2.5 text-right text-[15px]">
                 <button type="button" onClick={() => go("forgot")} className={textLink}>
                   Forgot password?
@@ -192,14 +258,10 @@ export default function LoginForm({
               <button type="submit" disabled={busy} className={submit}>
                 {busy ? "Logging in…" : "Log in"}
               </button>
-              <OrRule />
-              <button type="button" onClick={() => go("start")} className={outline}>
-                Sign in with email or Google
-              </button>
-              <p className="mt-4 text-center text-[15px] text-muted">
-                New restaurant?{" "}
+              <p className="mt-5 text-center text-[15px] text-muted">
+                New to tapndine?{" "}
                 <button type="button" onClick={() => go("start")} className={textLink}>
-                  Try it free for 7 days
+                  Create an account
                 </button>
               </p>
             </form>
@@ -215,19 +277,11 @@ export default function LoginForm({
                 }
               }}
             >
-              <h2 className={heading}>Try tapndine free</h2>
-              <p className="mt-1 text-[15px] leading-snug text-muted">
-                7 days, every feature, 1 table. Signed up already? Use the same email or Google account to get back in.
+              <h2 className={heading}>Create your account</h2>
+              <p className={sub}>
+                For restaurant and cafe owners. Next you pick a free {TRIAL_DAYS}-day trial or buy a plan.
               </p>
-              {google && (
-                <>
-                  <a href={`${BASE_PATH}/api/auth/google`} className={`${outline} mt-7`}>
-                    <GoogleMark />
-                    Continue with Google
-                  </a>
-                  <OrRule />
-                </>
-              )}
+              {google && <GoogleFirst />}
               <label className={`${google ? "" : "mt-7 "}block text-[15px] font-medium`}>
                 Email
                 <input
@@ -242,12 +296,21 @@ export default function LoginForm({
                   className={field}
                 />
               </label>
+              <PasswordField
+                label="Password"
+                name="new-password"
+                autoComplete="new-password"
+                minLength={OWNER_MIN_PASSWORD}
+                hint={`At least ${OWNER_MIN_PASSWORD} characters.`}
+                value={password}
+                onChange={setPassword}
+              />
               <ErrorNote error={error} />
               <button type="submit" disabled={busy} className={submit}>
-                {busy ? "Sending…" : "Email me a code"}
+                {busy ? "Sending…" : "Create account"}
               </button>
               <p className="mt-5 text-center text-[15px] text-muted">
-                Have a username?{" "}
+                Have an account?{" "}
                 <button type="button" onClick={() => go("login")} className={textLink}>
                   Log in
                 </button>
@@ -262,24 +325,16 @@ export default function LoginForm({
                 const code = String(new FormData(e.currentTarget).get("code") ?? "");
                 setBusy(true);
                 setError("");
-                const r = await post("/api/auth/email/verify", { email, code });
-                if (r.error) {
-                  setError(r.error);
-                  setBusy(false);
-                  return;
-                }
-                if (r.data.next === "in") {
-                  window.location.href = `${BASE_PATH}/admin/dashboard`;
-                  return;
-                }
+                const r = await post("/api/auth/email/verify", { email, code, password });
                 setBusy(false);
+                if (r.error) return setError(r.error);
                 go("restaurant");
               }}
             >
               <h2 className={heading}>Check your email</h2>
-              <p className="mt-1 text-[15px] leading-snug text-muted">
-                We sent a 6-digit code to <span className="font-semibold text-ink">{email.trim()}</span>. It works for 10
-                minutes.
+              <p className={sub}>
+                We sent a 6-digit code to <span className="font-semibold text-ink">{email.trim()}</span> to confirm it&apos;s
+                yours. It works for 10 minutes.
               </p>
               <label className="mt-7 block text-[15px] font-medium">
                 Code
@@ -295,7 +350,7 @@ export default function LoginForm({
               </label>
               <ErrorNote error={error} />
               <button type="submit" disabled={busy} className={submit}>
-                {busy ? "Checking…" : "Continue"}
+                {busy ? "Checking…" : "Confirm email"}
               </button>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[15px]">
                 <button type="button" onClick={() => go("start")} className={textLink}>
@@ -320,10 +375,10 @@ export default function LoginForm({
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                const f = new FormData(e.currentTarget);
+                if (choice === "buy") return go("plans");
                 setBusy(true);
                 setError("");
-                const r = await post("/api/auth/signup", { restaurant: f.get("restaurant"), name: f.get("name") });
+                const r = await post("/api/auth/signup", { restaurant, name });
                 if (r.error) {
                   setError(r.error);
                   setBusy(false);
@@ -332,30 +387,73 @@ export default function LoginForm({
                 window.location.href = `${BASE_PATH}/admin/menu`;
               }}
             >
-              <h2 className={heading}>Name your restaurant</h2>
-              <p className="mt-1 text-[15px] leading-snug text-muted">
-                Signed in as <span className="font-semibold text-ink">{email}</span>. Your free week starts when you tap
-                Start.
+              <h2 className={heading}>Set up your restaurant</h2>
+              <p className={sub}>
+                Signed up as <span className="font-semibold text-ink">{email}</span>.
               </p>
               <label className="mt-7 block text-[15px] font-medium">
                 Restaurant or cafe name
-                <input name="restaurant" required maxLength={60} autoComplete="organization" className={field} />
+                <input
+                  name="restaurant"
+                  required
+                  maxLength={60}
+                  autoComplete="organization"
+                  value={restaurant}
+                  onChange={(e) => setRestaurant(e.target.value)}
+                  className={field}
+                />
               </label>
               <label className="mt-4 block text-[15px] font-medium">
                 Your name
-                <input name="name" required maxLength={60} autoComplete="name" className={field} />
+                <input
+                  name="name"
+                  required
+                  maxLength={60}
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={field}
+                />
               </label>
-              <ul className="mt-5 space-y-1.5 rounded-xl bg-paper px-4 py-3 text-[14px] text-muted">
-                <li>1 table with its QR code, ready to print</li>
-                <li>Up to 2 waiter logins besides yours</li>
-                <li>Every feature, free for 7 days. No card needed.</li>
-              </ul>
+              <fieldset className="mt-6">
+                <legend className="text-[15px] font-medium">How do you want to start?</legend>
+                <div className="mt-2 grid gap-3">
+                  {(
+                    [
+                      ["trial", "Free trial", `${TRIAL_DAYS} days free, ${TRIAL_TABLES} table and ${TRIAL_STAFF} staff logins. No payment.`],
+                      ["buy", "Buy a plan", `A full year plus ${BONUS_DAYS} days free. Pay with QR Ph.`],
+                    ] as const
+                  ).map(([value, title, text]) => (
+                    <label
+                      key={value}
+                      className={`flex cursor-pointer items-start gap-3.5 rounded-2xl border bg-white px-4 py-3.5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-leaf/40 ${
+                        choice === value ? "border-leaf bg-leaf-tint/40 ring-1 ring-leaf" : "border-line hover:border-leaf/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="choice"
+                        value={value}
+                        checked={choice === value}
+                        onChange={() => setChoice(value)}
+                        className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--leaf))]"
+                      />
+                      <span>
+                        <span className="block text-[17px] font-semibold text-ink">{title}</span>
+                        <span className="block text-[14px] leading-snug text-muted">{text}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <ErrorNote error={error} />
               <button type="submit" disabled={busy} className={submit}>
-                {busy ? "Setting up…" : "Start free trial"}
+                {choice === "buy" ? "Choose a plan" : busy ? "Setting up…" : "Start free trial"}
               </button>
             </form>
           )}
+
+          {mode === "plans" && <BuyPlan owner={{ restaurant: restaurant.trim(), name: name.trim() }} onBack={() => go("restaurant")} />}
 
           {mode === "forgot" && (
             <form
@@ -363,31 +461,27 @@ export default function LoginForm({
                 e.preventDefault();
                 setBusy(true);
                 setError("");
-                try {
-                  const res = await fetch(`${BASE_PATH}/api/staff/forgot`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, contact }),
-                  });
-                  if (res.ok) {
-                    setBusy(false);
-                    go("sent");
-                    return;
-                  }
-                  const data = (await res.json().catch(() => ({}))) as { error?: string };
-                  setError(data.error ?? "Couldn't send the request. Try again.");
-                } catch {
-                  setError("No connection. Check the internet and try again.");
+                if (ownerReset) {
+                  const r = await post("/api/auth/reset", { email: username.trim() });
+                  setBusy(false);
+                  if (r.error) return setError(r.error);
+                  setPassword("");
+                  return go("reset");
                 }
+                const r = await post("/api/staff/forgot", { username, contact });
                 setBusy(false);
+                if (r.error) return setError(r.error);
+                go("sent");
               }}
             >
-              <h2 className="font-display text-[28px] font-bold leading-tight tracking-tight">Forgot your password?</h2>
-              <p className="mt-1 text-[15px] text-muted">
-                Tell us your username and how to reach you. We&apos;ll reset it and send you a new one.
+              <h2 className={heading}>Forgot your password?</h2>
+              <p className={sub}>
+                {ownerReset
+                  ? "We'll email you a code to set a new password."
+                  : "Owners: type your email. Staff: type your username and how to reach you, and we'll send you a new password."}
               </p>
               <label className="mt-7 block text-[15px] font-medium">
-                Username
+                Email or username
                 <input
                   required
                   autoComplete="username"
@@ -398,20 +492,22 @@ export default function LoginForm({
                   className={field}
                 />
               </label>
-              <label className="mt-4 block text-[15px] font-medium">
-                Phone number or email
-                <input
-                  required
-                  maxLength={200}
-                  autoComplete="email"
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  className={field}
-                />
-              </label>
+              {!ownerReset && (
+                <label className="mt-4 block text-[15px] font-medium">
+                  Phone number or email to reach you
+                  <input
+                    required
+                    maxLength={200}
+                    autoComplete="email"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    className={field}
+                  />
+                </label>
+              )}
               <ErrorNote error={error} />
               <button type="submit" disabled={busy} className={submit}>
-                {busy ? "Sending…" : "Send request"}
+                {busy ? "Sending…" : ownerReset ? "Email me a code" : "Send request"}
               </button>
               <p className="mt-5 text-center text-[15px]">
                 <button type="button" onClick={() => go("login")} className={textLink}>
@@ -421,9 +517,63 @@ export default function LoginForm({
             </form>
           )}
 
+          {mode === "reset" && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const code = String(new FormData(e.currentTarget).get("code") ?? "");
+                setBusy(true);
+                setError("");
+                const r = await post("/api/auth/reset/verify", { email: username.trim(), code, password });
+                if (r.error) {
+                  setError(r.error);
+                  setBusy(false);
+                  return;
+                }
+                window.location.href = `${BASE_PATH}/admin/dashboard`;
+              }}
+            >
+              <h2 className={heading}>Set a new password</h2>
+              <p className={sub}>
+                If <span className="font-semibold text-ink">{username.trim()}</span> has an account, we emailed it a 6-digit
+                code. It works for 10 minutes.
+              </p>
+              <label className="mt-7 block text-[15px] font-medium">
+                Code
+                <input
+                  name="code"
+                  required
+                  autoFocus
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={7}
+                  className={`${field} text-center font-display text-[26px] font-bold tracking-[0.4em]`}
+                />
+              </label>
+              <PasswordField
+                label="New password"
+                name="new-password"
+                autoComplete="new-password"
+                minLength={OWNER_MIN_PASSWORD}
+                hint={`At least ${OWNER_MIN_PASSWORD} characters.`}
+                value={password}
+                onChange={setPassword}
+              />
+              <ErrorNote error={error} />
+              <button type="submit" disabled={busy} className={submit}>
+                {busy ? "Saving…" : "Save password and log in"}
+              </button>
+              <p className="mt-5 text-center text-[15px]">
+                <button type="button" onClick={() => go("forgot")} className={textLink}>
+                  Use a different email
+                </button>
+              </p>
+            </form>
+          )}
+
           {mode === "sent" && (
             <div role="status">
-              <h2 className="font-display text-[28px] font-bold leading-tight tracking-tight">Request sent</h2>
+              <h2 className={heading}>Request sent</h2>
               <p className="mt-2 text-[16px] leading-relaxed text-muted">
                 We&apos;ll reset the password for <span className="font-semibold text-ink">{username.trim()}</span> and send the
                 new one to <span className="font-semibold text-ink">{contact.trim()}</span>.
@@ -433,6 +583,7 @@ export default function LoginForm({
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </main>

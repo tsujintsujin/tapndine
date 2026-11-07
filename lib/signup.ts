@@ -8,10 +8,12 @@ import { cookieOptions, sha256, startSession } from "./staff";
 import { newTagId } from "./tables";
 import { TRIAL_MS } from "./trial";
 
-// Restaurants signing themselves up for the free trial, and their managers
-// logging back in, without a password: they prove an email address, either
-// with a code we email them or through Google. A known address logs in; a new
-// one gets a short-lived ticket and names its restaurant next (createTrial).
+// Owners signing up: with an email and a password (the email proven once with
+// a code we send), or with Google. Either way they get a short-lived ticket,
+// name their restaurant, then start the free trial (createTrial) or buy a plan
+// (lib/checkout.ts makes the restaurant once it is paid). Google also logs an
+// owner who already has an account straight in. The same emailed code resets
+// a forgotten owner password (app/api/auth/reset).
 
 const CODE_MS = 10 * 60 * 1000;
 /** A new code no sooner than this after the last one, and at most HOURLY_SENDS an hour. */
@@ -78,8 +80,29 @@ export async function checkCode(email: string, code: string): Promise<"ok" | "wr
   return "ok";
 }
 
+/** The owner login with this email, or null. */
+export async function ownerByEmail(email: string) {
+  return db()
+    .prepare("SELECT id FROM staff WHERE email = ? AND disabled_at IS NULL")
+    .bind(email)
+    .first<{ id: string }>();
+}
+
+/** A ticket for someone who proved `email`: the next step names their restaurant. */
+export async function newTicket(email: string, googleSub: string | null, passwordHash: string | null, secure: boolean) {
+  const token = randomId() + randomId();
+  const now = Date.now();
+  await db().batch([
+    db().prepare("DELETE FROM signup_tickets WHERE expires_at < ?").bind(now),
+    db()
+      .prepare("INSERT INTO signup_tickets (id, email, google_sub, password_hash, expires_at) VALUES (?, ?, ?, ?, ?)")
+      .bind(await sha256(token), email, googleSub, passwordHash, now + TICKET_MS),
+  ]);
+  (await cookies()).set(TICKET_COOKIE, token, { ...cookieOptions(secure), maxAge: TICKET_MS / 1000 });
+}
+
 /**
- * Someone proved they own `email` (and, through Google, `googleSub`). Their
+ * Back from Google with `email` and the Google account `googleSub`. Their
  * login, if they have one, is logged in ("in"; "off" if the restaurant is
  * switched off). Otherwise they get a sign-up ticket and name their restaurant next ("new").
  */
@@ -94,34 +117,33 @@ export async function verified(email: string, googleSub: string | null, secure: 
     .first<{ id: string; google_sub: string | null; off: number | null }>();
   if (staff) {
     if (staff.off) return "off";
-    // Signed up with an emailed code, now came through Google with that address: remember the account.
+    // Signed up with an email and password, now came through Google with that address: remember the account.
     if (googleSub && !staff.google_sub) {
       await db().prepare("UPDATE staff SET google_sub = ? WHERE id = ?").bind(googleSub, staff.id).run();
     }
     await startSession(staff.id, secure);
     return "in";
   }
-  const token = randomId() + randomId();
-  const now = Date.now();
-  await db().batch([
-    db().prepare("DELETE FROM signup_tickets WHERE expires_at < ?").bind(now),
-    db()
-      .prepare("INSERT INTO signup_tickets (id, email, google_sub, expires_at) VALUES (?, ?, ?, ?)")
-      .bind(await sha256(token), email, googleSub, now + TICKET_MS),
-  ]);
-  (await cookies()).set(TICKET_COOKIE, token, { ...cookieOptions(secure), maxAge: TICKET_MS / 1000 });
+  await newTicket(email, googleSub, null, secure);
   return "new";
 }
 
-type Ticket = { id: string; email: string; google_sub: string | null };
+export type Ticket = { id: string; email: string; google_sub: string | null; password_hash: string | null };
 
-async function ticket(): Promise<Ticket | null> {
+/** This browser's sign-up ticket, while it lasts. Its id is the SHA-256 of the cookie. */
+export async function ticket(): Promise<Ticket | null> {
   const token = (await cookies()).get(TICKET_COOKIE)?.value;
   if (!token) return null;
   return db()
-    .prepare("SELECT id, email, google_sub FROM signup_tickets WHERE id = ? AND expires_at > ?")
+    .prepare("SELECT id, email, google_sub, password_hash FROM signup_tickets WHERE id = ? AND expires_at > ?")
     .bind(await sha256(token), Date.now())
     .first<Ticket>();
+}
+
+/** Done with the ticket: the restaurant is made. */
+export async function dropTicket(id: string) {
+  await db().prepare("DELETE FROM signup_tickets WHERE id = ?").bind(id).run();
+  (await cookies()).delete({ name: TICKET_COOKIE, path: BASE_PATH || "/" });
 }
 
 /** The email waiting to name its restaurant on this browser, or null. */
@@ -142,52 +164,98 @@ export function slugFor(name: string): string {
   return isSlug(s) ? s : "cafe";
 }
 
+/** The restaurant code for attempt n: a taken code gets a short random ending, kusina-ni-lola-x7k2. */
+export const slugAttempt = (base: string, n: number) => (n === 0 ? base : `${base}-${newTagId().slice(0, 4)}`);
+
+/** True when a failed insert hit the unique owner email: that account exists already. */
+export const emailTaken = (e: unknown) => String(e).includes("staff.email") || String(e).includes("idx_staff_email");
+
+export type NewRestaurant = {
+  businessId: string;
+  staffId: string;
+  slug: string;
+  restaurant: string;
+  name: string;
+  email: string;
+  googleSub: string | null;
+  /** null: no password ("none" never matches a hash), so only Google gets in. */
+  passwordHash: string | null;
+  /** When its free trial ends; null for a bought plan. */
+  trialEndsAt: number | null;
+  /** Table 1 with its link. A menu-only plan (no tables) gets none. */
+  firstTable: boolean;
+};
+
 /**
- * The ticket's restaurant on a free trial: the restaurant, its manager (who
- * logs in with the ticket's email or Google account), its "Menu for show"
- * link and Table 1 with its link, all or nothing. Then logs the manager in.
+ * The statements that make a restaurant: the restaurant, its owner's manager
+ * login, its "Menu for show" link and Table 1 with its link. Each runs only
+ * while `when` holds (a checkout still pending), so one batch makes all of it or none.
  */
+export function restaurantStatements(r: NewRestaurant, when = { sql: "1", binds: [] as unknown[] }): D1PreparedStatement[] {
+  const d = db();
+  const now = Date.now();
+  const ins = (table: string, cols: string, vals: unknown[]) =>
+    d
+      .prepare(`INSERT INTO ${table} (${cols}) SELECT ${vals.map(() => "?").join(", ")} WHERE ${when.sql}`)
+      .bind(...vals, ...when.binds);
+  const tableId = randomId();
+  return [
+    ins("businesses", "id, slug, name, created_at, trial_ends_at", [r.businessId, r.slug, r.restaurant, now, r.trialEndsAt]),
+    ins("staff", "id, business_id, username, name, role, password_hash, created_at, email, google_sub", [
+      r.staffId,
+      r.businessId,
+      `${r.slug}-manager`,
+      r.name,
+      "manager",
+      r.passwordHash ?? "none",
+      now,
+      r.email,
+      r.googleSub,
+    ]),
+    ins("tags", "id, business_id, table_id, created_at", [newTagId(), r.businessId, null, now]),
+    ...(r.firstTable
+      ? [
+          ins("tables", "id, business_id, label, sort", [tableId, r.businessId, "Table 1", 1]),
+          ins("tags", "id, business_id, table_id, created_at", [newTagId(), r.businessId, tableId, now]),
+        ]
+      : []),
+  ];
+}
+
+/** The ticket's restaurant on a free trial, all or nothing, then logs its owner in. */
 export async function createTrial(restaurant: string, managerName: string, secure: boolean): Promise<"ok" | "expired"> {
   const t = await ticket();
   if (!t) return "expired";
-  const d = db();
-  const now = Date.now();
   const base = slugFor(restaurant);
   for (let attempt = 0; attempt < 4; attempt++) {
-    // A taken code gets a short random ending: kusina-ni-lola-x7k2.
-    const slug = attempt === 0 ? base : `${base}-${newTagId().slice(0, 4)}`;
-    const id = "biz_" + randomId();
-    const staffId = randomId();
-    const tableId = randomId();
+    const r: NewRestaurant = {
+      businessId: "biz_" + randomId(),
+      staffId: randomId(),
+      slug: slugAttempt(base, attempt),
+      restaurant,
+      name: managerName,
+      email: t.email,
+      googleSub: t.google_sub,
+      passwordHash: t.password_hash,
+      trialEndsAt: Date.now() + TRIAL_MS,
+      firstTable: true,
+    };
     try {
-      await d.batch([
-        d
-          .prepare("INSERT INTO businesses (id, slug, name, created_at, trial_ends_at) VALUES (?, ?, ?, ?, ?)")
-          .bind(id, slug, restaurant, now, now + TRIAL_MS),
-        // No password: "none" never matches a hash, so only the email or Google gets in.
-        d
-          .prepare(
-            `INSERT INTO staff (id, business_id, username, name, role, password_hash, created_at, email, google_sub)
-             VALUES (?, ?, ?, ?, 'manager', 'none', ?, ?, ?)`
-          )
-          .bind(staffId, id, `${slug}-manager`, managerName, now, t.email, t.google_sub),
-        d.prepare("INSERT INTO tags (id, business_id, table_id, created_at) VALUES (?, ?, NULL, ?)").bind(newTagId(), id, now),
-        d.prepare("INSERT INTO tables (id, business_id, label, sort) VALUES (?, ?, 'Table 1', 1)").bind(tableId, id),
-        d.prepare("INSERT INTO tags (id, business_id, table_id, created_at) VALUES (?, ?, ?, ?)").bind(newTagId(), id, tableId, now),
-        d.prepare("DELETE FROM signup_tickets WHERE id = ?").bind(t.id),
-      ]);
+      await db().batch(restaurantStatements(r));
     } catch (e) {
-      // The code or username was taken (try the next ending), or this email
-      // signed up in another tab meanwhile (the unique email index): log that one in.
-      if (String(e).includes("staff.email") || String(e).includes("idx_staff_email")) {
-        return (await verified(t.email, t.google_sub, secure)) === "in" ? "ok" : "expired";
+      // This email got an account meanwhile (another tab): log that one in.
+      if (emailTaken(e)) {
+        const owner = await ownerByEmail(t.email);
+        if (!owner) return "expired";
+        await dropTicket(t.id);
+        await startSession(owner.id, secure);
+        return "ok";
       }
-      continue;
+      continue; // the code or username was taken: try the next ending
     }
-    (await cookies()).delete({ name: TICKET_COOKIE, path: BASE_PATH || "/" });
-    await startSession(staffId, secure);
+    await dropTicket(t.id);
+    await startSession(r.staffId, secure);
     return "ok";
   }
   return "expired";
 }
-

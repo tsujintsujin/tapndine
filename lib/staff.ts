@@ -128,7 +128,7 @@ export async function checkPassword(staffId: string, password: string): Promise<
   return checked;
 }
 
-/** Checks the password and, if right, sets the login cookie. */
+/** Checks the password and, if right, sets the login cookie. `username`: a username, or an owner's email. */
 export async function logIn(
   username: string,
   password: string,
@@ -139,7 +139,7 @@ export async function logIn(
     .prepare(
       `SELECT s.id, s.role, s.password_hash, s.failed_logins, s.locked_until, b.disabled_at AS off
        FROM staff s LEFT JOIN businesses b ON b.id = s.business_id
-       WHERE s.username = ? AND s.disabled_at IS NULL`
+       WHERE (s.username = ?1 OR s.email = ?1) AND s.disabled_at IS NULL`
     )
     .bind(username.trim().toLowerCase())
     .first<StaffRow>();

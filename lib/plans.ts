@@ -14,5 +14,18 @@ export const PLANS = [
 /** A table beyond the plan's count, added to Standard or Grand: ₱35 a month, in whole pesos a year. */
 export const EXTRA_TABLE = 420;
 
-/** How a restaurant can pay us; a payment records one. */
-export const METHODS = ["GCash", "Maya", "Bank transfer", "Cash", "Other"] as const;
+/** How a restaurant can pay us; a payment records one. "QR Ph" is a plan bought on the site (lib/checkout.ts). */
+export const METHODS = ["QR Ph", "GCash", "Maya", "Bank transfer", "Cash", "Other"] as const;
+
+// ponytail: every plan bought on the site charges this many pesos while
+// checkout is being tested. Justin set ₱1 on 2026-11-07, "keep it at 1 peso
+// until i say to change". Set to null to charge the plan prices above.
+export const CHARGE_PESOS: number | null = 1;
+
+/** What buying a plan on the site charges, in centavos. */
+export const chargeCents = (p: { price: number }) => (CHARGE_PESOS ?? p.price) * 100;
+
+/** A plan bought on the site runs a year, plus this free week. */
+export const BONUS_DAYS = 7;
+
+export const planByName = (name: unknown) => PLANS.find((p) => p.name === name);
