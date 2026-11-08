@@ -32,7 +32,7 @@ export default function TablesBoard({
     (flagged ? ` ${flagged} ${flagged === 1 ? "needs" : "need"} you.` : "");
 
   const grid = (
-    <ul className={`grid auto-rows-fr gap-3 ${isManager ? "mt-6 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "mt-4 grid-cols-2 sm:grid-cols-3 md:mt-6 md:grid-cols-4 md:gap-4 lg:grid-cols-5"}`}>
+    <ul data-guide="tables" className={`grid auto-rows-fr gap-3 ${isManager ? "mt-6 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "mt-4 grid-cols-2 sm:grid-cols-3 md:mt-6 md:grid-cols-4 md:gap-4 lg:grid-cols-5"}`}>
       {tables.map((t) => {
         const active = t.items > 0;
         const flags = [
@@ -40,7 +40,7 @@ export default function TablesBoard({
           ...t.calls.map((c) => (c === "bill" ? "Wants the bill" : "Calling waiter")),
         ];
         return (
-          <li key={t.id}>
+          <li key={t.id} data-guide={flags.length ? "needs-you" : undefined}>
             <Link
               href={`/admin/t/${t.id}`}
               aria-label={flags.length ? `${t.label}: ${flags.join(", ")}` : undefined}

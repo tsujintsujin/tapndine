@@ -13,24 +13,41 @@ import { ChevronLeft, MenuIcon } from "@/app/components/Icons";
  * Who is on this page: a developer or not, the restaurant it shows (null: none
  * open), and when that restaurant's free trial ends (null: not on trial).
  */
-export type StaffInfo = { developer: boolean; restaurant: { id: string; name: string } | null; trialEndsAt: number | null };
-const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null });
+export type StaffInfo = {
+  developer: boolean;
+  restaurant: { id: string; name: string } | null;
+  trialEndsAt: number | null;
+  /** In the guide: the page shows its sample restaurant and nothing saves. */
+  guide: boolean;
+  /** Offer the guide: a manager who has never finished or skipped it. */
+  offerGuide: boolean;
+};
+const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null, guide: false, offerGuide: false });
 export const useStaffInfo = () => useContext(StaffContext);
 
 /** The restaurant this page was drawn for; api() refuses to act on another. */
 let pageRestaurant: string | null = null;
+/** This page is in the guide: api() saves nothing. */
+let pageGuide = false;
+/** What a change in the guide says instead of saving. */
+export const GUIDE_NO_SAVE = "This is the guide, so nothing is saved. Leave the guide to change your own restaurant.";
 
 export function StaffInfoProvider({ value, children }: { value: StaffInfo; children: React.ReactNode }) {
   pageRestaurant = value.restaurant?.id ?? null;
+  pageGuide = value.guide;
   return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;
 }
 
 /** fetch() under the base path, as JSON. A logged-out answer goes to the login screen. */
 export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
+  // The server refuses too; this says why instead of looking logged out.
+  if (pageGuide && (init?.method ?? "GET") !== "GET" && path !== "/api/staff/guide" && path !== "/api/staff/logout") {
+    throw new Error(GUIDE_NO_SAVE);
+  }
   // A developer opened another restaurant in a different tab since this page
   // loaded. The server would act on the new one, so stop here instead.
   const open = document.cookie.match(new RegExp(`(?:^|; )${OPEN_COOKIE}=([^;]*)`))?.[1];
-  if (open && pageRestaurant && decodeURIComponent(open) !== pageRestaurant && !path.startsWith("/api/dev/")) {
+  if (open && pageRestaurant && !pageGuide && decodeURIComponent(open) !== pageRestaurant && !path.startsWith("/api/dev/")) {
     throw new Error("You opened another restaurant in a different tab. Reload this page.");
   }
   const res = await fetch(BASE_PATH + path, {

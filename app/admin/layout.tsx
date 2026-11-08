@@ -22,7 +22,14 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const trial = id ? (login?.role === "developer" ? await trialEndsAt(id) : login!.trialEndsAt) : null;
   return (
     <StaffInfoProvider
-      value={{ developer: login?.role === "developer", restaurant: id && name ? { id, name } : null, trialEndsAt: trial }}
+      value={{
+        developer: login?.role === "developer",
+        restaurant: id && name ? { id, name } : null,
+        trialEndsAt: trial,
+        guide: !!login?.guide,
+        // Owners and managers, the first time; developers open it from Settings.
+        offerGuide: !!login && !login.guide && !login.guideSeen && (login.role === "owner" || login.role === "manager"),
+      }}
     >
       <AlertsProvider>{children}</AlertsProvider>
     </StaffInfoProvider>

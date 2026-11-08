@@ -32,7 +32,7 @@ export default async function PlanPage() {
     <Shell name={me.name}>
       <PageHead title="Subscription" sub={sub} />
       {plan ? (
-        <div className="mt-6 max-w-xl rounded-[22px] bg-white p-5 shadow-[0_20px_50px_-28px_rgb(59_46_37/0.45)] ring-1 ring-black/5 sm:p-7">
+        <div data-guide="plan" className="mt-6 max-w-xl rounded-[22px] bg-white p-5 shadow-[0_20px_50px_-28px_rgb(59_46_37/0.45)] ring-1 ring-black/5 sm:p-7">
           <h2 className="font-display text-[24px] font-bold">{plan.plan} plan</h2>
           <p className="mt-1 text-[16px] text-muted">
             {plan.tables ? `${plan.tables} tables` : "Menu only"}, until {formatDate(Date.parse(`${plan.ends_on}T12:00:00+08:00`))}.

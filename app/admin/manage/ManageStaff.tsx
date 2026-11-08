@@ -41,7 +41,7 @@ export default function ManageStaff({
       )}
 
       <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className={card}>
+        <section data-guide="logins" className={card}>
           <h2 className="font-display text-[19px] font-bold">Who can log in</h2>
           <table className="mt-2 w-full text-[15px]">
             <thead className="hidden sm:table-header-group">
@@ -113,6 +113,7 @@ export default function ManageStaff({
         </section>
 
         <form
+          data-guide="add-login"
           className={card}
           onSubmit={async (e) => {
             e.preventDefault();

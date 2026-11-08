@@ -8,9 +8,9 @@ type Ctx = { params: Promise<{ tableId: string }> };
 
 /** One table's orders; the table screen polls this. */
 export async function GET(_req: Request, { params }: Ctx) {
-  const staff = await currentStaff();
+  const staff = await currentStaff(true);
   if (!staff) return NextResponse.json({ error: "logged out" }, { status: 401 });
-  const table = await tableOrders(staff.business_id, (await params).tableId);
+  const table = await tableOrders(staff.business_id, (await params).tableId, !staff.guide);
   if (!table) return NextResponse.json({ error: "no such table" }, { status: 404 });
   return NextResponse.json({ table }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -172,6 +172,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
             setError("");
             setAdding({ parentId: null });
           }}
+          data-guide="add-category"
           className={btn.primary}
         >
           <PlusIcon width={18} height={18} />
@@ -214,7 +215,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
             )}
           </SkeletonList>
         ) : (
-          <ul>
+          <ul data-guide="categories">
             {list.map((c, i) => {
               const ids = [c.id, ...list.filter((s) => s.parentId === c.id).map((s) => s.id)];
               const inIt = dishes.filter((d) => d.categoryIds.some((id) => ids.includes(id)));
@@ -222,6 +223,7 @@ export default function CategoryBoard({ categories, dishes }: { categories: Admi
               return (
                 <Fragment key={c.id}>
                 <li
+                  data-guide={i < 3 ? "first-categories" : undefined}
                   onDragOver={(e) => {
                     const dragged = list.find((x) => x.id === dragId);
                     if (!dragged) return;

@@ -23,6 +23,7 @@ import {
 } from "@/app/components/Icons";
 import { daysLeft } from "@/lib/trial";
 import { useAlerts } from "./Alerts";
+import Guide from "./Guide";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
 
@@ -140,6 +141,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
 }
 
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
+  const { guide } = useStaffInfo();
   const { needYou } = useAlerts();
   const [open, setOpen] = useState(false);
   const path = usePathname();
@@ -197,9 +199,11 @@ export default function Shell({ name, children }: { name: string; children: Reac
         </div>
       )}
 
-      <main className="min-w-0 flex-1 bg-paper px-4 pb-12 pt-5 sm:px-6 lg:rounded-[28px] lg:px-8 lg:pt-7">
+      {/* Room under the page for the guide's card, so it never hides the end of the page. */}
+      <main className={`min-w-0 flex-1 bg-paper px-4 ${guide ? "pb-[340px] lg:pb-[300px]" : "pb-12"} pt-5 sm:px-6 lg:rounded-[28px] lg:px-8 lg:pt-7`}>
         {children}
       </main>
+      <Guide />
     </div>
   );
 }

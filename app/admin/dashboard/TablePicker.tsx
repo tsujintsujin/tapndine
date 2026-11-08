@@ -15,7 +15,7 @@ export default function TablePicker({
 }) {
   const router = useRouter();
   return (
-    <label className="relative">
+    <label data-guide="period" className="relative">
       <span className="sr-only">Table</span>
       <select
         value={current ?? ""}

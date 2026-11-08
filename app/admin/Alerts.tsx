@@ -31,7 +31,8 @@ function chime(ctx: AudioContext) {
   });
 }
 
-function Live({ children }: { children: React.ReactNode }) {
+/** `quiet`: the guide, where the orders are the sample restaurant's: no chime, no sound button. */
+function Live({ children, quiet }: { children: React.ReactNode; quiet: boolean }) {
   const path = usePathname();
   // Also in a hidden tab, or the chime would only sound on a screen already showing the order.
   const { data: tables, offline, refresh } = usePoll("/api/staff/tables", null, (d) => (d as { tables: TableSummary[] }).tables, 5000, true);
@@ -66,19 +67,19 @@ function Live({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!tables) return;
     // The first look sets the baseline: reloading a page doesn't chime for what was already there.
-    if (seen.current && somethingNew(seen.current, tables) && audio.current) {
+    if (!quiet && seen.current && somethingNew(seen.current, tables) && audio.current) {
       const ctx = audio.current;
       ctx.resume().then(() => chime(ctx), () => {});
     }
     seen.current = seenNow(tables);
     // Every poll, because moving to another page puts its own title back.
     document.title = (needYou ? `(${needYou}) ` : "") + document.title.replace(/^\(\d+\) /, "");
-  }, [tables, needYou]);
+  }, [tables, needYou, quiet]);
 
   return (
     <AlertsContext.Provider value={{ tables, offline, needYou }}>
       {children}
-      {!soundOn && (
+      {!soundOn && !quiet && (
         <button
           type="button"
           data-sound-on
@@ -94,6 +95,12 @@ function Live({ children }: { children: React.ReactNode }) {
 
 /** Nothing to watch until a restaurant is open (a developer's own pages). */
 export default function AlertsProvider({ children }: { children: React.ReactNode }) {
-  const { restaurant } = useStaffInfo();
-  return restaurant ? <Live key={restaurant.id}>{children}</Live> : children;
+  const { restaurant, guide } = useStaffInfo();
+  return restaurant ? (
+    <Live key={restaurant.id} quiet={guide}>
+      {children}
+    </Live>
+  ) : (
+    children
+  );
 }
