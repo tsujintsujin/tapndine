@@ -8,9 +8,9 @@
  */
 export const PLANS = [
   // Menu only: no tables, so no ordering (tableLimit is 0).
-  { name: "Single", tables: 0, price: 2988, monthly: 349, blurb: "Your menu online", includes: ["Online menu", "Full customizable menu", "Manager account"], without: ["No ordering"] },
+  { name: "Single", tables: 0, price: 2988, monthly: 299, blurb: "Your menu online", includes: ["Online menu", "Full customizable menu", "Manager account"], without: ["No ordering"] },
   { name: "Standard", tables: 10, price: 4788, monthly: 599, blurb: "Ordering for 10 tables", includes: ["Online menu", "Full customizable menu", "10 tables", "Ordering", "Waiter accounts", "Manager accounts"] },
-  { name: "Grand", tables: 20, price: 8388, monthly: 999, blurb: "Ordering for 20 tables", includes: ["Online menu", "Full customizable menu", "20 tables", "Ordering", "Waiter accounts", "Manager accounts"] },
+  { name: "Grand", tables: 20, price: 6588, monthly: 949, blurb: "Ordering for 20 tables", includes: ["Online menu", "Full customizable menu", "20 tables", "Ordering", "Waiter accounts", "Manager accounts"] },
 ];
 
 export type Plan = (typeof PLANS)[number];

@@ -126,7 +126,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                       <Icon width={21} height={21} className={here ? "text-forest" : ""} />
                       {href === "/admin/plan" && trial ? trial : label}
                       {href === "/admin/plan" && due?.level && (
-                        <span className="ml-auto flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                        <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold text-ink">
                           {due.kind === "plan" && dueShort(due.left)}
                           <DueDot level={due.level} />
                           <span className="sr-only">{dueSentence(due)}</span>

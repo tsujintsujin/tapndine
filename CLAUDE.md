@@ -110,8 +110,8 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 ## Plans (lib/plans.ts)
 
-Set by Justin 2026-11-08. Single (menu only: 0 tables, no ordering) ₱349 a month or
-₱2,988 a year; Standard 10 tables ₱599 or ₱4,788; Grand 20 tables ₱999 or ₱8,388.
+Set by Justin 2026-11-08. Single (menu only: 0 tables, no ordering) ₱299 a month or
+₱2,988 a year; Standard 10 tables ₱599 or ₱4,788; Grand 20 tables ₱949 or ₱6,588.
 Yearly is the discount: cards show the monthly price struck through and the year's
 per-month price big (₱399/mo for Standard), Hostinger style (`app/components/PlanCards.tsx`;
 the homepage has its own copy, `app/HomePlans.tsx`). Extra tables on Standard or Grand:
