@@ -97,10 +97,10 @@ export default function MenuBoard({
         title="Menu"
         sub={`${list.length} dishes${soldOut ? `, ${soldOut} not available today` : ""}`}
       >
-        <button type="button" onClick={() => setImporting(true)} className={btn.secondary}>
+        <button type="button" data-guide="add-dish" onClick={() => setImporting(true)} className={btn.secondary}>
           Import CSV
         </button>
-        <Link href="/admin/menu/new" className={btn.primary}>
+        <Link href="/admin/menu/new" data-guide="add-dish" className={btn.primary}>
           <PlusIcon width={18} height={18} />
           Add dish
         </Link>
@@ -163,12 +163,13 @@ export default function MenuBoard({
         ) : shown.length === 0 ? (
           <p className="px-4 py-12 text-center text-[15px] text-muted">No dish matches.</p>
         ) : (
-          <ul>
+          <ul data-guide="dishes">
             {shown.map((d) => {
               const i = list.indexOf(d);
               return (
                 <li
                   key={d.id}
+                  data-guide={d === shown[0] ? "first-dish" : d === shown[1] || d === shown[2] ? "first-dishes" : undefined}
                   onDragOver={(e) => {
                     if (!dragId || dragId === d.id) return;
                     e.preventDefault();

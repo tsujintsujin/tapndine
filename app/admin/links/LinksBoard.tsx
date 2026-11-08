@@ -79,6 +79,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
             setError("");
             setAdding(true);
           }}
+          data-guide="add-table"
           className={btn.primary}
         >
           <PlusIcon width={18} height={18} />
@@ -126,15 +127,15 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
         </p>
       )}
 
-      <section className={`${card} mt-4`}>
+      <section data-guide="links" className={`${card} mt-4`}>
         <h2 className="font-display text-[19px] font-bold">
           {tables.length} of {limit} tables
         </h2>
         <p className="text-[13px] text-muted">{covers}.</p>
         {tables.length === 0 && <p className="mt-2 text-[15px] text-muted">No tables yet. Add one to get its link.</p>}
         <ul className="mt-2">
-          {tables.map((t) => (
-            <li key={t.id} className="border-t border-line py-4 first:border-t-0">
+          {tables.map((t, n) => (
+            <li key={t.id} data-guide={n === 0 ? "first-link" : undefined} className="border-t border-line py-4 first:border-t-0">
               {editing === t.id ? (
                 <form
                   className="flex flex-wrap items-center gap-2.5"

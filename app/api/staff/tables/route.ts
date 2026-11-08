@@ -6,7 +6,7 @@ import { addTable, parseLabel } from "@/lib/tables";
 
 /** The tables screen polls this. */
 export async function GET() {
-  const staff = await currentStaff();
+  const staff = await currentStaff(true);
   if (!staff) return NextResponse.json({ error: "logged out" }, { status: 401 });
   return NextResponse.json(
     { tables: await tablesOverview(staff.business_id) },

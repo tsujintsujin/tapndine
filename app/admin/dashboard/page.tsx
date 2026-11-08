@@ -69,13 +69,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stats r={r} live={live} filtered={table?.label ?? null} />
 
-        <section key={`bars ${view}`} className={`${card} sm:col-span-2`}>
+        <section key={`bars ${view}`} data-guide="when" className={`${card} sm:col-span-2`}>
           {r.range === "today" ? <HoursToday r={r} /> : <SalesByDay r={r} />}
         </section>
         <LiveTables live={live} />
         <TopDishes r={r} />
 
-        <section key={`heat ${view}`} className={`${card} sm:col-span-2`}>
+        <section key={`heat ${view}`} data-guide="when" className={`${card} sm:col-span-2`}>
           <BusyHours r={r} />
         </section>
         <SecondRounds r={r} />
@@ -139,17 +139,17 @@ function Stats({ r, live, filtered }: { r: Report; live: TableSummary[]; filtere
   return (
     <>
       {/* The one dark card. */}
-      <section className="relative overflow-hidden rounded-[22px] bg-forest p-5 text-white">
+      <section data-guide="stats" className="relative overflow-hidden rounded-[22px] bg-forest p-5 text-white">
         <p className="text-[15px] font-semibold">{filtered ? `Orders sent at ${filtered}` : "Orders sent"}</p>
         <p className={stat}>{peso(c.total)}</p>
         <Delta value={change(c.total, p.total)} range={r.range} dark />
       </section>
-      <section className={card}>
+      <section data-guide="stats" className={card}>
         <p className="text-[15px] font-semibold">Groups served</p>
         <p className={stat}>{c.tables}</p>
         <Delta value={change(c.tables, p.tables)} range={r.range} />
       </section>
-      <section className={card}>
+      <section data-guide="stats" className={card}>
         <p className="text-[15px] font-semibold">Average per group</p>
         <p className={stat}>{c.tables ? peso(c.total / c.tables) : "–"}</p>
         <Delta
@@ -157,7 +157,7 @@ function Stats({ r, live, filtered }: { r: Report; live: TableSummary[]; filtere
           range={r.range}
         />
       </section>
-      <section className={card}>
+      <section data-guide="stats" className={card}>
         <CardHead title="Ordering now" link={{ href: "/admin", label: "Open Tables" }} />
         <p className={stat}>
           {busy.length}
@@ -248,7 +248,7 @@ function LiveTables({ live }: { live: TableSummary[] }) {
 function TopDishes({ r }: { r: Report }) {
   const top = r.dishes.slice(0, 6);
   return (
-    <section className={`${card} sm:col-span-2 xl:col-span-1 xl:row-span-2`}>
+    <section data-guide="top-dishes" className={`${card} sm:col-span-2 xl:col-span-1 xl:row-span-2`}>
       <CardHead title="Top dishes" link={{ href: "/admin/menu", label: "Open Menu" }} />
       {top.length === 0 ? (
         <Empty>No dishes ordered in this period yet.</Empty>

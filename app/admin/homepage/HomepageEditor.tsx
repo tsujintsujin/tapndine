@@ -96,7 +96,7 @@ export default function HomepageEditor({ dishes }: { dishes: HomeDish[] }) {
   return (
     <>
       <PageHead title="Homepage" sub="What guests see first when they open your menu. Changes save right away.">
-        <button type="button" onClick={() => setPreviewOpen(true)} className={`${btn.secondary} xl:hidden`}>
+        <button type="button" onClick={() => setPreviewOpen(true)} data-guide="preview" className={`${btn.secondary} xl:hidden`}>
           <EyeIcon width={20} height={20} />
           Preview as a guest
         </button>
@@ -162,7 +162,7 @@ export default function HomepageEditor({ dishes }: { dishes: HomeDish[] }) {
           />
         </div>
 
-        <aside aria-label="Preview" className="hidden xl:sticky xl:top-6 xl:block">
+        <aside aria-label="Preview" data-guide="preview" className="hidden xl:sticky xl:top-6 xl:block">
           <p className="text-[14px] font-semibold text-muted">What a guest sees on a phone</p>
           {/* A 390 x 844 phone at 80%, inside an 8px bezel. */}
           <div className="mt-3 h-[691px] w-[328px] overflow-hidden rounded-[40px] border-[8px] border-ink bg-white">
@@ -243,7 +243,7 @@ function RowCard({
 }) {
   const titleId = `${id}-title`;
   return (
-    <section className={card} aria-labelledby={titleId}>
+    <section data-guide="home-rows" className={card} aria-labelledby={titleId}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-[220px]">
           <h2 id={titleId} className="font-display text-[19px] font-bold">

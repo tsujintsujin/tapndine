@@ -346,7 +346,8 @@ export type TableOrders = {
  * screen and tells the guest their waiter has it. What was new comes back
  * with seenAt null and in `calls`, so the screen can point at it.
  */
-export async function tableOrders(businessId: string, tableId: string): Promise<TableOrders | null> {
+/** One table's open orders. Reading them marks them seen (the badge clears), unless `markSeen` is false: the guide only looks. */
+export async function tableOrders(businessId: string, tableId: string, markSeen = true): Promise<TableOrders | null> {
   const d = db();
   const [table, sitting] = await d.batch([
     d.prepare("SELECT label FROM tables WHERE id = ? AND business_id = ? AND removed_at IS NULL").bind(tableId, businessId),
@@ -363,7 +364,7 @@ export async function tableOrders(businessId: string, tableId: string): Promise<
       d
         .prepare("SELECT id, kind, name, created_at FROM calls WHERE sitting_id = ? AND seen_at IS NULL ORDER BY created_at")
         .bind(sittingId),
-      d.prepare("UPDATE calls SET seen_at = ? WHERE sitting_id = ? AND seen_at IS NULL").bind(now, sittingId),
+      ...(markSeen ? [d.prepare("UPDATE calls SET seen_at = ? WHERE sitting_id = ? AND seen_at IS NULL").bind(now, sittingId)] : []),
     ]);
     calls = (open.results as { id: string; kind: CallKind; name: string | null; created_at: number }[]).map((c) => ({
       id: c.id,
@@ -372,7 +373,7 @@ export async function tableOrders(businessId: string, tableId: string): Promise<
       createdAt: c.created_at,
     }));
     rows = await sittingRows(sittingId);
-    if (rows.some((r) => r.seen_at === null)) {
+    if (markSeen && rows.some((r) => r.seen_at === null)) {
       await d.prepare("UPDATE batches SET seen_at = ? WHERE sitting_id = ? AND seen_at IS NULL").bind(now, sittingId).run();
     }
   }

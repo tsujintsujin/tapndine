@@ -14,7 +14,7 @@ export default function PlanPicker() {
   const p = PLANS.find((x) => x.name === name) ?? PLANS[1];
   const without = ("without" in p && p.without) || [];
   return (
-    <div className="mt-6 grid max-w-7xl items-start gap-5 lg:grid-cols-2">
+    <div data-guide="plan" className="mt-6 grid max-w-7xl items-start gap-5 lg:grid-cols-2">
       <div className={box}>
         <BuyPlan onPlanChange={setName} />
       </div>

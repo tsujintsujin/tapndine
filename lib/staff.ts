@@ -11,6 +11,10 @@ import { ON_TRIAL, TRIAL_STAFF } from "./trial";
 
 const ITERATIONS = 100_000;
 const COOKIE = "tnd_staff";
+/** Set while a manager walks through the guide: their screens show GUIDE_BUSINESS, and nothing saves. */
+const GUIDE_COOKIE = "tnd_guide";
+/** The restaurant the guide shows: Cove Café, the demo restaurant on live. */
+export const GUIDE_BUSINESS = "biz_cove_cafe";
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 /** Wrong passwords in a row before the account waits LOCK_MS. */
 const MAX_FAILS = 5;
@@ -28,6 +32,8 @@ export type Staff = {
   name: string;
   role: "manager" | "waiter";
   developer: boolean;
+  /** In the guide: only look, never change (not even marking orders seen). */
+  guide: boolean;
 };
 /**
  * Who is logged in. business_id: their restaurant, or the one a developer has open (null: none yet).
@@ -40,6 +46,10 @@ export type Login = {
   name: string;
   role: Role;
   trialEndsAt: number | null;
+  /** In the guide: business_id is GUIDE_BUSINESS, and currentStaff() refuses writes. */
+  guide: boolean;
+  /** Has finished or skipped the guide once. */
+  guideSeen: boolean;
 };
 
 /** Restaurant staff whose free trial has ended: they see the trial-over page and nothing else. */
@@ -173,6 +183,7 @@ export async function startSession(staffId: string, secure: boolean) {
   jar.set(COOKIE, token, { ...cookieOptions(secure), maxAge: SESSION_MS / 1000 });
   // A developer who used this browser before opened a restaurant; this login starts clean.
   jar.delete({ name: OPEN_COOKIE, path: BASE_PATH || "/" });
+  jar.delete({ name: GUIDE_COOKIE, path: BASE_PATH || "/" });
 }
 
 export async function logOut() {
@@ -181,25 +192,41 @@ export async function logOut() {
   if (token) await db().prepare("DELETE FROM staff_sessions WHERE id = ?").bind(await sha256(token)).run();
   jar.delete({ name: COOKIE, path: BASE_PATH || "/" });
   jar.delete({ name: OPEN_COOKIE, path: BASE_PATH || "/" });
+  jar.delete({ name: GUIDE_COOKIE, path: BASE_PATH || "/" });
+}
+
+/** Starts the guide on this browser, or ends it (and remembers this login has seen it). */
+export async function setGuide(login: Login, on: boolean, secure: boolean) {
+  const jar = await cookies();
+  if (on) {
+    jar.set(GUIDE_COOKIE, "1", cookieOptions(secure));
+    return;
+  }
+  jar.delete({ name: GUIDE_COOKIE, path: BASE_PATH || "/" });
+  await db().prepare("UPDATE staff SET guide_seen_at = ? WHERE id = ? AND guide_seen_at IS NULL").bind(Date.now(), login.id).run();
 }
 
 /** Whoever is logged in on this browser, or null. Staff of a switched-off restaurant are logged out. */
 export async function currentLogin(): Promise<Login | null> {
-  const token = (await cookies()).get(COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value;
   if (!token) return null;
   const row = await db()
     .prepare(
       `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off,
+              s.guide_seen_at IS NOT NULL AS guideSeen,
               CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt
        FROM staff_sessions x JOIN staff s ON s.id = x.staff_id
        LEFT JOIN businesses b ON b.id = s.business_id
        WHERE x.id = ? AND x.expires_at > ? AND s.disabled_at IS NULL`
     )
     .bind(await sha256(token), Date.now())
-    .first<Login & { off: number | null }>();
+    .first<Omit<Login, "guide" | "guideSeen"> & { off: number | null; guideSeen: number }>();
   if (!row || row.off) return null;
   const { off: _, ...login } = row;
-  return login;
+  // Waiters have no guide; for everyone else the guide swaps in its restaurant.
+  const guide = login.role !== "waiter" && jar.get(GUIDE_COOKIE)?.value === "1";
+  return { ...login, business_id: guide ? GUIDE_BUSINESS : login.business_id, guide, guideSeen: !!login.guideSeen };
 }
 
 /** The login as restaurant staff: null for nobody, or a developer with no restaurant open. */
@@ -211,9 +238,13 @@ function asStaff(login: Login | null): Staff | null {
   return { ...login, business_id: login.business_id, role, developer };
 }
 
-/** Whoever is working in a restaurant on this browser, or null. Null too once their trial is over, so every staff API refuses. */
-export async function currentStaff(): Promise<Staff | null> {
+/**
+ * Whoever is working in a restaurant on this browser, or null. Null too once their trial is over, so every staff API refuses.
+ * In the guide only reads (`read`) get the staff member: nothing may change the guide's restaurant.
+ */
+export async function currentStaff(read = false): Promise<Staff | null> {
   const login = await currentLogin();
+  if (login?.guide && !read) return null;
   return login && trialOver(login) ? null : asStaff(login);
 }
 

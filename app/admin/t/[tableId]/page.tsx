@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Table · tapndine", robots: { index:
 export default async function TablePage({ params }: { params: Promise<{ tableId: string }> }) {
   const staff = await requireStaff();
   const { tableId } = await params;
-  const [table, dishes] = await Promise.all([tableOrders(staff.business_id, tableId), dishList(staff.business_id)]);
+  const [table, dishes] = await Promise.all([tableOrders(staff.business_id, tableId, !staff.guide), dishList(staff.business_id)]);
   if (!table) notFound();
   return (
     <TableView
