@@ -21,8 +21,10 @@ import {
   TableIcon,
   TagIcon,
 } from "@/app/components/Icons";
+import type { Due } from "@/lib/plans";
 import { daysLeft } from "@/lib/trial";
 import { useAlerts } from "./Alerts";
+import DuePrompt from "./DuePrompt";
 import Guide from "./Guide";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
@@ -62,6 +64,24 @@ const DEVELOPER = {
   ],
 };
 
+/** "6 days", "Last day", "Ended": the days a plan has left, beside the Subscription link. */
+const dueShort = (left: number) => (left > 1 ? `${left} days` : left === 1 ? "Last day" : "Ended");
+
+/** The same, said in full for screen readers. */
+export function dueSentence(d: Due) {
+  const what = d.kind === "trial" ? "Your free trial" : "Your plan";
+  if (d.left > 1) return `${what} ends in ${d.left} days.`;
+  if (d.left === 1) return `${what} ends today.`;
+  return d.kind === "plan" && d.closesIn > 0
+    ? `${what} has ended. Your menu closes in ${d.closesIn} ${d.closesIn === 1 ? "day" : "days"}.`
+    : `${what} has ended.`;
+}
+
+/** Yellow at 7 days or fewer, red at 3 or fewer (and once a plan has ended). Colour is backed by text beside it. */
+function DueDot({ level }: { level: "soon" | "urgent" }) {
+  return <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${level === "urgent" ? "bg-chili" : "bg-mango"}`} />;
+}
+
 /** The link is "here" on its own page and the pages under it (a table, a dish). */
 const isHere = (href: string, path: string) =>
   href === "/admin"
@@ -74,7 +94,7 @@ const isHere = (href: string, path: string) =>
 function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
-  const { developer, restaurant, trialEndsAt } = useStaffInfo();
+  const { developer, restaurant, trialEndsAt, due } = useStaffInfo();
   const { needYou } = useAlerts();
   const left = trialEndsAt === null ? null : daysLeft(trialEndsAt);
   const trial = left === null ? null : left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days`}`;
@@ -105,6 +125,13 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                     >
                       <Icon width={21} height={21} className={here ? "text-forest" : ""} />
                       {href === "/admin/plan" && trial ? trial : label}
+                      {href === "/admin/plan" && due?.level && (
+                        <span className="ml-auto flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                          {due.kind === "plan" && dueShort(due.left)}
+                          <DueDot level={due.level} />
+                          <span className="sr-only">{dueSentence(due)}</span>
+                        </span>
+                      )}
                       {href === "/admin" && needYou > 0 && (
                         <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-full bg-mango px-1.5 text-[13px] font-bold text-forest">
                           {needYou}
@@ -141,7 +168,7 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
 }
 
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
-  const { guide } = useStaffInfo();
+  const { guide, due } = useStaffInfo();
   const { needYou } = useAlerts();
   const [open, setOpen] = useState(false);
   const path = usePathname();
@@ -166,12 +193,21 @@ export default function Shell({ name, children }: { name: string; children: Reac
         <Logo />
         <button
           type="button"
-          aria-label={needYou ? `Open menu, ${needYou} ${needYou === 1 ? "table needs" : "tables need"} you` : "Open menu"}
+          aria-label={
+            (needYou ? `Open menu, ${needYou} ${needYou === 1 ? "table needs" : "tables need"} you` : "Open menu") +
+            (due?.level ? `. ${dueSentence(due)}` : "")
+          }
           aria-expanded={open}
           onClick={() => setOpen(true)}
           className="relative grid h-11 w-11 place-items-center rounded-full bg-paper text-forest"
         >
           <MenuIcon width={22} height={22} />
+          {due?.level && (
+            <span
+              aria-hidden="true"
+              className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full ring-2 ring-white ${due.level === "urgent" ? "bg-chili" : "bg-mango"}`}
+            />
+          )}
           {needYou > 0 && (
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold text-forest">
               {needYou}
@@ -204,6 +240,7 @@ export default function Shell({ name, children }: { name: string; children: Reac
         {children}
       </main>
       <Guide />
+      <DuePrompt />
     </div>
   );
 }

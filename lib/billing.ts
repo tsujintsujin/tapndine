@@ -1,6 +1,6 @@
 import { db } from "./cf";
 import { randomId } from "./ids";
-import { METHODS } from "./plans";
+import { METHODS, today } from "./plans";
 
 // Contracts and payments: what each restaurant signed with tapndine and what
 // it has paid. Developers type these in on the Billing pages; the routes and
@@ -44,9 +44,8 @@ export type Standing =
 export const RENEW_DAYS = 30;
 
 const DAY = 86_400_000;
-const TZ = 8 * 60 * 60 * 1000; // Manila, no daylight saving
-/** Today in the restaurant's time, YYYY-MM-DD. */
-export const today = (now = Date.now()) => new Date(now + TZ).toISOString().slice(0, 10);
+/** Today in the restaurant's time, YYYY-MM-DD (lib/plans.ts). */
+export { today };
 const days = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / DAY);
 
 /** Where a restaurant stands on day `on`, from its contracts, newest first. */

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { BASE_PATH, OPEN_COOKIE } from "./base";
 import { db } from "./cf";
 import { randomId } from "./ids";
-import { ON_TRIAL, TRIAL_STAFF } from "./trial";
+import { addDays, GRACE_DAYS, today } from "./plans";
+import { ON_TRIAL, PAID_UNTIL, TRIAL_STAFF } from "./trial";
 
 // Waiter and manager logins. Passwords are PBKDF2-SHA256 (Web Crypto, which
 // the Worker has; 100k is the most iterations Workers allow). The login
@@ -32,6 +33,8 @@ export type Staff = {
   name: string;
   role: "manager" | "waiter";
   developer: boolean;
+  /** A self signed-up restaurant's last paid day, once it bought a plan; null otherwise (see Login). */
+  paidUntil: string | null;
   /** In the guide: only look, never change (not even marking orders seen). */
   guide: boolean;
 };
@@ -46,14 +49,21 @@ export type Login = {
   name: string;
   role: Role;
   trialEndsAt: number | null;
+  /** A self signed-up restaurant's last paid day (YYYY-MM-DD), once it bought a plan; null otherwise. */
+  paidUntil: string | null;
   /** In the guide: business_id is GUIDE_BUSINESS, and currentStaff() refuses writes. */
   guide: boolean;
   /** Has finished or skipped the guide once. */
   guideSeen: boolean;
 };
 
-/** Restaurant staff whose free trial has ended: they see the trial-over page and nothing else. */
-const trialOver = (login: Login) => login.trialEndsAt !== null && login.trialEndsAt <= Date.now();
+/**
+ * Restaurant staff whose free trial has ended, or whose plan ran out more than
+ * GRACE_DAYS ago: they see the trial-over page and nothing else.
+ */
+const trialOver = (login: Login) =>
+  (login.trialEndsAt !== null && login.trialEndsAt <= Date.now()) ||
+  (login.paidUntil !== null && login.paidUntil < addDays(today(), -GRACE_DAYS));
 
 /** A developer's username. Restaurant logins are longer: "<code>-<name>". */
 export const isUsername = (u: string) => /^[a-z0-9._-]{3,32}$/.test(u);
@@ -215,7 +225,8 @@ export async function currentLogin(): Promise<Login | null> {
     .prepare(
       `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off,
               s.guide_seen_at IS NOT NULL AS guideSeen,
-              CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt
+              CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt,
+              ${PAID_UNTIL} AS paidUntil
        FROM staff_sessions x JOIN staff s ON s.id = x.staff_id
        LEFT JOIN businesses b ON b.id = s.business_id
        WHERE x.id = ? AND x.expires_at > ? AND s.disabled_at IS NULL`

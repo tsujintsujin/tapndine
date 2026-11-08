@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import WarmBackdrop from "@/app/components/WarmBackdrop";
-import BuyPlan from "@/app/components/BuyPlan";
 import { Logo } from "@/app/admin/kit";
-import { BONUS_DAYS } from "@/lib/plans";
+import { PLANS } from "@/lib/plans";
 import { OWNER_MIN_PASSWORD, TRIAL_DAYS, TRIAL_STAFF, TRIAL_TABLES } from "@/lib/trial";
 
 // Two panels on one card: the photo with the brand on the left, the form on
@@ -14,8 +13,8 @@ import { OWNER_MIN_PASSWORD, TRIAL_DAYS, TRIAL_STAFF, TRIAL_TABLES } from "@/lib
 // Log in (/login): an owner's email or a staff username, and the password; or
 // Google for owners. Create an account (/start): email and password, proven
 // once with an emailed code ("code"), or Google; then "restaurant" names it
-// and picks the free trial or a plan to buy ("plans", paid with QR Ph; the
-// account is made once it's paid). "Forgot password?" emails an owner a code
+// and picks the free trial or a plan to buy (/start/plans, paid with QR Ph;
+// the account is made once it's paid). "Forgot password?" emails an owner a code
 // ("reset"); a staff username's request goes to Justin as before.
 
 const field =
@@ -141,7 +140,7 @@ function ErrorNote({ error }: { error: string }) {
   );
 }
 
-type Mode = "login" | "forgot" | "sent" | "reset" | "start" | "code" | "restaurant" | "plans";
+type Mode = "login" | "forgot" | "sent" | "reset" | "start" | "code" | "restaurant";
 
 /**
  * start: open on creating an account. pending: an email that is proven but has
@@ -375,16 +374,16 @@ export default function LoginForm({
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                if (choice === "buy") return go("plans");
                 setBusy(true);
                 setError("");
-                const r = await post("/api/auth/signup", { restaurant, name });
+                const buy = choice === "buy";
+                const r = await post("/api/auth/signup", { restaurant, name, buy });
                 if (r.error) {
                   setError(r.error);
                   setBusy(false);
                   return;
                 }
-                window.location.href = `${BASE_PATH}/admin/menu`;
+                window.location.href = `${BASE_PATH}${buy ? "/start/plans" : "/admin/menu"}`;
               }}
             >
               <h2 className={heading}>Set up your restaurant</h2>
@@ -421,7 +420,7 @@ export default function LoginForm({
                   {(
                     [
                       ["trial", "Free trial", `${TRIAL_DAYS} days free, ${TRIAL_TABLES} table and ${TRIAL_STAFF} staff logins. No payment.`],
-                      ["buy", "Buy a plan", `A full year plus ${BONUS_DAYS} days free. Pay with QR Ph.`],
+                      ["buy", "Buy a plan", `From ₱${Math.min(...PLANS.map((p) => p.monthly))} a month, or less by the year. Pay with QR Ph.`],
                     ] as const
                   ).map(([value, title, text]) => (
                     <label
@@ -448,12 +447,11 @@ export default function LoginForm({
               </fieldset>
               <ErrorNote error={error} />
               <button type="submit" disabled={busy} className={submit}>
-                {choice === "buy" ? "Choose a plan" : busy ? "Setting up…" : "Start free trial"}
+                {busy ? (choice === "buy" ? "Opening plans…" : "Setting up…") : choice === "buy" ? "Choose a plan" : "Start free trial"}
               </button>
             </form>
           )}
 
-          {mode === "plans" && <BuyPlan owner={{ restaurant: restaurant.trim(), name: name.trim() }} onBack={() => go("restaurant")} />}
 
           {mode === "forgot" && (
             <form

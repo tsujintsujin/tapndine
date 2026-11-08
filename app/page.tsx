@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Montserrat } from "next/font/google";
 import { BASE_PATH } from "@/lib/base";
+import HomePlans from "./HomePlans";
 import { EXTRA_TABLE, METHODS, PLANS } from "@/lib/plans";
 import { CheckIcon } from "@/app/components/Icons";
 import { Wordmark } from "@/app/components/Wordmark";
@@ -49,8 +50,6 @@ const ANIM_V = "3";
 const NFC_AREA = "Davao City, Davao del Sur, Davao del Norte and Davao de Oro";
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
 /** A plan's yearly price per table per month: ₱5,000 for 10 tables is ₱41.67. */
-const perTableMonth = (p: { price: number; tables: number }) =>
-  "₱" + (p.price / p.tables / 12).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * The demo restaurant's "Menu for show" link: the real guest menu, to look
@@ -195,7 +194,7 @@ const STEPS = [
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
 
-const PLAN_LIST = PLANS.map((p) => `${p.name} ${peso(p.price)} a year (${p.tables ? `${p.tables} tables with ordering` : "menu only, no ordering"})`).join(", ");
+const PLAN_LIST = PLANS.map((p) => `${p.name} ${peso(p.monthly)} a month or ${peso(p.price)} a year (${p.tables ? `${p.tables} tables with ordering` : "menu only, no ordering"})`).join(", ");
 const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,]*)$/, " or $1");
 
 // Plain-text answers: the FAQ section shows them and Google reads them (FAQPage below).
@@ -230,7 +229,7 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `One yearly price: ${PLAN_LIST}. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Renew at the same rate to keep your menu online.`,
+    a: `Pay by the month or save by paying for the year: ${PLAN_LIST}. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Buy again each month or year to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
@@ -287,29 +286,6 @@ const JSON_LD = {
 };
 
 /** A plan card's checklist: what it includes, then what it leaves out. */
-function PlanList({ includes, without, dark }: { includes: string[]; without: string[]; dark?: boolean }) {
-  return (
-    <ul className={`mt-6 flex-1 space-y-2.5 border-t pt-6 text-sm font-medium ${dark ? "border-white/15" : "border-home-cocoa/10"}`}>
-      {includes.map((f) => (
-        <li key={f} className="flex items-start gap-2.5">
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-sage text-white">
-            <CheckIcon className="h-3.5 w-3.5" />
-          </span>
-          {f}
-        </li>
-      ))}
-      {without.map((f) => (
-        <li key={f} className={`flex items-start gap-2.5 ${dark ? "text-home-shell/60" : "text-home-cocoa/55"}`}>
-          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-cream text-home-cocoa/60" aria-hidden>
-            &ndash;
-          </span>
-          {f}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 const H2 = "text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl";
 /** The light blue the flat illustrations are drawn on (videos/wait-race). */
 const ART_BLUE = "text-[#d6e6fd]";
@@ -642,8 +618,8 @@ export default async function Home() {
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
           <h2 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl">Pricing</h2>
           <p className="mx-auto mt-4 max-w-md text-center font-medium text-home-cocoa/75">
-            One price a year for your restaurant or cafe: your menu online on its own, or with ordering by how many
-            tables you have. Renew at the same rate to keep your menu online.
+            Pay by the month, or save by paying for the year: your menu online on its own, or with ordering by how many
+            tables you have.
           </p>
           <Link
             href="/start"
@@ -651,35 +627,7 @@ export default async function Home() {
           >
             Try it free for 7 days on 1 table &rarr;
           </Link>
-          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
-            {PLANS.map((p) => {
-              // The plan most restaurants pick: drawn dark to stand out (Justin, 2026-11-07).
-              const hi = p.name === "Standard";
-              return (
-                <div
-                  key={p.name}
-                  className={`flex flex-col rounded-3xl p-6 shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] ${hi ? "bg-home-cocoa text-home-shell" : "bg-white"}`}
-                >
-                  <h3 className="text-lg font-bold">{p.name}</h3>
-                  <p className={`mt-1 text-sm font-semibold ${hi ? "text-home-butter" : "text-home-orange"}`}>{p.tables ? `${p.tables} tables` : "Menu only"}</p>
-                  <p className="mt-6">
-                    <span className="text-4xl font-extrabold tracking-tight">{peso(p.price)}</span>
-                    <span className="text-sm font-semibold opacity-60"> / year</span>
-                  </p>
-                  <p className={`mt-1 text-sm font-medium ${hi ? "text-home-shell/70" : "text-home-cocoa/70"}`}>
-                    {p.tables ? `${perTableMonth(p)} per table a month` : `${peso(Math.round(p.price / 12))} a month`}
-                  </p>
-                  <PlanList includes={p.includes} without={("without" in p && p.without) || []} dark={hi} />
-                  <a
-                    href={`${CONTACT}%20(${encodeURIComponent(p.name)})`}
-                    className={`${PILL} mt-8 text-center hover:brightness-95 ${hi ? "bg-home-butter text-home-cocoa" : "bg-home-orange"}`}
-                  >
-                    Choose {p.name}
-                  </a>
-                </div>
-              );
-            })}
-          </div>
+          <HomePlans />
           <div className="mx-auto mt-5 flex max-w-5xl flex-col items-center justify-between gap-2 rounded-3xl bg-white px-6 py-5 text-center shadow-[0_20px_50px_-24px_rgb(59_46_37/0.4)] sm:flex-row sm:text-left">
             <div>
               <h3 className="text-lg font-bold">Extra tables</h3>

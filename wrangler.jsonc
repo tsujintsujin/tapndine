@@ -1,7 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tapndine",
-  "main": ".open-next/worker.js",
+  // OpenNext's worker plus the daily plan-reminder job (custom-worker.ts).
+  "main": "custom-worker.ts",
+  // Every day at 9 AM Manila.
+  "triggers": { "crons": ["0 1 * * *"] },
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
   // Only tapndine.online: the workers.dev address and justin94.space/tapndine are gone.

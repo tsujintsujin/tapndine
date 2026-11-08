@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BASE_PATH } from "@/lib/base";
 import { restaurantName, trialEndsAt } from "@/lib/dev";
+import { due } from "@/lib/plans";
 import { currentLogin } from "@/lib/staff";
 import AlertsProvider from "./Alerts";
 import { StaffInfoProvider } from "./ui";
@@ -29,6 +30,8 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         guide: !!login?.guide,
         // Owners and managers, the first time; developers open it from Settings.
         offerGuide: !!login && !login.guide && !login.guideSeen && (login.role === "owner" || login.role === "manager"),
+        // Waiters can't pay, and a developer's own login has no plan: only owners and managers are told.
+        due: login && (login.role === "owner" || login.role === "manager") ? due(login.trialEndsAt, login.paidUntil) : null,
       }}
     >
       <AlertsProvider>{children}</AlertsProvider>
