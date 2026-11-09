@@ -14,7 +14,8 @@ import { isVisitId, type Visit } from "./visits";
 export type Line = { id: string; name: string; priceCents: number; qty: number; options: string | null; note: string | null };
 /** seenAt: when a waiter first opened the table after it came in; null = not yet. */
 export type Batch = { id: string; sentAt: number; seenAt: number | null; lines: Line[]; subtotal: number };
-export type GuestOrders = { number: number; nickname: string | null; batches: Batch[]; subtotal: number };
+/** dishIds: every dish this guest has sent this sitting (the guest menu's drinks popup skips what they already had). */
+export type GuestOrders = { number: number; nickname: string | null; batches: Batch[]; subtotal: number; dishIds: string[] };
 /** A line a waiter added, with who added it. */
 export type Additional = Line & { addedAt: number; addedBy: string | null };
 
@@ -203,6 +204,7 @@ type BatchRow = {
   seen_at: number | null;
   added_by: string | null;
   item_id: string;
+  dish_id: string;
   name: string;
   price_cents: number;
   qty: number;
@@ -214,7 +216,7 @@ async function sittingRows(sittingId: string, phoneId?: string): Promise<BatchRo
   const r = await db()
     .prepare(
       `SELECT b.id AS batch_id, b.guest_id, g.number AS guest_number, g.nickname, b.sent_at, b.seen_at, s.name AS added_by,
-              i.id AS item_id, i.name, i.price_cents, i.qty, i.options, i.note
+              i.id AS item_id, i.dish_id, i.name, i.price_cents, i.qty, i.options, i.note
        FROM batches b
        JOIN batch_items i ON i.batch_id = b.id
        LEFT JOIN guests g ON g.id = b.guest_id
@@ -240,7 +242,7 @@ function group(rows: BatchRow[]) {
     }
     let guest = guests.get(r.guest_id);
     if (!guest) {
-      guest = { number: r.guest_number!, nickname: r.nickname, batches: [], subtotal: 0 };
+      guest = { number: r.guest_number!, nickname: r.nickname, batches: [], subtotal: 0, dishIds: [] };
       guests.set(r.guest_id, guest);
     }
     let batch = batches.get(r.batch_id);
@@ -250,6 +252,7 @@ function group(rows: BatchRow[]) {
       guest.batches.push(batch);
     }
     batch.lines.push(line);
+    if (!guest.dishIds.includes(r.dish_id)) guest.dishIds.push(r.dish_id);
     batch.subtotal += r.price_cents * r.qty;
     guest.subtotal += r.price_cents * r.qty;
   }

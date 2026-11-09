@@ -112,6 +112,15 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   (`custom-worker.ts` cron, `/api/cron/reminders`) emails the owner at 3 days and 1 day.
 - The login card is one fixed height on desktop (720px) so the photo never re-crops.
 
+## Drinks popup (live 2026-11-09)
+
+- Each dish has "Suggest when not ordered" on its Menu page (off by default).
+- On Send to waiter, if the order has nothing from a category holding a switched-on,
+  available dish, and this phone hasn't sent anything from it this sitting, a popup
+  offers those dishes ("You haven't ordered any drinks"). Any dish in the category
+  counts as having one, switched on or not. Shown once per list: X or Confirm go
+  back to My order, and the next Send goes through. Code: `app/m/[visitId]/Suggest.tsx`.
+
 ## Plans (lib/plans.ts)
 
 Set by Justin 2026-11-08. Single (menu only: 0 tables, no ordering) ₱299 a month or
