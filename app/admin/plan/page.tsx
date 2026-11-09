@@ -23,16 +23,21 @@ const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ term?: string }> }) {
   const me = await requireStaff("manager");
   const { term } = await searchParams;
-  const plan = await db()
-    .prepare("SELECT plan, tables, price_cents, starts_on, ends_on FROM contracts WHERE business_id = ? ORDER BY ends_on DESC LIMIT 1")
+  const { results: contracts } = await db()
+    .prepare("SELECT plan, tables, price_cents, starts_on, ends_on FROM contracts WHERE business_id = ? ORDER BY starts_on")
     .bind(me.business_id)
-    .first<{ plan: string; tables: number; price_cents: number; starts_on: string; ends_on: string }>();
+    .all<{ plan: string; tables: number; price_cents: number; starts_on: string; ends_on: string }>();
+  // The plan running today, or the last one that ran. One bought ahead (Standard now, Grand next) waits for its start day.
+  const day = today();
+  const plan = contracts.find((c) => c.starts_on <= day && day <= c.ends_on) ?? contracts.filter((c) => c.starts_on <= day).at(-1) ?? contracts[0] ?? null;
+  const next = contracts.find((c) => c.starts_on > day) ?? null;
+  const lastPaid = contracts.reduce((m, c) => (c.ends_on > m ? c.ends_on : m), "");
   const ends = await trialEndsAt(me.business_id);
   const trialLeft = ends === null ? null : daysLeft(ends);
-  const left = plan ? daysBetween(today(), plan.ends_on) + 1 : null;
+  const left = plan ? daysBetween(day, lastPaid) + 1 : null;
   const fullDate = (day: string) =>
     new Date(`${day}T12:00:00+08:00`).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric" });
-  const until = plan ? fullDate(plan.ends_on) : "";
+  const until = plan ? fullDate(lastPaid) : "";
   // Only a self signed-up restaurant closes when its plan runs out; one a developer added is kept in Billing.
   const closes = me.paidUntil !== null;
   const known = plan ? planByName(plan.plan) : undefined;
@@ -69,6 +74,11 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
             <div>
               <h2 className="font-display text-[24px] font-bold">Your {plan.plan} plan</h2>
               <p className={`mt-3 inline-block rounded-xl px-3 py-2 text-[15px] font-semibold ${tone ? `ring-1 ${tone}` : "bg-paper text-ink"}`}>{status}</p>
+              {next && (
+                <p className="mt-3 text-[15px] text-muted">
+                  Next: <span className="font-semibold text-ink">{next.plan} plan</span>, starts {fullDate(next.starts_on)}
+                </p>
+              )}
             </div>
             <div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[15px] sm:grid-cols-3">
@@ -83,7 +93,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
                 <div className="col-span-2 sm:col-span-1">
                   <dt className="text-muted">Covers</dt>
                   <dd className="font-semibold">
-                    {fullDate(plan.starts_on)} to {until}
+                    {fullDate(plan.starts_on)} to {fullDate(plan.ends_on)}
                   </dd>
                 </div>
               </dl>

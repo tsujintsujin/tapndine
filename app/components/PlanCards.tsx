@@ -122,12 +122,12 @@ function PlanCard({ plan: p, term, onChoose }: { plan: Plan; term: Term; onChoos
       </button>
       <p className="mt-3 text-[14px] leading-snug text-muted">
         {yearly
-          ? `Today you pay ${peso(today)} for 12 months, plus ${BONUS_DAYS} days free. Buy again next year to keep it.`
+          ? `Today you pay ${peso(today)} for 12 months. Buy again next year to keep it.`
           : `Today you pay ${peso(today)} for 1 month. Buy again each month to keep it.`}
       </p>
 
       <ul className="mt-5 space-y-2.5 border-t border-line pt-5 text-[15px] font-medium">
-        {p.includes.map((f) => (
+        {(yearly ? [`${BONUS_DAYS} extra days free for setup`, ...p.includes] : p.includes).map((f) => (
           <li key={f} className="flex items-start gap-2.5">
             <span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full bg-leaf text-white">
               <CheckIcon className="h-3.5 w-3.5" />

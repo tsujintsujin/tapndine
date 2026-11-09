@@ -82,9 +82,9 @@ export default function HomePlans() {
                 Choose plan
               </Link>
               <p className={`mt-3 text-sm font-medium leading-snug ${muted}`}>
-                {yearly ? `You pay ${peso(p.price)} for 12 months, plus ${BONUS_DAYS} days free.` : `You pay ${peso(p.monthly)} for 1 month.`}
+                {yearly ? `You pay ${peso(p.price)} for 12 months.` : `You pay ${peso(p.monthly)} for 1 month.`}
               </p>
-              <PlanList includes={p.includes} without={("without" in p && p.without) || []} dark={hi} />
+              <PlanList includes={yearly ? [`${BONUS_DAYS} extra days free for setup`, ...p.includes] : p.includes} without={("without" in p && p.without) || []} dark={hi} />
             </div>
           );
         })}
