@@ -24,6 +24,20 @@ function Svg({ children, ...p }: P) {
   );
 }
 
+/** A speech bubble: conversations with restaurants. */
+export const ChatIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 3.5c-4.9 0-8.75 3.5-8.75 8 0 2.3 1 4.3 2.6 5.75L5.2 20.5l3.6-1.6c1 .4 2.1.6 3.2.6 4.9 0 8.75-3.5 8.75-8s-3.85-8-8.75-8z" />
+  </Svg>
+);
+
+/** A paper plane: send. */
+export const SendIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M20.5 3.5 10.75 13.25M20.5 3.5l-6 17-3.75-7.25L3.5 9.5l17-6z" />
+  </Svg>
+);
+
 export const MenuIcon = (p: P) => (
   <Svg {...p}>
     <path d="M4 7h16M4 12h16M4 17h16" />

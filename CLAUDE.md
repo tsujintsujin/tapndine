@@ -29,6 +29,10 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   block sound until a first tap on the page, so the page asks for one. No
   vibration or push notification: a locked phone stays silent.
 - A menu link closes 2 hours after the tap, or when the waiter clears the table.
+- Support (`lib/support.ts`, `app/admin/Chat.tsx`): one running Messenger-style
+  conversation per restaurant, no open/closed tickets. Managers write from
+  Settings > Support; developers answer from Tickets. Unread counts show as the
+  same mango badge as Tables (sidebar, phone menu button, tab title). No chime.
 
 ## Who uses it
 

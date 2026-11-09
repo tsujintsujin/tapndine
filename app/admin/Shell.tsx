@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import {
   CardIcon,
+  ChatIcon,
   ClocheIcon,
   CloseIcon,
   GridIcon,
@@ -23,7 +24,7 @@ import {
 } from "@/app/components/Icons";
 import type { Due } from "@/lib/plans";
 import { daysLeft } from "@/lib/trial";
-import { useAlerts } from "./Alerts";
+import { useAlerts, useTickets } from "./Alerts";
 import DuePrompt from "./DuePrompt";
 import Guide from "./Guide";
 import { Logo } from "./kit";
@@ -60,6 +61,7 @@ const DEVELOPER = {
   label: "Developer",
   links: [
     { href: "/admin/dev", label: "All restaurants", Icon: HomeIcon },
+    { href: "/admin/dev/tickets", label: "Tickets", Icon: ChatIcon },
     { href: "/admin/dev/billing", label: "Billing", Icon: ReceiptIcon },
   ],
 };
@@ -95,7 +97,14 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
   const { developer, restaurant, trialEndsAt, due } = useStaffInfo();
-  const { needYou } = useAlerts();
+  const { needYou, support } = useAlerts();
+  const { unread: tickets } = useTickets();
+  /** The count on a link, and what it counts for a screen reader. */
+  const badges: Record<string, [number, string]> = {
+    "/admin": [needYou, needYou === 1 ? "table needs you" : "tables need you"],
+    "/admin/support": [support, support === 1 ? "unread message" : "unread messages"],
+    "/admin/dev/tickets": [tickets, tickets === 1 ? "unread message" : "unread messages"],
+  };
   const left = trialEndsAt === null ? null : daysLeft(trialEndsAt);
   const trial = left === null ? null : left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days`}`;
   // A developer sees their own group, plus the restaurant they have open.
@@ -132,10 +141,10 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                           <span className="sr-only">{dueSentence(due)}</span>
                         </span>
                       )}
-                      {href === "/admin" && needYou > 0 && (
+                      {badges[href]?.[0] > 0 && (
                         <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-full bg-mango px-1.5 text-[13px] font-bold text-forest">
-                          {needYou}
-                          <span className="sr-only"> {needYou === 1 ? "table needs" : "tables need"} you</span>
+                          {badges[href][0]}
+                          <span className="sr-only"> {badges[href][1]}</span>
                         </span>
                       )}
                     </Link>
@@ -169,7 +178,9 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
 
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
   const { guide, due } = useStaffInfo();
-  const { needYou } = useAlerts();
+  const { needYou, support } = useAlerts();
+  const { unread: tickets } = useTickets();
+  const waiting = needYou + support + tickets;
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
@@ -193,10 +204,7 @@ export default function Shell({ name, children }: { name: string; children: Reac
         <Logo />
         <button
           type="button"
-          aria-label={
-            (needYou ? `Open menu, ${needYou} ${needYou === 1 ? "table needs" : "tables need"} you` : "Open menu") +
-            (due?.level ? `. ${dueSentence(due)}` : "")
-          }
+          aria-label={(waiting ? `Open menu, ${waiting} waiting for you` : "Open menu") + (due?.level ? `. ${dueSentence(due)}` : "")}
           aria-expanded={open}
           onClick={() => setOpen(true)}
           className="relative grid h-11 w-11 place-items-center rounded-full bg-paper text-forest"
@@ -208,9 +216,9 @@ export default function Shell({ name, children }: { name: string; children: Reac
               className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full ring-2 ring-white ${due.level === "urgent" ? "bg-chili" : "bg-mango"}`}
             />
           )}
-          {needYou > 0 && (
+          {waiting > 0 && (
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold text-forest">
-              {needYou}
+              {waiting}
             </span>
           )}
         </button>
