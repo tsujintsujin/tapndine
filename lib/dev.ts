@@ -120,6 +120,7 @@ export async function deleteRestaurant(id: string): Promise<boolean> {
   const sittings = "SELECT id FROM sittings WHERE business_id = ?1";
   const dishes = "SELECT id FROM dishes WHERE business_id = ?1";
   const r = await d.batch([
+    `DELETE FROM support_messages WHERE business_id = ?1`,
     `DELETE FROM payments WHERE contract_id IN (SELECT id FROM contracts WHERE business_id = ?1)`,
     `DELETE FROM contracts WHERE business_id = ?1`,
     `DELETE FROM batch_items WHERE batch_id IN (SELECT id FROM batches WHERE sitting_id IN (${sittings}))`,
