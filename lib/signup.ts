@@ -128,16 +128,29 @@ export async function verified(email: string, googleSub: string | null, secure: 
   return "new";
 }
 
-export type Ticket = { id: string; email: string; google_sub: string | null; password_hash: string | null };
+export type Ticket = {
+  id: string;
+  email: string;
+  google_sub: string | null;
+  password_hash: string | null;
+  /** Typed on "Set up your restaurant" before picking "Buy a plan"; null until then. */
+  restaurant: string | null;
+  owner_name: string | null;
+};
 
 /** This browser's sign-up ticket, while it lasts. Its id is the SHA-256 of the cookie. */
 export async function ticket(): Promise<Ticket | null> {
   const token = (await cookies()).get(TICKET_COOKIE)?.value;
   if (!token) return null;
   return db()
-    .prepare("SELECT id, email, google_sub, password_hash FROM signup_tickets WHERE id = ? AND expires_at > ?")
+    .prepare("SELECT id, email, google_sub, password_hash, restaurant, owner_name FROM signup_tickets WHERE id = ? AND expires_at > ?")
     .bind(await sha256(token), Date.now())
     .first<Ticket>();
+}
+
+/** Keeps the restaurant's name and the owner's on the ticket, for the plans page (/start/plans). */
+export async function saveTicketDetails(id: string, restaurant: string, ownerName: string) {
+  await db().prepare("UPDATE signup_tickets SET restaurant = ?, owner_name = ? WHERE id = ?").bind(restaurant, ownerName, id).run();
 }
 
 /** Done with the ticket: the restaurant is made. */

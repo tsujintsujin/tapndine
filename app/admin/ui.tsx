@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { BASE_PATH, OPEN_COOKIE } from "@/lib/base";
 import { ChevronLeft, MenuIcon } from "@/app/components/Icons";
+import type { Due } from "@/lib/plans";
 
 // Pieces every staff screen shares. Staff screens are used on a phone in one
 // hand, so everything you press is at least 44px tall.
@@ -21,8 +22,10 @@ export type StaffInfo = {
   guide: boolean;
   /** Offer the guide: a manager who has never finished or skipped it. */
   offerGuide: boolean;
+  /** How close the restaurant's trial or plan is to ending (managers only; null for waiters and developers). */
+  due: Due | null;
 };
-const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null, guide: false, offerGuide: false });
+const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null, guide: false, offerGuide: false, due: null });
 export const useStaffInfo = () => useContext(StaffContext);
 
 /** The restaurant this page was drawn for; api() refuses to act on another. */

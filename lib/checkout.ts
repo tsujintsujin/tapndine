@@ -1,14 +1,17 @@
 import { today } from "./billing";
 import { db, env } from "./cf";
 import { randomId } from "./ids";
-import { BONUS_DAYS, chargeCents, type PLANS } from "./plans";
+import { addDays, BONUS_DAYS, chargeCents, termEnds, type Plan, type Term } from "./plans";
 import { emailTaken, ownerByEmail, restaurantStatements, slugAttempt, slugFor } from "./signup";
 
 /**
  * Buying a plan with QR Ph through PayMongo's Payment Intent API, copied from
  * TheJobStash (web/lib/paymongo.ts): our own QR on screen, the browser polls.
  *
- * Two buyers. A restaurant on its free trial buys for itself. A new owner who
+ * A plan is bought for a year (plus BONUS_DAYS) or a month, and bought again
+ * for each new one: it starts the day after the restaurant's last paid day.
+ *
+ * Two buyers. A restaurant buys for itself (on its trial or renewing). A new owner who
  * picked "Buy a plan" at sign-up has no account yet: what they typed waits on
  * the checkout, and their restaurant and login are made only once it is paid.
  *
@@ -19,8 +22,6 @@ import { emailTaken, ownerByEmail, restaurantStatements, slugAttempt, slugFor } 
 const API = "https://api.paymongo.com/v1";
 
 export const CHECKOUT_ID = /^chk_[A-Za-z0-9_-]{22}$/;
-
-type Plan = (typeof PLANS)[number];
 
 /** What a new owner typed at sign-up, kept on their checkout until it is paid. */
 export type Owner = { email: string; googleSub: string | null; passwordHash: string | null; restaurant: string; name: string };
@@ -58,16 +59,17 @@ export async function recentUnpaid(businessId: string) {
 }
 
 /**
- * A QR Ph code for `plan`. `forBusiness`: a restaurant on its trial buying.
+ * A QR Ph code for `plan` for one `term`. `businessId`: a restaurant buying for itself.
  * `owner` + `ticket`: a new owner; their restaurant gets made under ids picked now.
  * The code expires after PayMongo's default 30 minutes.
  */
 export async function createCheckout(
   plan: Plan,
+  term: Term,
   buyer: { businessId: string } | { owner: Owner; ticket: string }
 ): Promise<{ id: string; qr: string; expiresAt: number }> {
   const id = "chk_" + randomId();
-  const amount = chargeCents(plan);
+  const amount = chargeCents(plan, term);
   const isNew = "owner" in buyer;
   const businessId = isNew ? "biz_" + randomId() : buyer.businessId;
 
@@ -75,8 +77,8 @@ export async function createCheckout(
   // before any QR exists, so a code that gets paid always has a row to settle.
   await db()
     .prepare(
-      `INSERT INTO checkouts (id, business_id, staff_id, owner, ticket, plan, tables, amount_cents, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+      `INSERT INTO checkouts (id, business_id, staff_id, owner, ticket, plan, tables, term, amount_cents, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
     )
     .bind(
       id,
@@ -86,6 +88,7 @@ export async function createCheckout(
       isNew ? buyer.ticket : null,
       plan.name,
       plan.tables,
+      term,
       amount,
       Date.now()
     )
@@ -95,8 +98,8 @@ export async function createCheckout(
     amount,
     currency: "PHP",
     payment_method_allowed: ["qrph"],
-    description: `tapndine ${plan.name} plan, 1 year`,
-    metadata: { checkout_id: id, business_id: businessId, plan: plan.name },
+    description: `tapndine ${plan.name} plan, 1 ${term}`,
+    metadata: { checkout_id: id, business_id: businessId, plan: plan.name, term },
   });
   await db().prepare("UPDATE checkouts SET intent_id = ? WHERE id = ?").bind(intent.id, id).run();
 
@@ -130,6 +133,7 @@ type Row = {
   ticket: string | null;
   plan: string;
   tables: number;
+  term: Term;
   amount_cents: number;
   intent_id: string | null;
   status: string;
@@ -137,14 +141,9 @@ type Row = {
 
 export type Settled = { status: "paid" | "pending" | "unknown"; row?: Row };
 
-const DAY = 86_400_000;
-const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * DAY).toISOString().slice(0, 10);
-/** The same day a year on; 29 Feb becomes 28 Feb. */
-const addYear = (day: string) => `${Number(day.slice(0, 4)) + 1}${day.slice(4) === "-02-29" ? "-02-28" : day.slice(4)}`;
-
 /**
  * Grant a checkout's plan if PayMongo says its intent succeeded in full: a
- * year plus BONUS_DAYS, as a contract with this payment on it, and for a new
+ * term (a year plus BONUS_DAYS, or a month), as a contract with this payment on it, and for a new
  * owner their restaurant and login first. Safe to call any number of times,
  * from the polling and the webhook at once: every statement runs only while
  * the checkout is still pending, and the same batch marks it paid.
@@ -164,7 +163,7 @@ export async function settle(id: string): Promise<Settled> {
   const pending = { sql: "EXISTS (SELECT 1 FROM checkouts WHERE id = ? AND status = 'pending')", binds: [id] as unknown[] };
   const guarded = (sql: string, vals: unknown[]) => d.prepare(`${sql} WHERE ${pending.sql}`).bind(...vals, ...pending.binds);
 
-  // A bought year starts today, or the day after a plan it already has ends.
+  // A bought term starts today, or the day after the last paid day of a plan it already has.
   const last = await d
     .prepare("SELECT MAX(ends_on) AS ends FROM contracts WHERE business_id = ?")
     .bind(row.business_id)
@@ -172,13 +171,13 @@ export async function settle(id: string): Promise<Settled> {
   const now = Date.now();
   const signed = today(now);
   const starts = last?.ends && last.ends >= signed ? addDays(last.ends, 1) : signed;
-  const ends = addDays(addYear(starts), BONUS_DAYS - 1);
+  const ends = termEnds(starts, row.term);
   const contractId = randomId();
   const plan = [
     guarded(
       `INSERT INTO contracts (id, business_id, plan, tables, price_cents, signed_on, starts_on, ends_on, note, created_at)
        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?`,
-      [contractId, row.business_id, row.plan, row.tables, row.amount_cents, signed, starts, ends, `Bought on the site, 1 year + ${BONUS_DAYS} days`, now]
+      [contractId, row.business_id, row.plan, row.tables, row.amount_cents, signed, starts, ends, row.term === "year" ? `Bought on the site, 1 year + ${BONUS_DAYS} days` : "Bought on the site, 1 month", now]
     ),
     guarded(
       `INSERT INTO payments (id, contract_id, paid_on, amount_cents, method, reference, note, created_at)
