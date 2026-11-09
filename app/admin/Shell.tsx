@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import {
   CardIcon,
+  ChatIcon,
   ClocheIcon,
   CloseIcon,
   GridIcon,
@@ -22,7 +23,7 @@ import {
   TagIcon,
 } from "@/app/components/Icons";
 import { daysLeft } from "@/lib/trial";
-import { useAlerts } from "./Alerts";
+import { useAlerts, useTickets } from "./Alerts";
 import Guide from "./Guide";
 import { Logo } from "./kit";
 import { api, useStaffInfo } from "./ui";
@@ -58,6 +59,7 @@ const DEVELOPER = {
   label: "Developer",
   links: [
     { href: "/admin/dev", label: "All restaurants", Icon: HomeIcon },
+    { href: "/admin/dev/tickets", label: "Tickets", Icon: ChatIcon },
     { href: "/admin/dev/billing", label: "Billing", Icon: ReceiptIcon },
   ],
 };
@@ -75,7 +77,14 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
   const { developer, restaurant, trialEndsAt } = useStaffInfo();
-  const { needYou } = useAlerts();
+  const { needYou, support } = useAlerts();
+  const { unread: tickets } = useTickets();
+  /** The count on a link, and what it counts for a screen reader. */
+  const badges: Record<string, [number, string]> = {
+    "/admin": [needYou, needYou === 1 ? "table needs you" : "tables need you"],
+    "/admin/support": [support, support === 1 ? "unread message" : "unread messages"],
+    "/admin/dev/tickets": [tickets, tickets === 1 ? "unread message" : "unread messages"],
+  };
   const left = trialEndsAt === null ? null : daysLeft(trialEndsAt);
   const trial = left === null ? null : left === 0 ? "Free trial ended" : `Free trial: ${left === 1 ? "last day" : `${left} days`}`;
   // A developer sees their own group, plus the restaurant they have open.
@@ -105,10 +114,10 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
                     >
                       <Icon width={21} height={21} className={here ? "text-forest" : ""} />
                       {href === "/admin/plan" && trial ? trial : label}
-                      {href === "/admin" && needYou > 0 && (
+                      {badges[href]?.[0] > 0 && (
                         <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-full bg-mango px-1.5 text-[13px] font-bold text-forest">
-                          {needYou}
-                          <span className="sr-only"> {needYou === 1 ? "table needs" : "tables need"} you</span>
+                          {badges[href][0]}
+                          <span className="sr-only"> {badges[href][1]}</span>
                         </span>
                       )}
                     </Link>
@@ -142,7 +151,9 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
 
 export default function Shell({ name, children }: { name: string; children: React.ReactNode }) {
   const { guide } = useStaffInfo();
-  const { needYou } = useAlerts();
+  const { needYou, support } = useAlerts();
+  const { unread: tickets } = useTickets();
+  const waiting = needYou + support + tickets;
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
@@ -166,15 +177,15 @@ export default function Shell({ name, children }: { name: string; children: Reac
         <Logo />
         <button
           type="button"
-          aria-label={needYou ? `Open menu, ${needYou} ${needYou === 1 ? "table needs" : "tables need"} you` : "Open menu"}
+          aria-label={waiting ? `Open menu, ${waiting} waiting for you` : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen(true)}
           className="relative grid h-11 w-11 place-items-center rounded-full bg-paper text-forest"
         >
           <MenuIcon width={22} height={22} />
-          {needYou > 0 && (
+          {waiting > 0 && (
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-mango px-1 text-[12px] font-bold text-forest">
-              {needYou}
+              {waiting}
             </span>
           )}
         </button>
