@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { body, fail, managerOr } from "@/lib/manager";
 import { tablesOverview } from "@/lib/orders";
 import { currentStaff } from "@/lib/staff";
+import { unreadReplies } from "@/lib/support";
 import { addTable, parseLabel } from "@/lib/tables";
 
 /** The tables screen polls this. */
 export async function GET() {
   const staff = await currentStaff(true);
   if (!staff) return NextResponse.json({ error: "logged out" }, { status: 401 });
-  return NextResponse.json(
-    { tables: await tablesOverview(staff.business_id) },
-    { headers: { "Cache-Control": "no-store" } }
-  );
+  const [tables, support] = await Promise.all([
+    tablesOverview(staff.business_id),
+    // Riding on this poll, so the Support badge costs no request of its own.
+    staff.role === "manager" && !staff.developer ? unreadReplies(staff.business_id) : 0,
+  ]);
+  return NextResponse.json({ tables, support }, { headers: { "Cache-Control": "no-store" } });
 }
 
 /** Manager adds a table; it gets its NFC link straight away. Body: { label }. */

@@ -29,6 +29,10 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   block sound until a first tap on the page, so the page asks for one. No
   vibration or push notification: a locked phone stays silent.
 - A menu link closes 2 hours after the tap, or when the waiter clears the table.
+- Support (`lib/support.ts`, `app/admin/Chat.tsx`): one running Messenger-style
+  conversation per restaurant, no open/closed tickets. Managers write from
+  Settings > Support; developers answer from Tickets. Unread counts show as the
+  same mango badge as Tables (sidebar, phone menu button, tab title). No chime.
 
 ## Who uses it
 
@@ -96,8 +100,16 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   contract with a "QR Ph" payment. Plans charge their real prices since
   2026-11-07 (after a ₱1 test; `CHARGE_PESOS` in lib/plans.ts sets a test
   price). Webhook: `/api/billing/webhook`.
-  A trial restaurant buys from the trial bar's "Buy a plan" (`/admin/plan`) or
-  `/trial-over`; renewals are still done in Billing.
+  Any manager buys from Subscription (`/admin/plan`) or `/trial-over`, a month
+  or a year at a time, whenever they like: each starts the day after the last
+  paid day. QR Ph can't charge automatically, so each month is bought again.
+- **Running out** (self signed-up restaurants only; ones a developer added are
+  kept in Billing and never close): the menu keeps working 3 days after the
+  last paid day (`GRACE_DAYS`), then closes like an ended trial until paid.
+  The Subscription link gets a yellow dot at 7 days or fewer and a red one at 3
+  or fewer and through the grace days; red also pops up once a day on opening
+  the app (`DuePrompt.tsx`). Owners and managers only. A daily job
+  (`custom-worker.ts` cron, `/api/cron/reminders`) emails the owner at 3 days and 1 day.
 - The login card is one fixed height on desktop (720px) so the photo never re-crops.
 
 ## Drinks popup (live 2026-11-09)
@@ -111,10 +123,12 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
 
 ## Plans (lib/plans.ts)
 
-Single ₱3,000/yr (menu only: 0 tables, no ordering), Standard 10 tables ₱5,000/yr,
-Grand 20 tables ₱8,500/yr (no Enterprise: extra tables cover bigger places). Each plan
-card lists what it includes; Standard is drawn dark as the highlighted plan. Extra tables on Standard or Grand: ₱35 per table a month (₱420/yr). Set by
-Justin 2026-11-07.
+Set by Justin 2026-11-08. Single (menu only: 0 tables, no ordering) ₱299 a month or
+₱2,988 a year; Standard 10 tables ₱599 or ₱4,788; Grand 20 tables ₱949 or ₱6,588.
+Yearly is the discount: cards show the monthly price struck through and the year's
+per-month price big (₱399/mo for Standard), Hostinger style (`app/components/PlanCards.tsx`;
+the homepage has its own copy, `app/HomePlans.tsx`). Extra tables on Standard or Grand:
+₱35 per table a month (₱420/yr).
 A restaurant's table limit comes from its current contract; with no contract,
 a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 
@@ -142,11 +156,12 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   (Moved off Next 15 on 2026-10-22: OpenNext refuses to build a Next major past
   its two-year support date.)
 - Local DB: `npm run db:reset` (migrate + seed into `.localdb`). Seed restaurant
-  is Hikay; its demo tag is `b3744013e9f6` (also on live, set 2026-11-07; the
-  homepage's "Try the menu" opens it).
+  is Hikay, which exists only locally (Justin, 2026-11-08); the live demo
+  restaurant is Cove Café. The homepage's "Try the menu" opens demo tag
+  `b3744013e9f6` (set 2026-11-07).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
-- Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`,
+- Checks: `npx tsc --noEmit`, `node scripts/options-check.ts`, `node scripts/plans-check.ts`,
   `node scripts/palettes-check.ts`, `node scripts/search-check.ts`, and with the dev
   server up, `node scripts/isolation-check.mjs http://localhost:3390`.
 - Deploys are **manual** (`opennextjs-cloudflare build` + `deploy`) from a clean

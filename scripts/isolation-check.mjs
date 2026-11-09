@@ -181,6 +181,9 @@ if (sneak.status === 200) {
 // --- A manager is not a developer ------------------------------------------
 for (const [method, path, body] of [
   ["POST", "/api/dev/open", { id: HIKAY }],
+  ["GET", "/api/dev/tickets"],
+  ["GET", `/api/dev/tickets/${HIKAY}`],
+  ["POST", `/api/dev/tickets/${HIKAY}`, { text: "Hacked" }],
   ["PATCH", `/api/dev/restaurants/${HIKAY}`, { off: true }],
   ["PATCH", `/api/dev/restaurants/${HIKAY}`, { name: "Hacked" }],
   ["POST", "/api/dev/restaurants", { name: "X", slug: "xx", managerName: "X", username: "xxx", password: "123456" }],

@@ -6,24 +6,26 @@ import WarmBackdrop from "@/app/components/WarmBackdrop";
 import { restaurantName } from "@/lib/dev";
 import { formatDate } from "@/lib/format";
 import { currentLogin } from "@/lib/staff";
-import BuyPlan from "@/app/components/BuyPlan";
+import PlanCards from "@/app/components/PlanCards";
+import { addDays, GRACE_DAYS, today } from "@/lib/plans";
 import { TRIAL_DAYS } from "@/lib/trial";
 import LogOutButton from "./LogOutButton";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Your free trial is over · tapndine", robots: { index: false, follow: false } };
-
-
+export const metadata: Metadata = { title: "Your menu is closed · tapndine", robots: { index: false, follow: false } };
 
 /**
- * Where a restaurant's staff land once its free trial is over: everything
- * else is closed to them (lib/staff.ts). Managers buy a plan right here (QR Ph);
- * waiters are told to ask their manager.
+ * Where a restaurant's staff land once its free trial is over, or its plan
+ * ran out more than GRACE_DAYS ago: everything else is closed to them
+ * (lib/staff.ts). Managers buy a plan right here (QR Ph); waiters are told to ask their manager.
  */
 export default async function TrialOverPage() {
   const me = await currentLogin();
   if (!me) redirect("/login");
-  if (me.trialEndsAt === null || me.trialEndsAt > Date.now()) redirect(me.role === "developer" ? "/admin/dev" : "/admin");
+  const trialEnded = me.trialEndsAt !== null && me.trialEndsAt <= Date.now();
+  const lapsed = me.paidUntil !== null && me.paidUntil < addDays(today(), -GRACE_DAYS);
+  if (!trialEnded && !lapsed) redirect(me.role === "developer" ? "/admin/dev" : "/admin");
+  const endedOn = trialEnded ? formatDate(me.trialEndsAt!) : formatDate(Date.parse(`${me.paidUntil}T12:00:00+08:00`));
   const name = (me.business_id && (await restaurantName(me.business_id))) || "Your restaurant";
   const manager = me.role !== "waiter";
 
@@ -35,35 +37,37 @@ export default async function TrialOverPage() {
         <LogOutButton />
       </header>
 
-      <main className="relative mx-auto max-w-5xl">
+      <main className="relative mx-auto max-w-6xl">
         <section className="mx-auto mt-6 max-w-2xl text-center sm:mt-12">
           <p className="mx-auto w-fit rounded-full bg-mango-soft px-4 py-1.5 text-[14px] font-semibold text-forest">
-            Free trial ended {formatDate(me.trialEndsAt)}
+            {trialEnded ? "Free trial" : "Your plan"} ended {endedOn}
           </p>
           <h1 className="mt-5 text-balance font-display text-[38px] font-bold leading-[1.05] tracking-tight sm:text-[52px]">
-            Has tapndine helped you?
+            {trialEnded ? "Has tapndine helped you?" : "Your menu is closed for now"}
           </h1>
           {manager ? (
             <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-muted">
-              {name}&apos;s {TRIAL_DAYS}-day trial is over, so the menu is closed to guests for now. Your dishes, table and
-              staff are all saved. Buy a plan below and everything opens again, just as you left it.
+              {trialEnded ? `${name}'s ${TRIAL_DAYS}-day trial is over` : `${name}'s plan ran out`}, so the menu is closed to
+              guests for now. Your dishes, tables and staff are all saved. Buy a plan below and everything opens again, just
+              as you left it.
             </p>
           ) : (
             <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-muted">
-              {name}&apos;s free trial is over. Ask your manager to pick a plan, and your tables will be back right away.
+              {trialEnded ? `${name}'s free trial is over` : `${name}'s plan ran out`}. Ask your manager to buy a plan, and your
+              tables will be back right away.
             </p>
           )}
         </section>
 
         {manager && (
           <>
-            <div className="mx-auto mt-10 max-w-xl rounded-[22px] bg-white p-5 text-left shadow-[0_20px_50px_-28px_rgb(59_46_37/0.45)] ring-1 ring-black/5 sm:p-7">
-              <BuyPlan heading="Buy a plan to open again" />
+            <div className="mt-10 text-left">
+              <PlanCards />
             </div>
-            <p className="mt-6 text-center text-[15px] text-muted">
+            <div className="mt-6 text-center text-[15px] text-muted">
               Questions first?{" "}
               <BookDemoButton className="rounded font-semibold text-leaf underline-offset-4 hover:underline">Book a call</BookDemoButton>
-            </p>
+            </div>
           </>
         )}
       </main>
