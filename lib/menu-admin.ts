@@ -25,6 +25,8 @@ export type AdminDish = {
   featured: boolean;
   bestSeller: boolean;
   isNew: boolean;
+  /** Offered in the guest's popup on Send when the order has nothing from its category. */
+  suggest: boolean;
   categoryIds: string[];
   ingredients: Ingredient[];
   /** Sizes, add-ons and spice choices (lib/options.ts). A kind is on when it has options. */
@@ -55,6 +57,7 @@ type Row = {
   featured: number;
   best_seller: number;
   is_new: number;
+  suggest: number;
   size_required: number;
   size_label: string | null;
 };
@@ -66,7 +69,7 @@ export async function loadMenuAdmin(businessId: string) {
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url, more_images, spice_level,
-                serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
+                serves_min, serves_max, available, featured, best_seller, is_new, suggest, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(businessId),
@@ -111,6 +114,7 @@ export async function loadMenuAdmin(businessId: string) {
     featured: r.featured === 1,
     bestSeller: r.best_seller === 1,
     isNew: r.is_new === 1,
+    suggest: r.suggest === 1,
     categoryIds: [],
     ingredients: [],
     options: [],
@@ -226,6 +230,7 @@ export function parseDishInput(b: Record<string, unknown> | null): DishInput | s
     featured: b.featured === true,
     bestSeller: b.bestSeller === true,
     isNew: b.isNew === true,
+    suggest: b.suggest === true,
     categoryIds,
     ingredients,
     options,
@@ -279,19 +284,19 @@ export async function saveDish(businessId: string, id: string | null, x: DishInp
 
   const values = [
     x.name, x.shortDescription, x.description, x.priceCents, x.imageUrl, JSON.stringify(x.moreImages), x.spiceLevel,
-    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.sizeRequired, x.sizeLabel,
+    x.servesMin, x.servesMax, +x.available, +x.featured, +x.bestSeller, +x.isNew, +x.suggest, +x.sizeRequired, x.sizeLabel,
   ];
   await d.batch([
     d
       .prepare(
         `INSERT INTO dishes (id, business_id, sort, name, short_description, description, price_cents, image_url, more_images,
-                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             spice_level, serves_min, serves_max, available, featured, best_seller, is_new, suggest, size_required, size_label)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, short_description = excluded.short_description,
            description = excluded.description, price_cents = excluded.price_cents, image_url = excluded.image_url, more_images = excluded.more_images,
            spice_level = excluded.spice_level, serves_min = excluded.serves_min, serves_max = excluded.serves_max,
            available = excluded.available, featured = excluded.featured, best_seller = excluded.best_seller,
-           is_new = excluded.is_new, size_required = excluded.size_required, size_label = excluded.size_label`
+           is_new = excluded.is_new, suggest = excluded.suggest, size_required = excluded.size_required, size_label = excluded.size_label`
       )
       .bind(id, businessId, sort, ...values),
     // The menu home has one hero: picking this one unpicks the old one.

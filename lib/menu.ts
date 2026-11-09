@@ -23,6 +23,8 @@ export type Dish = {
   bestSeller: boolean;
   /** Shown under "New on the menu" on the menu home. */
   isNew: boolean;
+  /** Offered in the popup on Send when the order has nothing from its category. */
+  suggest: boolean;
   ingredients: Ingredient[];
   /** Sizes, add-ons and spice choices, in menu order (lib/options.ts). */
   options: DishOption[];
@@ -72,6 +74,7 @@ type DishRow = {
   featured: number;
   best_seller: number;
   is_new: number;
+  suggest: number;
   size_required: number;
   size_label: string | null;
 };
@@ -122,7 +125,7 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
     d
       .prepare(
         `SELECT id, name, short_description, description, price_cents, image_url, more_images,
-                spice_level, serves_min, serves_max, available, featured, best_seller, is_new, size_required, size_label
+                spice_level, serves_min, serves_max, available, featured, best_seller, is_new, suggest, size_required, size_label
          FROM dishes WHERE business_id = ? AND removed_at IS NULL ORDER BY sort, name`
       )
       .bind(visit.business_id),
@@ -173,6 +176,7 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
       featured: r.featured === 1,
       bestSeller: r.best_seller === 1,
       isNew: r.is_new === 1,
+      suggest: r.suggest === 1,
       ingredients: [],
       options: [],
       sizeRequired: r.size_required === 1,

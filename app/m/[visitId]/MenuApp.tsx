@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BASE_PATH } from "@/lib/base";
-import type { Dish, Menu, SubCategory } from "@/lib/menu";
+import type { Category, Dish, Menu, SubCategory } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
 import { formatPrice, formatTime, servesLabel } from "@/lib/format";
 import { randomId } from "@/lib/ids";
@@ -46,6 +46,7 @@ import {
   TrashIcon,
 } from "@/app/components/Icons";
 import Sheet from "./Sheet";
+import SuggestSheet from "./Suggest";
 import { closeParam, notePop, setParams } from "./history";
 import MenuB from "./MenuB";
 import MenuC from "./MenuC";
@@ -286,6 +287,7 @@ export default function MenuApp({
   const view = params.get("v") === "menu" ? "menu" : "home";
   const dishId = params.get("d");
   const orderOpen = params.get("o") === "1";
+  const suggestOpen = params.get("s") === "1";
 
   const [callOpen, setCallOpen] = useState(false);
   const { expired, expire } = useVisitAlive(visitId, expiresAt, preview);
@@ -374,6 +376,12 @@ export default function MenuApp({
     setToast({ key: Date.now(), title: "Your order changed", detail: "The menu changed. Add those dishes again." });
   }, [order, lines, setQty]);
 
+  // The categories missing from this Send ("Drinks"), kept while the popup is
+  // open; and whether this list was offered them already, so the next Send
+  // after closing it goes straight through.
+  const [suggestFor, setSuggestFor] = useState<Category[]>([]);
+  const suggested = useRef(false);
+
   // One key per list sent, so a double tap or a retry cannot send it twice.
   // Changing the list makes it a different send.
   const sendKey = useRef<string | null>(null);
@@ -412,6 +420,7 @@ export default function MenuApp({
       if (!r.ok) throw new Error(j.error ?? "Could not send. Try again.");
       setSent(j.sent ?? null);
       clear();
+      suggested.current = false;
       setToast({ key: Date.now(), title: "Sent to your waiter", detail: `${itemCount} ${itemCount === 1 ? "item" : "items"}` });
     } catch (e) {
       setSendError(e instanceof TypeError ? "No connection. Check your signal and try again." : (e as Error).message);
@@ -419,8 +428,21 @@ export default function MenuApp({
       setSending(false);
     }
   };
-  /** Send to waiter: first time on this phone, ask what to call them, then send. */
+  /**
+   * Send to waiter: first, if the order has nothing from a category holding a
+   * dish the manager wants suggested and this guest never sent one, offer those (once).
+   * Then, first time on this phone, ask what to call them, then send.
+   */
   const trySend = () => {
+    if (!suggested.current) {
+      const offer = unordered(menu, lines, sent);
+      if (offer.length) {
+        suggested.current = true;
+        setSuggestFor(offer);
+        setParams((p) => p.set("s", "1"), "push");
+        return;
+      }
+    }
     if (nick === null) {
       setSendAfterNick(true);
       setNickOpen(true);
@@ -504,6 +526,16 @@ export default function MenuApp({
           setNickOpen(false);
           setSendAfterNick(false);
         }}
+      />
+      <SuggestSheet
+        key={suggestFor.map((c) => c.id).join()}
+        open={suggestOpen}
+        menu={menu}
+        categories={suggestFor}
+        lines={lines}
+        onAdd={quickAdd}
+        setQty={setQty}
+        onClose={() => closeParam("s")}
       />
       <CallPrompt
         open={callOpen}
@@ -665,6 +697,19 @@ export default function MenuApp({
 
       {shared}
     </>
+  );
+}
+
+/**
+ * The categories ("Drinks") with a dish the manager wants suggested, available
+ * today, that the order has nothing from and this guest hasn't sent anything
+ * from before. Any dish in the category counts, suggested or not: someone who
+ * ordered a juice has a drink.
+ */
+function unordered(menu: Menu, lines: OrderLine[], sent: GuestOrders | null): Category[] {
+  const had = new Set([...lines.map((l) => l.dish.id), ...(sent?.dishIds ?? [])]);
+  return menu.categories.filter(
+    (c) => !c.dishIds.some((id) => had.has(id)) && c.dishIds.some((id) => menu.dishes[id]?.suggest && menu.dishes[id].available)
   );
 }
 

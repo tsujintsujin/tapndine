@@ -37,6 +37,7 @@ const EMPTY: DishInput = {
   featured: false,
   bestSeller: false,
   isNew: true,
+  suggest: false,
   categoryIds: [],
   ingredients: [],
   options: [],
@@ -580,6 +581,12 @@ export default function DishEditor({
                 onChange={() => set("isNew", !x.isNew)}
                 title="New"
                 note="Marked New, and in the New on the menu row"
+              />
+              <Toggle
+                on={x.suggest}
+                onChange={() => set("suggest", !x.suggest)}
+                title="Suggest when not ordered"
+                note="Offered in a popup when a guest sends an order with nothing from its category"
               />
             </ul>
           </section>
