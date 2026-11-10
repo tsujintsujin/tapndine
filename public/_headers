@@ -6,5 +6,9 @@
 # the browser asks again. Bump ?v= on a file (like STATS_V) to push a change sooner.
 /landing/*
   Cache-Control: public, max-age=604800
+# The animation players are iframes inside the homepage, not pages of their own.
+# Google had indexed them as pages; indexifembedded still counts them as part of
+# the homepage. Don't block /anim/ in robots.txt: Google must fetch them to see this.
 /anim/*
   Cache-Control: public, max-age=604800
+  X-Robots-Tag: noindex, indexifembedded
