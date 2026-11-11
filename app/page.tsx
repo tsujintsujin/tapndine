@@ -23,13 +23,14 @@ import { DEMO_TAG } from "@/lib/visits";
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
 // Search terms this page is written for. Main: "online menu" (Justin, 2026-11-11).
-// Also: table ordering, QR code menu, digital menu, restaurants and cafes in the
-// Philippines. "Online menu" leads the title, the description, the H1 line, the
-// intro and the first FAQ answer; keep it there when rewording any of them.
+// Also: table ordering, QR code menu, digital menu, restaurants and cafes.
+// "Online menu" leads the title, the description, the H1 line, the intro and the
+// first FAQ answer; keep it there when rewording any of them. No country in this
+// copy: tappetite is meant to go global (Justin, 2026-11-11).
 // The home-screen icon keeps the brand alone (appleWebApp).
-const TITLE = "Online menu & table ordering in the Philippines · tappetite";
+const TITLE = "Online menu & table ordering for restaurants · tappetite";
 const DESCRIPTION =
-  `Online menu and table ordering for Philippine restaurants and cafes. Guests scan or tap, see every dish and order from their phone. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
+  `Online menu and table ordering for restaurants and cafes. Guests scan or tap, see every dish and order from their phone. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -204,7 +205,7 @@ const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,
 const FAQ = [
   {
     q: "What is tappetite?",
-    a: "tappetite is an online menu and table ordering system for restaurants and cafes in the Philippines, and it ends the idle waiting at the table. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
+    a: "tappetite is an online menu and table ordering system for restaurants and cafes, and it ends the idle waiting at the table. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
   },
   {
     q: "Will guests still talk to my waiters?",
@@ -328,7 +329,7 @@ export default async function Home() {
           <div>
             <h1>
               <span className="mb-4 block text-balance text-sm font-bold uppercase tracking-wider text-home-cocoa/70">
-                Online menu &amp; table ordering in the Philippines
+                Online menu &amp; table ordering for restaurants
               </span>
               <span className="block max-w-[13ch] text-balance text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
                 No more idle waiting at the table.
