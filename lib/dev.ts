@@ -2,6 +2,7 @@ import { db } from "./cf";
 import { randomId } from "./ids";
 import type { MenuDesign } from "./menu";
 import { rangeStart, type Range } from "./reports";
+import { parseSocials, type NetworkId, type Social, type Socials } from "./socials";
 import { hashPassword } from "./staff";
 import { newTagId } from "./tables";
 import { ON_TRIAL } from "./trial";
@@ -183,6 +184,25 @@ export async function setLogo(id: string, slug: string, url: string | null): Pro
 export async function restaurantLogo(id: string): Promise<string | null> {
   const r = await db().prepare("SELECT logo_url FROM businesses WHERE id = ?").bind(id).first<{ logo_url: string | null }>();
   return r?.logo_url ?? null;
+}
+
+/** The restaurant's social links (lib/socials.ts), set in Settings > Socials. */
+export async function restaurantSocials(id: string): Promise<Socials> {
+  const r = await db().prepare("SELECT socials FROM businesses WHERE id = ?").bind(id).first<{ socials: string | null }>();
+  return parseSocials(r?.socials ?? null);
+}
+
+/**
+ * Sets one network's link, or removes it with null, in one statement that
+ * leaves the others alone: a second tab open on Socials can't undo this one.
+ */
+export async function setSocial(id: string, network: NetworkId, social: Social | null): Promise<boolean> {
+  const path = `$.${network}`;
+  const q = social
+    ? db().prepare("UPDATE businesses SET socials = json_set(COALESCE(socials, '{}'), ?, json(?)) WHERE id = ?").bind(path, JSON.stringify(social), id)
+    : db().prepare("UPDATE businesses SET socials = json_remove(socials, ?) WHERE id = ?").bind(path, id);
+  const r = await q.run();
+  return r.meta.changes > 0;
 }
 
 /** Which look the guests' menu has, "a", "b" or "c" (lib/menu.ts MenuDesign). */

@@ -33,6 +33,10 @@ Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
   conversation per restaurant, no open/closed tickets. Managers write from
   Settings > Support; developers answer from Tickets. Unread counts show as the
   same mango badge as Tables (sidebar, phone menu button, tab title). No chime.
+- Socials (`lib/socials.ts`, Settings > Socials, Justin asked 2026-11-11): a
+  link and an on/off per network (Facebook, Instagram, X, TikTok). The ones on
+  show as "Follow us" above "Browse the menu"; none on, no section. Links must
+  be on that network's own site (`node scripts/socials-check.ts`).
 
 ## Who uses it
 

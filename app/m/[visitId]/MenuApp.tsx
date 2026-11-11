@@ -25,6 +25,7 @@ import {
 } from "@/lib/options";
 import Expired from "@/app/components/Expired";
 import { CategoryIcon } from "@/app/components/CategoryIcon";
+import { SocialLogo } from "@/app/components/SocialLogo";
 import {
   BagIcon,
   BellIcon,
@@ -1561,8 +1562,39 @@ function HomeView({
         {fresh.length > 0 && <MiniRow title="New on the menu" rowId="new" dishes={fresh} onDish={onDish} onAdd={onAdd} />}
       </div>
 
+      {menu.socials.length > 0 && <FollowUs socials={menu.socials} />}
+
       <BrowseMenu menu={menu} onMenu={onMenu} onCategory={onCategory} />
     </div>
+  );
+}
+
+/**
+ * The restaurant's social pages, the ones its manager switched on in
+ * Settings > Socials. Each opens in a new tab so the menu stays where it was.
+ */
+function FollowUs({ socials }: { socials: Menu["socials"] }) {
+  return (
+    <section className="mt-10 px-4 md:px-0" aria-labelledby="row-follow">
+      <SectionTitle id="row-follow">Follow us</SectionTitle>
+      <p className="mt-1 text-center text-[15px] text-muted">See our new dishes and promos first.</p>
+      <ul className="mt-4 flex justify-center gap-2 min-[380px]:gap-3">
+        {socials.map((s) => (
+          <li key={s.id}>
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-[76px] flex-col items-center gap-1.5 rounded-2xl py-2 active:bg-wash"
+            >
+              <SocialLogo id={s.id} className="h-12 w-12" />
+              <span className="text-[13px] font-semibold">{s.name}</span>
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

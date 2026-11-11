@@ -1,5 +1,6 @@
 import { db } from "./cf";
 import type { DishOption, OptionKind } from "./options";
+import { parseSocials, shownSocials, type ShownSocial } from "./socials";
 import type { Visit } from "./visits";
 
 export type Ingredient = { name: string; kind: string };
@@ -51,6 +52,8 @@ export type Menu = {
   design: MenuDesign;
   /** The colour scheme the manager picked (lib/palettes.ts), or null for the design's own. */
   palette: string | null;
+  /** The social links switched on in Settings > Socials; empty hides "Follow us". */
+  socials: ShownSocial[];
   tableLabel: string | null;
   categories: Category[];
   /** Keyed by id; categories and the home sections refer to dishes by id. */
@@ -117,7 +120,7 @@ export function parsePhotos(raw: string | null): string[] {
 export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): Promise<Menu | null> {
   const d = db();
   const [biz, table, cats, dishes, links, ingredients, options] = await d.batch([
-    d.prepare("SELECT name, logo_url, menu_design, menu_palette FROM businesses WHERE id = ?").bind(visit.business_id),
+    d.prepare("SELECT name, logo_url, menu_design, menu_palette, socials FROM businesses WHERE id = ?").bind(visit.business_id),
     d.prepare("SELECT label FROM tables WHERE id = ?").bind(visit.table_id),
     d
       .prepare("SELECT id, name, parent_id, icon FROM categories WHERE business_id = ? ORDER BY sort, name")
@@ -154,7 +157,9 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
       .bind(visit.business_id),
   ]);
 
-  const business = (biz.results as { name: string; logo_url: string | null; menu_design: string; menu_palette: string | null }[])[0];
+  const business = (
+    biz.results as { name: string; logo_url: string | null; menu_design: string; menu_palette: string | null; socials: string | null }[]
+  )[0];
   if (!business) return null;
 
   const byId: Record<string, Dish> = {};
@@ -221,6 +226,7 @@ export async function loadMenu(visit: Pick<Visit, "business_id" | "table_id">): 
     // restaurant's stored menu_design stays as it was.
     design: "a",
     palette: business.menu_palette,
+    socials: shownSocials(parseSocials(business.socials)),
     tableLabel: (table.results as { label: string }[])[0]?.label ?? null,
     // An empty category would be a dead end in the Menu list.
     categories: categories.filter((c) => c.dishIds.length > 0),
