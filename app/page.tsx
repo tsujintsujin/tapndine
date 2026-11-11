@@ -22,13 +22,15 @@ import { DEMO_TAG } from "@/lib/visits";
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], display: "swap" });
 
-// Search terms this page is written for: digital menu, online menu, table ordering
-// system, QR code menu, restaurants and cafes in the Philippines. Keep them in the description, the H1 line and the body copy.
-// The title is the brand alone, like any site's home page: it is what the browser
-// tab, bookmarks, home-screen icon and share card show.
-const TITLE = "tappetite";
+// Search terms this page is written for. Main: "online menu" (Justin, 2026-11-11).
+// Also: table ordering, QR code menu, digital menu, restaurants and cafes.
+// "Online menu" leads the title, the description, the H1 line, the intro and the
+// first FAQ answer; keep it there when rewording any of them. No country in this
+// copy: tappetite is meant to go global (Justin, 2026-11-11).
+// The home-screen icon keeps the brand alone (appleWebApp).
+const TITLE = "Online menu & table ordering for restaurants · tappetite";
 const DESCRIPTION =
-  `Digital menu and table ordering for Philippine restaurants and cafes. Guests see every dish and order from the table, so nobody waits for a menu or a waiter. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
+  `Online menu and table ordering for restaurants and cafes. Guests scan or tap, see every dish and order from their phone. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: { type: "website", url: "/", siteName: "tappetite", title: TITLE, description: DESCRIPTION, locale: "en_PH" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
-  appleWebApp: { title: TITLE },
+  appleWebApp: { title: "tappetite" },
 };
 
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tappetite%20for%20my%20restaurant";
@@ -190,7 +192,7 @@ const WAITS = [
 ];
 
 const STEPS = [
-  { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone with the restaurant's menu open and greeting her by name, showing today's pick, Kare-Kare, with its price and an Add to order button" },
+  { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone with the restaurant's online menu open and greeting her by name, showing today's pick, Kare-Kare, with its price and an Add to order button" },
   { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, under category tabs for Seafood, Chicken, Pork and Beef, one marked not available today" },
   { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter, waiting for the waiter to see them, and the total so far" },
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
@@ -203,11 +205,15 @@ const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,
 const FAQ = [
   {
     q: "What is tappetite?",
-    a: "tappetite ends the idle waiting at the table for restaurants and cafes in the Philippines. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
+    a: "tappetite is an online menu and table ordering system for restaurants and cafes, and it ends the idle waiting at the table. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
   },
   {
     q: "Will guests still talk to my waiters?",
     a: "Only as much as they want to. The waiter greets the table, confirms the order and brings the food. Nobody has to flag a waiter down for a menu, a question about a dish or another round, and guests can call the waiter from the menu whenever they need one.",
+  },
+  {
+    q: "How do I put my restaurant's menu online?",
+    a: "Sign up with your email or Google account and add your dishes from your manager login, each with a photo, price and how many people it feeds, sorted into your own categories. That is your online menu. Print each table's QR code from the same login and put it on the table: guests scan it and the menu opens in their phone's browser, with no app to download. Change a price or mark a dish sold out and guests see it right away.",
   },
   {
     q: "How is it different from a QR code menu?",
@@ -323,15 +329,15 @@ export default async function Home() {
           <div>
             <h1>
               <span className="mb-4 block text-balance text-sm font-bold uppercase tracking-wider text-home-cocoa/70">
-                Digital menu &amp; table ordering in the Philippines
+                Online menu &amp; table ordering for restaurants
               </span>
               <span className="block max-w-[13ch] text-balance text-[2.7rem] font-extrabold leading-[1.04] tracking-tight sm:text-6xl">
                 No more idle waiting at the table.
               </span>
             </h1>
             <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
-              Guests tap or scan the table and the whole menu is on their phone: photos, prices, spice, sizes, how many
-              each dish feeds. They order when they&apos;re ready, and it goes straight to your waiter.
+              Guests tap or scan the table and your online menu opens on their phone: photos, prices, spice, sizes, how
+              many each dish feeds. They order when they&apos;re ready, and it goes straight to your waiter.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
