@@ -17,6 +17,8 @@ export type Env = {
   /** "Continue with Google" on the sign-up page (lib/signup.ts); without them the button is hidden. Worker secrets; .dev.vars locally. */
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Demo bookings become Google Calendar invites on tappetitesupport@gmail.com (lib/gcal.ts). Worker secret; .dev.vars locally. */
+  GOOGLE_CAL_REFRESH_TOKEN?: string;
   /** Buying a plan with QR Ph (lib/checkout.ts); the same PayMongo account as TheJobStash. Worker secret; .dev.vars locally. */
   PAYMONGO_SECRET_KEY?: string;
 };
