@@ -42,7 +42,9 @@ export const metadata: Metadata = {
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tappetite%20for%20my%20restaurant";
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
-const STATS_V = "2";
+const STATS_V = "3";
+/** Bump when the four phone captures (public/landing/m-*, s-table) are re-shot: cached a week. */
+const STEPS_V = "2";
 /** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
 const ANIM_V = "4";
 
@@ -188,9 +190,9 @@ const WAITS = [
 ];
 
 const STEPS = [
-  { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone opened at Table 1, showing today's pick, Kare-Kare, with its price and an Add to order button" },
-  { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, filtered by Seafood, Chicken, Pork and Beef" },
-  { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter and the total so far" },
+  { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone with the restaurant's menu open and greeting her by name, showing today's pick, Kare-Kare, with its price and an Add to order button" },
+  { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, under category tabs for Seafood, Chicken, Pork and Beef, one marked not available today" },
+  { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter, waiting for the waiter to see them, and the total so far" },
   { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
 
@@ -560,7 +562,7 @@ export default async function Home() {
           <ol className="mt-16 grid grid-cols-2 gap-x-5 gap-y-12 text-left lg:grid-cols-4">
             {STEPS.map((s, i) => (
               <li key={s.title}>
-                <Phone src={shot(s.src)} alt={s.alt} className="mx-auto w-full max-w-[230px]" />
+                <Phone src={`${shot(s.src)}?v=${STEPS_V}`} alt={s.alt} className="mx-auto w-full max-w-[230px]" />
                 <p className="mt-6 flex items-center gap-2.5 text-lg font-bold">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-base">{i + 1}</span>
                   {s.title}
