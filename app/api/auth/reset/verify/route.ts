@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     .bind(owner.id)
     .first<{ disabled_at: number | null }>();
   await db().prepare("UPDATE staff SET password_hash = ?, failed_logins = 0, locked_until = 0 WHERE id = ?").bind(await hashPassword(password), owner.id).run();
-  if (off?.disabled_at) return fail("Password saved, but this restaurant is switched off. Ask tapndine to switch it back on.", 403);
+  if (off?.disabled_at) return fail("Password saved, but this restaurant is switched off. Ask tappetite to switch it back on.", 403);
   const secure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
   await startSession(owner.id, secure);
   return NextResponse.json({ ok: true });

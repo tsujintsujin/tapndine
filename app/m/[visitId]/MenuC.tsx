@@ -794,7 +794,7 @@ function OrderSheet({
                   </>
                 ) : demo ? (
                   <p className="mt-2 text-sm text-muted">
-                    This is a demo menu. In a restaurant with tapndine, Send to waiter goes right here and your order lands
+                    This is a demo menu. In a restaurant with tappetite, Send to waiter goes right here and your order lands
                     on the waiter&apos;s phone.
                   </p>
                 ) : (

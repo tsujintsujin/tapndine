@@ -21,7 +21,7 @@ import { api, useStaffInfo } from "./ui";
 
 // The guide: a walk through every manager page, shown on Cove Café (the
 // server swaps it in while the guide is on, and refuses every change). It is
-// offered once, the first time a manager opens tapndine, and from Settings.
+// offered once, the first time a manager opens tappetite, and from Settings.
 // Each page has a few frames; a frame lights up the part of the page it talks
 // about (the `target` elements, marked with data-guide on the pages) and
 // darkens the rest.
@@ -221,7 +221,7 @@ export async function switchGuide(on: boolean) {
   window.location.assign(`${BASE_PATH}/admin/dashboard`);
 }
 
-/** The first time a manager opens tapndine: take the tour, or not now. */
+/** The first time a manager opens tappetite: take the tour, or not now. */
 function Welcome() {
   const [open, setOpen] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -246,7 +246,7 @@ function Welcome() {
         aria-labelledby="guide-welcome-title"
         className="max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-6 sm:max-w-[480px] sm:rounded-[28px] sm:p-7"
       >
-        <p className="text-[14px] font-semibold text-muted">Welcome to tapndine</p>
+        <p className="text-[14px] font-semibold text-muted">Welcome to tappetite</p>
         <h2 id="guide-welcome-title" className="mt-1 font-display text-[26px] font-bold leading-tight">
           Want a quick tour?
         </h2>

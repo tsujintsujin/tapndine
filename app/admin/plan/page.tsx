@@ -11,7 +11,7 @@ import { PageHead } from "../kit";
 import Shell from "../Shell";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Subscription · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Subscription · tappetite", robots: { index: false, follow: false } };
 
 const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
 

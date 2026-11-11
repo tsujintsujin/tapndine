@@ -12,7 +12,7 @@ import { BookDemoButton } from "./BookDemo";
 import { Bowl, Chili, Cutlery, Drink, Fish, Leaf, Shrimp } from "./Doodles";
 import { DEMO_TAG } from "@/lib/visits";
 
-// The tapndine homepage, for restaurant owners: tapndine ends the idle waiting
+// The tappetite homepage, for restaurant owners: tappetite ends the idle waiting
 // at the table (for the menu, for a waiter, for answers about a dish). The plan
 // is REMODEL.md. The phone screens in "How it works" are real captures of a test
 // run at the sample restaurant (public/landing/); the round "plates" are doodles
@@ -26,7 +26,7 @@ const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "500", "600"
 // system, QR code menu, restaurants and cafes in the Philippines. Keep them in the description, the H1 line and the body copy.
 // The title is the brand alone, like any site's home page: it is what the browser
 // tab, bookmarks, home-screen icon and share card show.
-const TITLE = "tapndine";
+const TITLE = "tappetite";
 const DESCRIPTION =
   `Digital menu and table ordering for Philippine restaurants and cafes. Guests see every dish and order from the table, so nobody waits for a menu or a waiter. From ₱${PLANS[0].price.toLocaleString("en-PH")} a year.`;
 
@@ -34,17 +34,17 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/" },
-  openGraph: { type: "website", url: "/", siteName: "tapndine", title: TITLE, description: DESCRIPTION, locale: "en_PH" },
+  openGraph: { type: "website", url: "/", siteName: "tappetite", title: TITLE, description: DESCRIPTION, locale: "en_PH" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
   appleWebApp: { title: TITLE },
 };
 
-const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tapndine%20for%20my%20restaurant";
+const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tappetite%20for%20my%20restaurant";
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
 const STATS_V = "2";
 /** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
-const ANIM_V = "3";
+const ANIM_V = "4";
 
 /** Where restaurants get NFC tags for their tables free (Justin, 2026-10-25). */
 const NFC_AREA = "Davao City, Davao del Sur, Davao del Norte and Davao de Oro";
@@ -56,7 +56,7 @@ const peso = (n: number) => "₱" + n.toLocaleString("en-PH");
  * through, with no waiter to send to.
  */
 const DEMO_PATH = `/t/${DEMO_TAG}`;
-const DEMO_URL = `https://tapndine.online${DEMO_PATH}`;
+const DEMO_URL = `https://tappetite.click${DEMO_PATH}`;
 
 const BLOB =
   "M44.7,-58.3C57.1,-48.7,65.8,-34.4,70.1,-18.6C74.3,-2.7,74.1,14.7,67,29.1C59.9,43.5,45.9,54.8,30.3,62.3C14.7,69.8,-2.6,73.5,-19.6,70.2C-36.6,66.9,-53.3,56.6,-63.6,41.7C-73.9,26.8,-77.8,7.3,-73.6,-9.9C-69.4,-27.1,-57.1,-42,-42.4,-51.3C-27.7,-60.6,-10.6,-64.3,3.6,-68.6C17.8,-72.9,32.3,-67.9,44.7,-58.3Z";
@@ -177,7 +177,7 @@ const FACTS = [
   },
 ];
 
-// The five waits tapndine takes away (REMODEL.md, agreed 2026-10-25): what the
+// The five waits tappetite takes away (REMODEL.md, agreed 2026-10-25): what the
 // table waits for, and what it has instead. Only what the product does today.
 const WAITS = [
   { wait: "Waiting for the menu", now: "It opens on their phone with a tap or a scan." },
@@ -200,8 +200,8 @@ const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,
 // Plain-text answers: the FAQ section shows them and Google reads them (FAQPage below).
 const FAQ = [
   {
-    q: "What is tapndine?",
-    a: "tapndine ends the idle waiting at the table for restaurants and cafes in the Philippines. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
+    q: "What is tappetite?",
+    a: "tappetite ends the idle waiting at the table for restaurants and cafes in the Philippines. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
   },
   {
     q: "Will guests still talk to my waiters?",
@@ -209,7 +209,7 @@ const FAQ = [
   },
   {
     q: "How is it different from a QR code menu?",
-    a: `A QR menu only shows the menu. With tapndine, guests also order from it: each order goes to your waiter's phone, sorted by guest, and counts toward your sales statistics. The menu opens already set to their table. Guests scan the table's QR code, and restaurants in ${NFC_AREA} also get NFC tags free, so guests can just tap.`,
+    a: `A QR menu only shows the menu. With tappetite, guests also order from it: each order goes to your waiter's phone, sorted by guest, and counts toward your sales statistics. The menu opens already set to their table. Guests scan the table's QR code, and restaurants in ${NFC_AREA} also get NFC tags free, so guests can just tap.`,
   },
   {
     q: "Do guests need to download an app?",
@@ -236,16 +236,16 @@ const FAQ = [
     a: `Yes. Sign up with your email or Google account and you get 7 days free with every feature on 1 table: your menu online, orders to your waiter's phone, and the statistics. Print the table's QR code from your manager login and put it on the table. When the week is up, pick a plan to keep going; your menu and settings stay as you left them. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
   },
   {
-    q: "Does tapndine replace my POS?",
-    a: "No. tapndine sits on top of what you already use. Guests' orders arrive on your waiter's phone, and your waiter enters them into your POS as usual, so your POS stays your till and your sales record. If you want a POS or another system built for your restaurant, ask us.",
+    q: "Does tappetite replace my POS?",
+    a: "No. tappetite sits on top of what you already use. Guests' orders arrive on your waiter's phone, and your waiter enters them into your POS as usual, so your POS stays your till and your sales record. If you want a POS or another system built for your restaurant, ask us.",
   },
   {
     q: "How do I pay?",
     a: `Once a year, by ${PAY_WITH}.`,
   },
   {
-    q: "Does tapndine take payment from guests?",
-    a: "No. Guests pay you the way they always have. tapndine sends their orders to your staff and keeps count of what sells.",
+    q: "Does tappetite take payment from guests?",
+    a: "No. Guests pay you the way they always have. tappetite sends their orders to your staff and keeps count of what sells.",
   },
 ];
 
@@ -254,23 +254,23 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
     // The site name Google shows above the result.
-    { "@type": "WebSite", name: "tapndine", alternateName: "tapndine.online", url: "https://tapndine.online/" },
+    { "@type": "WebSite", name: "tappetite", alternateName: "tapndine", url: "https://tappetite.click/" },
     {
       "@type": "Organization",
-      "@id": "https://tapndine.online/#org",
+      "@id": "https://tappetite.click/#org",
       name: "TSUJIN IT SOLUTIONS",
-      url: "https://tapndine.online/",
+      url: "https://tappetite.click/",
       email: "justin.masiga.94@gmail.com",
       areaServed: "PH",
     },
     {
       "@type": "SoftwareApplication",
-      name: "tapndine",
-      url: "https://tapndine.online/",
+      name: "tappetite",
+      url: "https://tappetite.click/",
       description: DESCRIPTION,
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web (iPhone and Android)",
-      provider: { "@id": "https://tapndine.online/#org" },
+      provider: { "@id": "https://tappetite.click/#org" },
       offers: PLANS.map((p) => ({
         "@type": "Offer",
         name: `${p.name} (${p.tables ? `${p.tables} tables` : "menu only"}, 1 year)`,
@@ -312,7 +312,7 @@ export default async function Home() {
           <nav className="flex items-center gap-6 text-sm font-semibold">
             <a href="#how" className="hidden opacity-75 hover:opacity-100 md:block">How it works</a>
             <BookDemoButton withLogin className="rounded-full bg-home-cocoa px-5 py-2.5 text-home-shell hover:bg-black">
-              Get tapndine
+              Get tappetite
             </BookDemoButton>
           </nav>
         </header>
@@ -344,7 +344,7 @@ export default async function Home() {
           <div className="relative mx-auto aspect-square w-full max-w-[520px]">
             <div className="absolute -right-8 -top-6 h-[80%] w-[80%] rounded-full bg-home-orange md:hidden" aria-hidden />
             <Blob className={`inset-0 m-auto h-[96%] w-[96%] ${ART_BLUE}`} />
-            {/* One table with tapndine: tap, the dish answers, the order goes, the food comes (videos/table-hero) */}
+            {/* One table with tappetite: tap, the dish answers, the order goes, the food comes (videos/table-hero) */}
             <Anim
               name="table-hero"
               canvas={[1080, 1080]}
@@ -375,7 +375,7 @@ export default async function Home() {
         ))}
       </ul>
 
-      {/* The two tables: the same couple, with and without tapndine (videos/wait-race) */}
+      {/* The two tables: the same couple, with and without tappetite (videos/wait-race) */}
       <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-20 sm:px-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:gap-14 md:pb-24 md:pt-28">
         <div className="md:order-2">
           <h2 className={H2}>Same table. Same kitchen.</h2>
@@ -383,7 +383,7 @@ export default async function Home() {
             One table waits for a menu, a waiter and answers about the dish. The other is already eating.
           </p>
           <p className="mt-4 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-            The kitchen is just as fast for both. With tapndine the order simply gets there sooner, because nobody at the
+            The kitchen is just as fast for both. With tappetite the order simply gets there sooner, because nobody at the
             table had to wait to place it.
           </p>
         </div>
@@ -393,7 +393,7 @@ export default async function Home() {
               name="wait-race"
               canvas={[1080, 1080]}
               box={[0, 0, 1080, 1080]}
-              label="The same couple at two tables. Without tapndine they wait for a waiter, the menu and answers, and are still waiting at 13 minutes. With tapndine they tap the table, send their order, the waiter reads it back, and they are eating."
+              label="The same couple at two tables. Without tappetite they wait for a waiter, the menu and answers, and are still waiting at 13 minutes. With tappetite they tap the table, send their order, the waiter reads it back, and they are eating."
             />
           </div>
           <figcaption className="mx-auto mt-3 max-w-[600px] text-center text-sm font-medium text-home-cocoa/60">
@@ -407,7 +407,7 @@ export default async function Home() {
         <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6 md:py-24">
           <h2 className={`${H2} text-center`}>Every wait, gone.</h2>
           <p className="mx-auto mt-4 max-w-lg text-center font-medium leading-relaxed text-home-cocoa/75">
-            Five times a table sits and waits for a waiter, and what tapndine puts there instead.
+            Five times a table sits and waits for a waiter, and what tappetite puts there instead.
           </p>
           <ul className="mt-12 divide-y divide-home-cream overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_-24px_rgb(59_46_37/0.35)]">
             {WAITS.map((w) => (
@@ -423,7 +423,7 @@ export default async function Home() {
                   <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-home-sage text-white">
                     <CheckIcon className="h-3.5 w-3.5" />
                   </span>
-                  <span><span className="sr-only">With tapndine: </span>{w.now}</span>
+                  <span><span className="sr-only">With tappetite: </span>{w.now}</span>
                 </p>
               </li>
             ))}

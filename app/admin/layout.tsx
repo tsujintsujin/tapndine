@@ -11,7 +11,7 @@ import { StaffInfoProvider } from "./ui";
 // Only here, so customers on the menu are never offered the staff app.
 export const metadata: Metadata = {
   manifest: `${BASE_PATH}/staff.webmanifest`,
-  appleWebApp: { capable: true, title: "tapndine", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "tappetite", statusBarStyle: "default" },
 };
 
 /** Every staff screen knows whose restaurant it shows, and whether a developer is looking. */

@@ -11,7 +11,7 @@ import { day, standingText } from "../parts";
 import BillingBoard from "./BillingBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Billing · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Billing · tappetite", robots: { index: false, follow: false } };
 
 /** One restaurant's contracts and payments. */
 export default async function RestaurantBillingPage({ params }: { params: Promise<{ id: string }> }) {

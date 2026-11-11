@@ -5,7 +5,7 @@ import { requireStaff } from "@/lib/staff";
 import TableView from "./TableView";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Table · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Table · tappetite", robots: { index: false, follow: false } };
 
 export default async function TablePage({ params }: { params: Promise<{ tableId: string }> }) {
   const staff = await requireStaff();

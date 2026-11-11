@@ -6,7 +6,7 @@ import Shell from "../Shell";
 import SocialsBoard from "./SocialsBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Socials · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Socials · tappetite", robots: { index: false, follow: false } };
 
 /** Settings > Socials: the pages guests see under "Follow us" on the menu. */
 export default async function SocialsPage() {

@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/app/components/LegalPage";
 
-// What tapndine stores about guests, restaurant staff and demo requests, and why.
+// What tappetite stores about guests, restaurant staff and demo requests, and why.
 // Keep it matching the code: lib/visits.ts (2-hour links), app/t/[tagId] (tnd_phone
 // cookie), lib/staff.ts (login cookie), lib/signup.ts (trial sign-up), app/api/demo (demo requests), lib/cloudinary.ts.
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · tapndine",
+  title: "Privacy Policy · tappetite",
   description:
-    "What tapndine stores about guests, restaurant staff and demo requests, why, for how long, and your rights under the Philippine Data Privacy Act.",
+    "What tappetite stores about guests, restaurant staff and demo requests, why, for how long, and your rights under the Philippine Data Privacy Act.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -22,8 +22,8 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          tapndine is run by TSUJIN IT SOLUTIONS in the Philippines (&quot;we&quot;, &quot;us&quot;). This policy explains
-          what personal information tapndine collects, why, and what you can ask us to do with it. We follow the Data
+          tappetite is run by TSUJIN IT SOLUTIONS in the Philippines (&quot;we&quot;, &quot;us&quot;). This policy explains
+          what personal information tappetite collects, why, and what you can ask us to do with it. We follow the Data
           Privacy Act of 2012 (Republic Act No. 10173).
         </p>
         <p>
@@ -57,14 +57,14 @@ const SECTIONS: LegalSection[] = [
     title: "Restaurants and their staff",
     body: (
       <>
-        <p>For each restaurant using tapndine, we store:</p>
+        <p>For each restaurant using tappetite, we store:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>the names and usernames of its manager and waiters, and their passwords in scrambled (hashed) form only;</li>
           <li>its menu, prices and dish photos;</li>
           <li>its orders and the statistics made from them;</li>
           <li>its plan, contract and payment records.</li>
         </ul>
-        <p>Staff who log in get a cookie that keeps them logged in. It is needed for tapndine to work and does nothing else.</p>
+        <p>Staff who log in get a cookie that keeps them logged in. It is needed for tappetite to work and does nothing else.</p>
       </>
     ),
   },
@@ -79,7 +79,7 @@ const SECTIONS: LegalSection[] = [
         </p>
         <p>
           If you continue with Google, Google tells us your email address and a number that identifies your Google account.
-          We use them only to log you in to tapndine. We don&apos;t ask Google for your name or photo, we can&apos;t see your
+          We use them only to log you in to tappetite. We don&apos;t ask Google for your name or photo, we can&apos;t see your
           Google password, and we don&apos;t read anything else in your Google account or share what Google sends us.
         </p>
       </>
@@ -99,7 +99,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          Only to run tapndine: to show the menu, pass orders to the waiters, show the restaurant its statistics, keep
+          Only to run tappetite: to show the menu, pass orders to the waiters, show the restaurant its statistics, keep
           logins secure, sign restaurants up for the free trial, and answer demo requests.
         </p>
         <p>We do not sell personal information, use it for advertising, or share it with other restaurants.</p>
@@ -110,7 +110,7 @@ const SECTIONS: LegalSection[] = [
     title: "Who else handles it",
     body: (
       <>
-        <p>We use a few service providers to run tapndine:</p>
+        <p>We use a few service providers to run tappetite:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>Cloudflare, which hosts the website and its database and counts visits without cookies;</li>
           <li>Cloudinary, which stores and serves dish photos;</li>
@@ -129,7 +129,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         Orders, including the names guests typed, stay in the restaurant&apos;s order history for as long as the
-        restaurant uses tapndine, because its statistics are built from them. When a restaurant stops using tapndine, we
+        restaurant uses tappetite, because its statistics are built from them. When a restaurant stops using tappetite, we
         delete its data within 30 days of being asked, or keep it only as long as the law requires. A free trial&apos;s data
         stays after the trial ends, so the restaurant can pick up where it left off, until it asks us to delete it. Demo
         requests are deleted once they are no longer needed.
@@ -166,7 +166,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         If we change this policy, we will update the date at the top. If the change is important, we will tell the
-        restaurants using tapndine before it takes effect. See also our{" "}
+        restaurants using tappetite before it takes effect. See also our{" "}
         <Link href="/terms" className="font-semibold underline">Terms of Service</Link>.
       </p>
     ),

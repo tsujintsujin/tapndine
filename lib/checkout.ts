@@ -98,7 +98,7 @@ export async function createCheckout(
     amount,
     currency: "PHP",
     payment_method_allowed: ["qrph"],
-    description: `tapndine ${plan.name} plan, 1 ${term}`,
+    description: `tappetite ${plan.name} plan, 1 ${term}`,
     metadata: { checkout_id: id, business_id: businessId, plan: plan.name, term },
   });
   await db().prepare("UPDATE checkouts SET intent_id = ? WHERE id = ?").bind(intent.id, id).run();

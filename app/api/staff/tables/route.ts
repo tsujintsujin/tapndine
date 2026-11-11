@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const label = parseLabel((await body(req))?.label);
   if (!label) return fail("Name the table (up to 40 characters).");
   if ((await addTable(me.business_id, label)) === "full") {
-    return fail("Your plan's tables are all used. Delete a table, or contact tapndine to move to a bigger plan.", 409);
+    return fail("Your plan's tables are all used. Delete a table, or contact tappetite to move to a bigger plan.", 409);
   }
   return NextResponse.json({ ok: true });
 }

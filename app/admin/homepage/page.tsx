@@ -5,7 +5,7 @@ import Shell from "../Shell";
 import HomepageEditor from "./HomepageEditor";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Homepage · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Homepage · tappetite", robots: { index: false, follow: false } };
 
 export default async function HomepagePage() {
   const me = await requireStaff("manager");

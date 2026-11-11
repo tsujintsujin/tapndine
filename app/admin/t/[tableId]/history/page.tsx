@@ -11,7 +11,7 @@ import Shell from "../../../Shell";
 import { StaffHeader } from "../../../ui";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Table history · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Table history · tappetite", robots: { index: false, follow: false } };
 
 /**
  * A table's past sittings, newest first: when, how long, the total, and every

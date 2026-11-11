@@ -1,15 +1,32 @@
-# tapndine
+# tappetite (was tapndine)
 
 Digital menu and table ordering for restaurants and cafes in the Philippines.
 Guests tap an NFC tag (or scan a QR code) on their table, the menu opens in the
 phone's browser, and their order goes to the waiter's phone, sorted by guest.
-Live at https://tapndine.online. Built by TSUJIN IT Solutions (Justin).
+Live at https://tappetite.click. Built by TSUJIN IT Solutions (Justin).
 
-## What tapndine is not: it sits on top of the restaurant's POS
+## The name: tappetite since 2026-11-11
 
-- tapndine is a **layer on top of whatever the restaurant already runs**. The
-  waiter reads the order on tapndine and enters it into the restaurant's own
-  POS. tapndine never replaces or takes over the POS.
+- Renamed from tapndine by Justin 2026-11-11. Logo: "tappetite." in Montserrat
+  ExtraBold, "tap" and the dot orange, "petite" cocoa (white on dark). Favicon:
+  orange "tap." on a cocoa tile. All built by `brand/logo/wordmark.py` (it also
+  writes `app/components/Wordmark.tsx` and `app/icon.svg`; the rasters are listed
+  at its end).
+- tapndine.online stays on the Worker and 301s every page to the same path on
+  tappetite.click (`custom-worker.ts`), so printed NFC tags and QR codes keep
+  working. `/api/` is still served there (PayMongo's webhook, waiter screens left
+  open). www.tappetite.click goes to tappetite.click the same way.
+- Kept the old name on purpose, because changing them breaks something: the Worker
+  (`tapndine`, a new name makes a new Worker without the secrets), the D1 database
+  (`tapndine`, can't be renamed), the Cloudinary folder (`tapndine/`, stored photo
+  URLs point there), guests' and staff's browser keys (`tapndine:*`), the
+  `TAPNDINE_VISITS_NEVER_EXPIRE` switch, the GitHub repo and this folder.
+
+## What tappetite is not: it sits on top of the restaurant's POS
+
+- tappetite is a **layer on top of whatever the restaurant already runs**. The
+  waiter reads the order on tappetite and enters it into the restaurant's own
+  POS. tappetite never replaces or takes over the POS.
 - So no kitchen display, ticket printing, bills, receipts, payments or
   accounting exports. The POS has those. The dashboard counts orders sent,
   not money collected.
@@ -151,8 +168,9 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 - Restaurants a developer adds keep working as before (no trial date).
 - Google sign-in: client "tapndine web" in Google Cloud project `tapndine-513409`,
   in production, on Worker secrets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (the
-  button hides without them). Redirect URI:
-  `https://tapndine.online/api/auth/google/callback`. It asks Google for email only.
+  button hides without them). Redirect URIs:
+  `https://tappetite.click/api/auth/google/callback` (and the old
+  `https://tapndine.online/...` one). It asks Google for email only.
 
 ## Stack and running it
 

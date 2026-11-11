@@ -121,7 +121,7 @@ function PasswordField({
 /** What Google sign-in can come back with, by the ?error= it puts on /start. */
 const START_ERRORS: Record<string, string> = {
   google: "Google sign-in didn't finish. Try again, or use your email.",
-  off: "This restaurant is switched off. Ask tapndine to switch it back on.",
+  off: "This restaurant is switched off. Ask tappetite to switch it back on.",
 };
 
 function ErrorNote({ error }: { error: string }) {
@@ -258,7 +258,7 @@ export default function LoginForm({
                 {busy ? "Logging in…" : "Log in"}
               </button>
               <p className="mt-5 text-center text-[15px] text-muted">
-                New to tapndine?{" "}
+                New to tappetite?{" "}
                 <button type="button" onClick={() => go("start")} className={textLink}>
                   Create an account
                 </button>

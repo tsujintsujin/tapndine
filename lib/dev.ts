@@ -7,7 +7,7 @@ import { hashPassword } from "./staff";
 import { newTagId } from "./tables";
 import { ON_TRIAL } from "./trial";
 
-// The developers' screen: every restaurant on tapndine, how each is doing,
+// The developers' screen: every restaurant on tappetite, how each is doing,
 // and adding, renaming and switching them off. Developers only; the routes
 // and the page check that before calling anything here.
 

@@ -1,4 +1,4 @@
-// Adds a developer login: the people who run tapndine, above every restaurant.
+// Adds a developer login: the people who run tappetite, above every restaurant.
 // There is no screen for this on purpose; run it once per developer.
 //
 //   npm run add-developer -- <username> "<Name>" --local    (this PC's database)

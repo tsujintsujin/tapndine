@@ -14,7 +14,7 @@ export async function GET() {
   return NextResponse.json({ messages }, { headers: { "Cache-Control": "no-store" } });
 }
 
-/** A manager writes to tapndine. Body: { text }. */
+/** A manager writes to tappetite. Body: { text }. */
 export async function POST(req: Request) {
   const me = await managerOr();
   if (me instanceof NextResponse) return me;

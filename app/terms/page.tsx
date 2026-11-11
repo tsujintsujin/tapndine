@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/app/components/LegalPage";
 
-// The Terms of Service, for restaurants that buy tapndine. Plain language on purpose.
+// The Terms of Service, for restaurants that buy tappetite. Plain language on purpose.
 
 export const metadata: Metadata = {
-  title: "Terms of Service · tapndine",
-  description: "The terms for restaurants using tapndine: plans, payment, renewal, table QR codes and NFC tags, your data and your guests.",
+  title: "Terms of Service · tappetite",
+  description: "The terms for restaurants using tappetite: plans, payment, renewal, table QR codes and NFC tags, your data and your guests.",
   alternates: { canonical: "/terms" },
 };
 
@@ -19,18 +19,18 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          tapndine is made and run by TSUJIN IT SOLUTIONS, in the Philippines (&quot;we&quot;, &quot;us&quot;). These
-          terms are between us and the restaurant, cafe or business that signs up for tapndine (&quot;you&quot;).
+          tappetite is made and run by TSUJIN IT SOLUTIONS, in the Philippines (&quot;we&quot;, &quot;us&quot;). These
+          terms are between us and the restaurant, cafe or business that signs up for tappetite (&quot;you&quot;).
         </p>
         <p>
-          By paying for a plan or using tapndine, you agree to these terms. If you sign up on behalf of a business, you
+          By paying for a plan or using tappetite, you agree to these terms. If you sign up on behalf of a business, you
           confirm you are allowed to agree for it.
         </p>
       </>
     ),
   },
   {
-    title: "What tapndine is",
+    title: "What tappetite is",
     body: (
       <p>
         Each of your tables gets its own QR code, and restaurants in Davao City, Davao del Sur, Davao del Norte and
@@ -97,11 +97,11 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>
           Your menu, dish photos, prices and order history belong to you. You give us permission to store and show them
-          only so tapndine can work for you. You confirm you have the right to use the photos and text you give us.
+          only so tappetite can work for you. You confirm you have the right to use the photos and text you give us.
         </p>
         <p>
           You are responsible for your menu being accurate, including prices, availability and any allergy information.
-          If you stop using tapndine, you can ask us for a copy of your order history within 30 days, after which we may
+          If you stop using tappetite, you can ask us for a copy of your order history within 30 days, after which we may
           delete it.
         </p>
       </>
@@ -123,7 +123,7 @@ const SECTIONS: LegalSection[] = [
           <Link href="/privacy" className="font-semibold underline">Privacy Policy</Link> explains.
         </p>
         <p>
-          Your guests&apos; meals, payments and service are between you and them. tapndine passes orders to your staff;
+          Your guests&apos; meals, payments and service are between you and them. tappetite passes orders to your staff;
           it does not take payment from guests.
         </p>
       </>
@@ -133,7 +133,7 @@ const SECTIONS: LegalSection[] = [
     title: "Fair use",
     body: (
       <p>
-        Do not use tapndine for anything illegal, to sell things you are not allowed to sell, or to try to get into
+        Do not use tappetite for anything illegal, to sell things you are not allowed to sell, or to try to get into
         another restaurant&apos;s data or break the service. We may suspend an account that does, and will tell you why.
       </p>
     ),
@@ -143,12 +143,12 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          We work to keep tapndine online every day, and fix problems as quickly as we can. We can&apos;t promise it will
+          We work to keep tappetite online every day, and fix problems as quickly as we can. We can&apos;t promise it will
           never go down: phones, internet connections and the services we run on can fail. Keep a way to take orders by
           hand for those moments.
         </p>
         <p>
-          We improve tapndine over time and may change how parts of it look or work. We will not take away a main
+          We improve tappetite over time and may change how parts of it look or work. We will not take away a main
           feature you paid for during your year.
         </p>
       </>
@@ -159,7 +159,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         As far as the law allows, we are not responsible for lost sales, lost profit or other indirect losses caused by
-        tapndine being unavailable or by a mistake in an order. Our total responsibility to you for any claim is limited
+        tappetite being unavailable or by a mistake in an order. Our total responsibility to you for any claim is limited
         to what you paid us for the current year.
       </p>
     ),
@@ -168,9 +168,9 @@ const SECTIONS: LegalSection[] = [
     title: "Ending the service",
     body: (
       <p>
-        You can stop using tapndine at any time; see Refunds for what happens to your payment. We may end the service for
+        You can stop using tappetite at any time; see Refunds for what happens to your payment. We may end the service for
         a restaurant that breaks these terms, after telling you and giving you a chance to fix it where we can. If we
-        ever stop running tapndine altogether, we will tell you at least 30 days before and refund the unused part of your
+        ever stop running tappetite altogether, we will tell you at least 30 days before and refund the unused part of your
         year.
       </p>
     ),

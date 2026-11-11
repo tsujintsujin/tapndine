@@ -75,7 +75,7 @@ export function BookDemoButton({
         >
           <div className="p-6 sm:p-7">
             <div className="flex items-start justify-between gap-4">
-              <h2 className="pt-1 text-2xl font-extrabold tracking-tight">Get tapndine</h2>
+              <h2 className="pt-1 text-2xl font-extrabold tracking-tight">Get tappetite</h2>
               <button type="button" onClick={() => chooser.current?.close()} aria-label="Close" className={CLOSE_X}>
                 &times;
               </button>
@@ -208,7 +208,7 @@ function Scheduler({ onClose }: { onClose: () => void }) {
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight">Book a demo</h2>
           <p className="mt-1.5 text-sm font-medium text-home-cocoa/60">
-            Pick a day and a time. We&apos;ll walk you through tapndine on a real table.
+            Pick a day and a time. We&apos;ll walk you through tappetite on a real table.
           </p>
         </div>
         <button

@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/staff";
 import TablesBoard from "./TablesBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Tables · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Tables · tappetite", robots: { index: false, follow: false } };
 
 export default async function TablesPage() {
   const staff = await requireStaff();

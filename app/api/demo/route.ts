@@ -60,18 +60,18 @@ export async function POST(req: NextRequest) {
   await sendMail({
     to: NOTIFY,
     replyTo: email,
-    subject: `tapndine demo: ${name}, ${day} ${label12(min)}`,
+    subject: `tappetite demo: ${name}, ${day} ${label12(min)}`,
     text: `New demo request\n\nWhen: ${day}, ${label12(min)}\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message || "(none)"}`,
   });
   // And the booker gets their own copy, so they know it went through.
   await sendMail({
     to: email,
     replyTo: NOTIFY,
-    subject: `Your tapndine demo: ${day}, ${label12(min)}`,
+    subject: `Your tappetite demo: ${day}, ${label12(min)}`,
     text:
-      `Hi ${name},\n\nThanks for booking a tapndine demo. We have you down for ${day} at ${label12(min)} (Philippine time).\n\n` +
+      `Hi ${name},\n\nThanks for booking a tappetite demo. We have you down for ${day} at ${label12(min)} (Philippine time).\n\n` +
       `We'll email you before then with how we'll meet. To change the time or ask anything, just reply to this email.\n\n` +
-      `Want a look now? Open the demo menu: https://tapndine.online/t/b3744013e9f6\n\ntapndine`,
+      `Want a look now? Open the demo menu: https://tappetite.click/t/b3744013e9f6\n\ntappetite`,
   });
   return NextResponse.json({ ok: true });
 }

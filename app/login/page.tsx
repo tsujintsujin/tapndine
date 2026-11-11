@@ -8,10 +8,10 @@ import LoginForm from "./LoginForm";
 export const dynamic = "force-dynamic";
 // The staff app installed to a phone opens here, so the login carries the same manifest as /admin.
 export const metadata: Metadata = {
-  title: "Log in · tapndine",
+  title: "Log in · tappetite",
   robots: { index: false, follow: false },
   manifest: `${BASE_PATH}/staff.webmanifest`,
-  appleWebApp: { capable: true, title: "tapndine", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "tappetite", statusBarStyle: "default" },
 };
 
 export default async function LoginPage() {

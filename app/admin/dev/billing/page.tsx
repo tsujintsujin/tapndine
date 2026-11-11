@@ -9,7 +9,7 @@ import Shell from "@/app/admin/Shell";
 import { day, StandingBadge, standingText } from "./parts";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Billing · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Billing · tappetite", robots: { index: false, follow: false } };
 
 /** Every restaurant's contract and payments, the ones needing action first. */
 export default async function BillingPage() {
