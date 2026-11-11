@@ -295,6 +295,9 @@ export default function MenuApp({
   const lines = orderLines(menu, order);
   const { sent, setSent, calls, setCalls, load: loadSent } = useSent(visitId, expire, orderOpen || callOpen, preview);
   const { nick, save: saveNick } = useNickname();
+  // The demo menu greets everyone as Guest: the name this phone saved from a
+  // real table means nothing there, and it read as if the demo knew you.
+  const shownNick = demo ? "Guest" : nick || "";
   const [nickOpen, setNickOpen] = useState(false);
   // The nickname is asked the first time this phone sends, not on opening the
   // menu: looking comes first. True while that question stands between the
@@ -555,7 +558,7 @@ export default function MenuApp({
     return (
       <MenuB
         menu={menu}
-        nickname={nick || ""}
+        nickname={shownNick}
         canSend={canSend}
         demo={demo}
         lines={lines}
@@ -588,7 +591,7 @@ export default function MenuApp({
     return (
       <MenuC
         menu={menu}
-        nickname={nick || ""}
+        nickname={shownNick}
         canSend={canSend}
         demo={demo}
         lines={lines}
@@ -621,7 +624,7 @@ export default function MenuApp({
       {/* The whole menu's white boxes sit on a darker page, over the home page's backdrop. */}
       {view === "menu" && <div aria-hidden="true" className="fixed inset-0 -z-10 bg-wash" />}
       <Header
-        nickname={nick || ""}
+        nickname={shownNick}
         businessName={menu.businessName}
         logoUrl={menu.logoUrl}
         itemCount={itemCount}
@@ -689,7 +692,7 @@ export default function MenuApp({
           sending={sending}
           sendError={sendError}
           onSend={trySend}
-          nickname={nick || ""}
+          nickname={shownNick}
           onNickname={() => setNickOpen(true)}
           onClose={() => closeParam("o")}
         />
