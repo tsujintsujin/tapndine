@@ -127,7 +127,8 @@ function Scheduler({ onClose }: { onClose: () => void }) {
   const [time, setTime] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
+  /** Set once booked; invite says whether Google Calendar is sending the Meet invite. */
+  const [sent, setSent] = useState<{ invite: boolean } | null>(null);
 
   const cells = useMemo(() => {
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -166,13 +167,13 @@ function Scheduler({ onClose }: { onClose: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, min: time, name: f.get("name"), email: f.get("email"), message: f.get("message") }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; taken?: boolean };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; taken?: boolean; invite?: boolean };
       if (data.taken) {
         setTime(null);
         await loadTaken(date);
       }
       if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
-      setSent(true);
+      setSent({ invite: data.invite === true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -185,8 +186,10 @@ function Scheduler({ onClose }: { onClose: () => void }) {
       <div className="p-7 text-center sm:p-10">
         <h2 className="text-2xl font-extrabold tracking-tight">Demo booked</h2>
         <p className="mt-3 text-sm font-medium text-home-cocoa/70">
-          <span className="font-bold text-home-cocoa">{prettyDate(date)}</span>, {label12(time)}. We&apos;ll email you
-          to confirm.
+          <span className="font-bold text-home-cocoa">{prettyDate(date)}</span>, {label12(time)}.{" "}
+          {sent.invite
+            ? "Check your email for the Google Calendar invite with the Google Meet link."
+            : "We'll email you to confirm."}
         </p>
         <button
           type="button"

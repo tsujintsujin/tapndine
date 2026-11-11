@@ -192,3 +192,9 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   **before** deploying code that reads them. Back up live first
   (`wrangler d1 export tapndine --remote --output <file on D:>`).
 - Credentials: `D:\AIO Freelance\Credentials\README.md` (tapndine section).
+- Book a Demo (`app/api/demo/route.ts`): the booking goes on tappetitesupport@gmail.com's
+  Google Calendar with a Meet link (`lib/gcal.ts`, Worker secret GOOGLE_CAL_REFRESH_TOKEN,
+  made with `scripts/google-calendar-token.mjs`); Google emails the booker the invite.
+  Justin gets the booking email; replies to the booker's copy go to support@tappetite.click
+  (Titan mailbox). Testing it books a real event: use support@tappetite.click as the
+  booker and delete the event afterwards.
