@@ -306,7 +306,7 @@ export function Badge({ tone, children }: { tone: "mango" | "leaf"; children: Re
   );
 }
 
-export function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: () => void }) {
+export function Switch({ on, label, onChange, disabled }: { on: boolean; label: string; onChange: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
@@ -314,7 +314,9 @@ export function Switch({ on, label, onChange }: { on: boolean; label: string; on
       aria-checked={on}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-leaf" : "bg-line"}`}
+      disabled={disabled}
+      // The ::before stretches the tap area to 48px without moving the layout.
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] disabled:opacity-50 ${on ? "bg-leaf" : "bg-line"}`}
     >
       <span
         className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-[left] ${on ? "left-6" : "left-1"}`}

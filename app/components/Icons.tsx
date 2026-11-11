@@ -187,6 +187,16 @@ export const CardIcon = (p: P) => (
   </Svg>
 );
 
+/** Three linked dots: the restaurant's social pages. */
+export const ShareIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="17.5" cy="5.5" r="2.5" />
+    <circle cx="6.5" cy="12" r="2.5" />
+    <circle cx="17.5" cy="18.5" r="2.5" />
+    <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" />
+  </Svg>
+);
+
 /** A question in a circle: support. */
 export const HelpIcon = (p: P) => (
   <Svg {...p}>

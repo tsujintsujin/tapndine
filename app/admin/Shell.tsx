@@ -18,6 +18,7 @@ import {
   NfcIcon,
   PeopleIcon,
   ReceiptIcon,
+  ShareIcon,
   SlidersIcon,
   TableIcon,
   TagIcon,
@@ -50,6 +51,7 @@ const GROUPS = [
     label: "Settings",
     links: [
       { href: "/admin/settings", label: "General", Icon: SlidersIcon },
+      { href: "/admin/socials", label: "Socials", Icon: ShareIcon },
       // On the free trial this link reads "Free trial: N days" instead (Nav).
       { href: "/admin/plan", label: "Subscription", Icon: CardIcon },
       { href: "/admin/support", label: "Support", Icon: HelpIcon },
