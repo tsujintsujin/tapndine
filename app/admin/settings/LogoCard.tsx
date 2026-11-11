@@ -62,7 +62,7 @@ export default function LogoCard({ name, logoUrl }: { name: string; logoUrl: str
   };
 
   return (
-    <section className={`${card} mt-6 flex flex-wrap items-center gap-4`} aria-labelledby="logo-title">
+    <section className={`${card} mt-4 flex flex-wrap items-center gap-4`} aria-labelledby="logo-title">
       <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-paper ring-1 ring-line">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -57,9 +57,9 @@ export async function restaurants(range: Range, now = Date.now()): Promise<Resta
 export const isSlug = (s: string) => /^[a-z0-9][a-z0-9-]{1,30}$/.test(s);
 
 /** A restaurant name from a request body, trimmed; null if empty or too long. */
-export const parseName = (v: unknown) => {
+export const parseName = (v: unknown, max = 60) => {
   const s = typeof v === "string" ? v.trim() : "";
-  return s && s.length <= 60 ? s : null;
+  return s && s.length <= max ? s : null;
 };
 
 /** A new restaurant, its first manager and its "Menu for show" link, together or not at all. */

@@ -139,6 +139,11 @@ const homeOf = () => sql(`SELECT group_concat(id || featured || best_seller || i
 const home = homeOf();
 await kusina("/api/staff/homepage", { method: "POST", body: { hero: null, featured: JSON.parse(hikayDishes), fresh: JSON.parse(hikayDishes) } });
 check(homeOf() === home, "Putting Hikay's dishes in Kusina's home rows did nothing to Hikay's");
+// Renaming takes no restaurant id: Kusina's manager only ever renames Kusina, whatever the body says.
+const nameOf = (id) => sql(`SELECT name FROM businesses WHERE id = '${id}'`).name;
+const hikayName = nameOf(HIKAY);
+const rename = await kusina("/api/staff/name", { method: "POST", body: { name: "Kusina Dos", id: HIKAY, businessId: HIKAY, business_id: HIKAY } });
+check(rename.status === 200 && nameOf(HIKAY) === hikayName && nameOf("biz_kusina") === "Kusina Dos", "Renaming with Hikay's id renamed only Kusina");
 
 // Kusina adds a dish of its own but asks for Hikay's category: the category is dropped.
 const sneak = await kusina("/api/staff/menu/dishes", {
