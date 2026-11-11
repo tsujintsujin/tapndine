@@ -7,10 +7,15 @@
   "triggers": { "crons": ["0 1 * * *"] },
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Only tapndine.online: the workers.dev address and justin94.space/tapndine are gone.
+  // The Worker keeps its first name, tapndine: renaming it makes a new Worker without the secrets.
   "workers_dev": false,
-  // tapndine's own domain. Cloudflare makes the DNS record and certificate.
-  "routes": [{ "pattern": "tapndine.online", "custom_domain": true }],
+  // tappetite's own domain. tapndine.online (the old name) only redirects to it,
+  // in custom-worker.ts. Cloudflare makes the DNS records and certificates.
+  "routes": [
+    { "pattern": "tappetite.click", "custom_domain": true },
+    { "pattern": "www.tappetite.click", "custom_domain": true },
+    { "pattern": "tapndine.online", "custom_domain": true }
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

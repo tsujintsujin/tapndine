@@ -1,7 +1,7 @@
 {
   "id": "/login",
-  "name": "tapndine Staff",
-  "short_name": "tapndine",
+  "name": "tappetite Staff",
+  "short_name": "tappetite",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",

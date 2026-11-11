@@ -1,15 +1,15 @@
-# tapndine roadmap
+# tappetite roadmap
 
-Agreed with Justin 2026-10-19. Start from what tapndine has and build up, one
+Agreed with Justin 2026-10-19. Start from what tappetite has and build up, one
 stage at a time, until it can run a whole restaurant. A stage gets built only
 when the one before it is in use.
 
 Stages 0–2 still fit "a layer on top of the POS" (see CLAUDE.md). Stage 3 is
-where tapndine becomes the POS. When that starts, rewrite that section of
+where tappetite becomes the POS. When that starts, rewrite that section of
 CLAUDE.md, because the "never replaces the POS" rule stops holding.
 
 ```
-tapndine
+tappetite
 │
 ├── STAGE 0: What we have now (ordering layer on top of the POS)
 │   ├── Guest menu: NFC tap / QR, photos, sold-out, categories, search

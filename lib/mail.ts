@@ -17,7 +17,7 @@ export async function sendMail(opts: { to: string; subject: string; text: string
       method: "POST",
       headers: { "api-key": key, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
-        sender: m ? { name: m[1] || "tapndine", email: m[2] } : { name: "tapndine", email: from.trim() },
+        sender: m ? { name: m[1] || "tappetite", email: m[2] } : { name: "tappetite", email: from.trim() },
         to: [{ email: opts.to }],
         ...(opts.replyTo ? { replyTo: { email: opts.replyTo } } : {}),
         subject: opts.subject,

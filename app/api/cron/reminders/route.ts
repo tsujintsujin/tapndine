@@ -37,8 +37,8 @@ export async function POST() {
     const when = left === 1 ? "today" : `in ${left} days`;
     const mail = await sendMail({
       to: r.email,
-      subject: `Your tapndine plan for ${r.name} ends ${when}`,
-      text: `Your tapndine plan for ${r.name} ends ${when}.\n\nPay for your next month or year to keep your menu open to guests:\nhttps://tapndine.online/admin/plan\n\nIf it runs out, your menu stays open 3 more days, then closes until you pay. Nothing is deleted.\n\ntapndine.online`,
+      subject: `Your tappetite plan for ${r.name} ends ${when}`,
+      text: `Your tappetite plan for ${r.name} ends ${when}.\n\nPay for your next month or year to keep your menu open to guests:\nhttps://tappetite.click/admin/plan\n\nIf it runs out, your menu stays open 3 more days, then closes until you pay. Nothing is deleted.\n\ntappetite.click`,
     });
     if (mail.delivered) sent++;
     // Not sent: free the row so a later run can try again.

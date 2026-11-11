@@ -37,7 +37,7 @@ export default function ImportDialog({ open, onClose }: { open: boolean; onClose
     const url = URL.createObjectURL(new Blob([csvTemplate()], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tapndine-menu-template.csv";
+    a.download = "tappetite-menu-template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };

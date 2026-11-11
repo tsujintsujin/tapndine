@@ -4,6 +4,6 @@ import type { MetadataRoute } from "next";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/login", "/api/", "/m/", "/t/", "/unknown-tag", "/dev"] },
-    sitemap: "https://tapndine.online/sitemap.xml",
+    sitemap: "https://tappetite.click/sitemap.xml",
   };
 }

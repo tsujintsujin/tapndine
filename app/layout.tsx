@@ -12,8 +12,8 @@ const display = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tapndine.online"),
-  title: "tapndine",
+  metadataBase: new URL("https://tappetite.click"),
+  title: "tappetite",
   description: "Tap the tag on your table to see the menu.",
 };
 

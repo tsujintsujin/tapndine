@@ -8,8 +8,8 @@ import { currentLogin } from "@/lib/staff";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Create your account · tapndine",
-  description: "Create a tapndine account for your restaurant or cafe, then start a free 7-day trial or buy a plan.",
+  title: "Create your account · tappetite",
+  description: "Create a tappetite account for your restaurant or cafe, then start a free 7-day trial or buy a plan.",
   manifest: `${BASE_PATH}/staff.webmanifest`,
 };
 

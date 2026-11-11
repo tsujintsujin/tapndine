@@ -7,7 +7,7 @@ import type { SupportMessage } from "@/lib/support";
 import { useAlerts, useTickets } from "./Alerts";
 import { api, usePoll } from "./ui";
 
-// The Messenger-style conversation between a restaurant and tapndine, the same
+// The Messenger-style conversation between a restaurant and tappetite, the same
 // on both sides: the manager's Support page and the developers' Tickets.
 
 /** The restaurant's logo, or the first letter of its name when it has none. */
@@ -22,8 +22,8 @@ export function RestaurantAvatar({ logo, name, className = "h-9 w-9 text-[15px]"
   );
 }
 
-/** tapndine, in the wordmark's lettering and with its dot. */
-export function TapndineAvatar({ className = "h-9 w-9 text-[19px]" }: { className?: string }) {
+/** tappetite, in the wordmark's lettering and with its dot. */
+export function BrandAvatar({ className = "h-9 w-9 text-[19px]" }: { className?: string }) {
   return (
     <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-full bg-forest font-display font-bold leading-none text-white ${className}`}>
       <span>
@@ -50,7 +50,7 @@ export default function Chat({
   /** Where this conversation is read and sent. */
   path: string;
   initial: SupportMessage[];
-  /** The viewer is a developer (their messages are the ones from tapndine). */
+  /** The viewer is a developer (their messages are the ones from tappetite). */
   dev: boolean;
   otherName: string;
   /** The other side's picture, beside their messages. */
@@ -148,13 +148,13 @@ export default function Chat({
                   <div className={`flex items-end gap-2 ${mine ? "justify-end" : ""}`}>
                     {!mine && (lastOfRun ? avatar : <span aria-hidden="true" className="w-9 shrink-0" />)}
                     <div className={`flex min-w-0 max-w-[78%] flex-col lg:max-w-[min(64%,560px)] ${mine ? "items-end" : "items-start"}`}>
-                      {firstOfRun && !mine && <p className="mb-1 px-1 text-[13px] text-muted">{dev ? m.sender : "tapndine support"}</p>}
+                      {firstOfRun && !mine && <p className="mb-1 px-1 text-[13px] text-muted">{dev ? m.sender : "tappetite support"}</p>}
                       <p
                         className={`whitespace-pre-wrap rounded-[20px] px-4 py-2.5 text-[16px] leading-snug [overflow-wrap:anywhere] ${
                           mine ? `bg-forest text-white ${lastOfRun ? "rounded-br-md" : ""}` : `bg-paper text-ink ${lastOfRun ? "rounded-bl-md" : ""}`
                         }`}
                       >
-                        <span className="sr-only">{mine ? "You: " : `${dev ? m.sender : "tapndine"}: `}</span>
+                        <span className="sr-only">{mine ? "You: " : `${dev ? m.sender : "tappetite"}: `}</span>
                         {m.body}
                       </p>
                       {lastOfRun && <p className="mt-1 px-1 text-[12px] text-muted">{formatTime(m.at)}</p>}

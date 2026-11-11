@@ -91,7 +91,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
         <p className="mt-4 rounded-2xl bg-mango-soft px-4 py-3 text-[15px]">
           {trial
             ? `${covers}, and it's set up. Pick a plan to add more tables.`
-            : `${covers} and all ${limit} are set up. To add another, delete a table you don't use, or contact tapndine to move to a bigger plan.`}
+            : `${covers} and all ${limit} are set up. To add another, delete a table you don't use, or contact tappetite to move to a bigger plan.`}
         </p>
       )}
 

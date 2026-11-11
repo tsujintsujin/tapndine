@@ -11,14 +11,14 @@ import { daysLeft } from "@/lib/trial";
 import DevBoard from "./DevBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Restaurants · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Restaurants · tappetite", robots: { index: false, follow: false } };
 
 const RANGE_LABELS: Record<Range, string> = { today: "Today", "7d": "7 days", "30d": "30 days" };
 
 /** Whole pesos, as on the restaurant dashboard. */
 const peso = (cents: number) => formatPrice(Math.round(cents / 100) * 100);
 
-/** The developers' home: every restaurant on tapndine. */
+/** The developers' home: every restaurant on tappetite. */
 export default async function DevPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const me = await requireDeveloper();
   const q = await searchParams;
@@ -32,7 +32,7 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
 
   return (
     <Shell name={me.name}>
-      <PageHead title="Restaurants" sub="Every restaurant on tapndine. Open one to work in it as its manager.">
+      <PageHead title="Restaurants" sub="Every restaurant on tappetite. Open one to work in it as its manager.">
         <nav aria-label="Period" className="flex rounded-full bg-white p-1 shadow-[0_1px_2px_rgb(16_52_42/0.06)]">
           {(Object.keys(RANGE_LABELS) as Range[]).map((k) => (
             <Link

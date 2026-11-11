@@ -2,7 +2,7 @@ import { db } from "./cf";
 import { randomId } from "./ids";
 import { METHODS, today } from "./plans";
 
-// Contracts and payments: what each restaurant signed with tapndine and what
+// Contracts and payments: what each restaurant signed with tappetite and what
 // it has paid. Developers type these in on the Billing pages; the routes and
 // pages check for a developer before calling anything here.
 //

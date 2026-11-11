@@ -6,7 +6,7 @@ import Shell from "../../Shell";
 import CategoryEditor from "../CategoryEditor";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Category · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Category · tappetite", robots: { index: false, follow: false } };
 
 /** One category: its name and which dishes are in it. */
 export default async function CategoryPage({ params }: { params: Promise<{ categoryId: string }> }) {

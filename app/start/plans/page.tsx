@@ -7,7 +7,7 @@ import { ticket } from "@/lib/signup";
 import { currentLogin } from "@/lib/staff";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Pick your plan · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Pick your plan · tappetite", robots: { index: false, follow: false } };
 
 /**
  * Sign-up's "Buy a plan": the plan cards on a page of their own, since they

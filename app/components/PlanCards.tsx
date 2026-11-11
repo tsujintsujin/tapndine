@@ -43,7 +43,7 @@ export default function PlanCards({ startTerm = "year" }: { startTerm?: Term }) 
       </div>
       <p className="mt-5 rounded-2xl bg-white px-5 py-4 text-[15px] text-muted ring-1 ring-black/5">
         Need more tables on Standard or Grand? Add any number for{" "}
-        <span className="font-semibold text-ink">{peso(EXTRA_TABLE / 12)}</span> a table a month. Message tapndine to add them.
+        <span className="font-semibold text-ink">{peso(EXTRA_TABLE / 12)}</span> a table a month. Message tappetite to add them.
       </p>
       {paying && <PayDialog plan={paying.plan} term={paying.term} onClose={() => setPaying(null)} />}
     </div>
@@ -292,7 +292,7 @@ function PayDialog({ plan, term, onClose }: { plan: Plan; term: Term; onClose: (
             </p>
             <a
               href={pay.qr}
-              download="tapndine-qr.png"
+              download="tappetite-qr.png"
               className="mt-5 inline-flex h-11 items-center rounded-full border border-line px-5 text-[15px] font-semibold hover:bg-paper"
             >
               Save QR image

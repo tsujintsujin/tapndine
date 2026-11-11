@@ -8,7 +8,7 @@ import Shell from "@/app/admin/Shell";
 import TicketsBoard from "./TicketsBoard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Tickets · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Tickets · tappetite", robots: { index: false, follow: false } };
 
 /** The developers' inbox: every restaurant's Support conversation. ?r= opens one. */
 export default async function TicketsPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {

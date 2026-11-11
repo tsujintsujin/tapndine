@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const sent = await sendMail({
     to: NOTIFY,
     replyTo: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact) ? contact : undefined,
-    subject: `tapndine password reset: ${username}`,
+    subject: `tappetite password reset: ${username}`,
     text:
       `Password reset request\n\nUsername: ${username}\n` +
       (who

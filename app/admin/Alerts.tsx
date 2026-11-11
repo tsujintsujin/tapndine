@@ -12,7 +12,7 @@ type Alerts = {
   tables: TableSummary[] | null;
   offline: boolean;
   needYou: number;
-  /** tapndine's replies a manager hasn't opened. */
+  /** tappetite's replies a manager hasn't opened. */
   support: number;
   refresh: () => unknown;
 };
@@ -25,7 +25,7 @@ const TicketsContext = createContext<Tickets>({ tickets: null, unread: 0, refres
 /** For developers: every restaurant's conversation, and how many messages are unread. */
 export const useTickets = () => useContext(TicketsContext);
 
-/** "(3) Tables · tapndine". Moving to another page puts its own title back, so this runs on every poll. */
+/** "(3) Tables · tappetite". Moving to another page puts its own title back, so this runs on every poll. */
 const setTabCount = (n: number) => {
   document.title = (n ? `(${n}) ` : "") + document.title.replace(/^\(\d+\) /, "");
 };

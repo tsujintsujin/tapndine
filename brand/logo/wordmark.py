@@ -1,30 +1,30 @@
-"""Builds the tapndine wordmark: "tapndine." set in Montserrat ExtraBold (800),
-the homepage header's letters, outlined, with a tap ripple over the i's dot.
+"""Builds the tappetite wordmark: "tappetite." set in Montserrat ExtraBold (800),
+the homepage header's letters, outlined. "tap" and the period are orange,
+"petite" is cocoa. The favicon is "tap." on a cocoa tile.
 
 Montserrat-800 is instanced from the variable woff2 that next/font ships
 (OFL licence, logo use allowed). Tracking matches the header's tracking-tight
 (-0.025em); pair kerning comes from the font's GPOS like the browser applies.
-Writes tapndine-logo.svg (cocoa + orange), tapndine-logo-black.svg,
-tapndine-logo-white.svg and prints the two path strings for app/components/Wordmark.tsx.
+Writes tappetite-logo.svg (cocoa + orange), tappetite-logo-black.svg,
+tappetite-logo-white.svg, tappetite-icon.svg, app/icon.svg and
+app/components/Wordmark.tsx.
 """
-import math
 import re
 from pathlib import Path
 
 from fontTools.pens.boundsPen import BoundsPen
-from fontTools.pens.recordingPen import DecomposingRecordingPen
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 HERE = Path(__file__).parent
-TEXT = "tapndine"
+ROOT = HERE.parent.parent
 TRACK = -25  # tracking-tight, in font units (upm 1000)
 COCOA, ORANGE = "#3B2E25", "#F19A33"
 
 font = TTFont(HERE / "montserrat-800.ttf")
 gs, cmap = font.getGlyphSet(), font.getBestCmap()
-ASC = 820  # top of the ripple fits under this; baseline sits at y=ASC in the SVG
+ASC = 820  # baseline sits at y=ASC in the SVG
 
 
 def kern_pairs():
@@ -69,110 +69,95 @@ def glyph_path(name, x):
     return re.sub(r"(\d)\.0(?!\d)", lambda m: m.group(1), sp.getCommands())  # 303.0 -> 303
 
 
-def f(n):
-    return f"{n:.1f}".rstrip("0").rstrip(".")
+def set_text(text):
+    """Kerned, tracked run of `text`: per-letter paths and the ink box (SVG coords)."""
+    paths, x, prev = [], 0.0, None
+    x0 = y0 = float("inf")
+    x1 = y1 = float("-inf")
+    for ch in text:
+        g = cmap[ord(ch)]
+        if prev:
+            x += KERN.get((prev, g), 0) + TRACK
+        paths.append(glyph_path(g, x))
+        b = BoundsPen(gs)
+        gs[g].draw(b)
+        bx0, by0, bx1, by1 = b.bounds
+        x0, x1 = min(x0, x + bx0), max(x1, x + bx1)
+        y0, y1 = min(y0, ASC - by1), max(y1, ASC - by0)
+        x += gs[g].width
+        prev = g
+    return paths, (x0, y0, x1, y1)
 
 
-def band(cx, cy, ro, ri, a0, a1):
-    """Ring segment with round caps, SVG angles (y down)."""
-    p = lambda r, a: (cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))
-    rc = (ro - ri) / 2
-    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = p(ro, a0), p(ro, a1), p(ri, a1), p(ri, a0)
-    large = 1 if a1 - a0 > 180 else 0
-    return (f"M{f(x0)} {f(y0)}A{f(ro)} {f(ro)} 0 {large} 1 {f(x1)} {f(y1)}A{f(rc)} {f(rc)} 0 0 1 {f(x2)} {f(y2)}"
-            f"A{f(ri)} {f(ri)} 0 {large} 0 {f(x3)} {f(y3)}A{f(rc)} {f(rc)} 0 0 1 {f(x0)} {f(y0)}Z")
+def n(v):
+    return f"{v:.1f}".rstrip("0").rstrip(".")
 
 
-letters, x, prev = [], 0.0, None
-for ch in TEXT:
-    g = cmap[ord(ch)]
-    if prev:
-        x += KERN.get((prev, g), 0)
-    letters.append(glyph_path(g, x))
-    if ch == "i":
-        # the dot is the contour sitting above the x-height
-        rec = DecomposingRecordingPen(gs)
-        gs[g].draw(rec)
-        dots, cur = [], []
-        for op, args in rec.value:
-            cur.append((op, args))
-            if op in ("closePath", "endPath"):
-                b = BoundsPen(gs)
-                for o, a in cur:
-                    getattr(b, o)(*a)
-                if b.bounds[1] > 560:
-                    dots.append(b.bounds)
-                cur = []
-        dx0, dy0, dx1, dy1 = dots[0]
-        dot_cx, dot_cy, dot_r = x + (dx0 + dx1) / 2, ASC - (dy0 + dy1) / 2, (dx1 - dx0) / 2
-    x += gs[g].width + TRACK
-    prev = g
-
-# ripple: one arc over the i's dot, toward the upper right (the tap spreading out)
-ripple = band(dot_cx, dot_cy, dot_r + 64 + 118, dot_r + 64, 245, 335)
-
-pg = cmap[ord(".")]
-x += KERN.get((prev, pg), 0)
-period = glyph_path(pg, x)
-width = x + gs[pg].width
-
-word = "".join(letters) + ripple
-# crop: ripple top to descender of p
-top = math.floor(dot_cy - (dot_r + 182)) - 4
-vb = f"0 {top} {math.ceil(width)} {ASC + 200 - top}"
+# ---- the wordmark: "tap" orange, "petite" cocoa, orange period ----
+paths, (wx0, wy0, wx1, wy1) = set_text("tappetite.")
+tap, petite, period = "".join(paths[:3]), "".join(paths[3:9]), paths[9]
+PAD = 10
+vb_x, vb_y = int(wx0) - PAD, int(wy0) - PAD
+vb_w, vb_h = int(wx1 - vb_x) + PAD + 1, int(wy1 - vb_y) + PAD + 1
+vb = f"{vb_x} {vb_y} {vb_w} {vb_h}"
 
 
-def svg(name, letters_fill, dot_fill):
+def svg(name, orange, dark):
     (HERE / name).write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb}" role="img" aria-labelledby="t">'
-        f'<title id="t">tapndine</title><path fill="{letters_fill}" d="{word}"/>'
-        f'<path fill="{dot_fill}" d="{period}"/></svg>\n', encoding="utf-8")
+        f'<title id="t">tappetite</title><path fill="{orange}" d="{tap}{period}"/>'
+        f'<path fill="{dark}" d="{petite}"/></svg>\n', encoding="utf-8")
 
 
-svg("tapndine-logo.svg", COCOA, ORANGE)
-svg("tapndine-logo-black.svg", "#111111", "#111111")
-svg("tapndine-logo-white.svg", "#FFFFFF", ORANGE)
+svg("tappetite-logo.svg", ORANGE, COCOA)
+svg("tappetite-logo-black.svg", "#111111", "#111111")
+svg("tappetite-logo-white.svg", ORANGE, "#FFFFFF")
 print("VIEWBOX", vb)
-print("dot", dot_cx, dot_cy, dot_r)
 
 # ---- the React component the app uses (generated; edit this script, not the .tsx) ----
-vb_h = ASC + 200 - top
 tsx = f'''// Generated by brand/logo/wordmark.py — edit that script and re-run it, not this file.
-// The tapndine logo: Montserrat ExtraBold outlined, a tap ripple over the i, an
-// orange period. Sized in em, so it takes the font size of whatever it sits in
-// and lines up on the text baseline. Letters use currentColor.
+// The tappetite logo: Montserrat ExtraBold outlined, "tap" and the period in
+// orange, "petite" in currentColor. Sized in em, so it takes the font size of
+// whatever it sits in and lines up on the text baseline.
 export function Wordmark({{ className = "" }}: {{ className?: string }}) {{
   return (
     <svg
       viewBox="{vb}"
       role="img"
-      aria-label="tapndine"
+      aria-label="tappetite"
       className={{className}}
-      style={{{{ display: "inline-block", height: "{vb_h / 1000:.3f}em", width: "auto", verticalAlign: "-{(ASC + 200 - (ASC)) / 1000:.3f}em" }}}}
+      style={{{{ display: "inline-block", height: "{vb_h / 1000:.3f}em", width: "auto", verticalAlign: "-{(vb_y + vb_h - ASC) / 1000:.3f}em" }}}}
     >
-      <path fill="currentColor" d="{word}" />
-      <path fill="#F19A33" d="{period}" />
+      <path fill="{ORANGE}" d="{tap}{period}" />
+      <path fill="currentColor" d="{petite}" />
     </svg>
   );
 }}
 '''
-(HERE.parent.parent / "app/components/Wordmark.tsx").write_text(tsx, encoding="utf-8")
+(ROOT / "app/components/Wordmark.tsx").write_text(tsx, encoding="utf-8")
 
-# ---- favicon / app icon: the rippled i, white on a cocoa tile ----
-lcx = (dx0 + dx1) / 2  # the dot's centre, with the i drawn at x=0
-# small-size cut: wider gap and heavier ripple than the wordmark so it survives 16px
-GAP, RW = 100, 140
-i_mark = glyph_path(cmap[ord("i")], 0) + band(lcx, dot_cy, dot_r + GAP + RW, dot_r + GAP, 245, 335)
-# bounds of i + ripple in SVG coords: stem from x 40, ripple tip at the right; ripple top to baseline
-ro = dot_r + GAP + RW
-mx0, mx1 = 40, lcx + ro * math.cos(math.radians(335)) + RW / 2
-my0, my1 = dot_cy - ro, ASC
-TILE, FILL = 512, 0.74  # mark height as a share of the tile
-k = TILE * FILL / (my1 - my0)
-tx = (TILE - (mx1 - mx0) * k) / 2 - mx0 * k
-ty = (TILE - (my1 - my0) * k) / 2 - my0 * k + TILE * 0.01  # a hair low: the ripple is light, the stem heavy
-icon = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {TILE} {TILE}">'
-        f'<rect width="{TILE}" height="{TILE}" rx="{TILE * 0.22:.0f}" fill="{COCOA}"/>'
-        f'<path fill="#FFFFFF" transform="translate({tx:.1f} {ty:.1f}) scale({k:.4f})" d="{i_mark}"/></svg>\n')
-(HERE / "tapndine-icon.svg").write_text(icon, encoding="utf-8")
-(HERE.parent.parent / "app/icon.svg").write_text(icon, encoding="utf-8")
+# ---- favicon / app icons: "tap." in orange on a cocoa tile ----
+fpaths, (fx0, fy0, fx1, fy1) = set_text("tap.")
+TILE = 512
+
+
+def tile(fill, rx):
+    """`fill`: mark width as a share of the tile. rx 0 = full-bleed square (the OS rounds it)."""
+    k = TILE * fill / (fx1 - fx0)
+    tx = (TILE - (fx1 - fx0) * k) / 2 - fx0 * k
+    ty = (TILE - (fy1 - fy0) * k) / 2 - fy0 * k
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {TILE} {TILE}">'
+            f'<rect width="{TILE}" height="{TILE}" rx="{rx:.0f}" fill="{COCOA}"/>'
+            f'<path fill="{ORANGE}" transform="translate({n(tx)} {n(ty)}) scale({k:.4f})" d="{"".join(fpaths)}"/></svg>\n')
+
+
+icon = tile(0.90, TILE * 0.22)  # browser tab: big letters, they are tiny at 16px
+(HERE / "tappetite-icon.svg").write_text(icon, encoding="utf-8")
+(ROOT / "app/icon.svg").write_text(icon, encoding="utf-8")
+# apple-icon.png (iOS rounds it) and the PWA maskable icon (content inside the 80% safe circle)
+(HERE / "tappetite-icon-square.svg").write_text(tile(0.80, 0), encoding="utf-8")
+(HERE / "tappetite-icon-maskable.svg").write_text(tile(0.62, 0), encoding="utf-8")
+# Rasters (render_png.py from the logo-design skill, Chrome backend):
+#   tappetite-icon.svg          -> app/favicon.ico (16 32 48), public/pwa/icon-192.png, icon-512.png
+#   tappetite-icon-square.svg   -> app/apple-icon.png (180)
+#   tappetite-icon-maskable.svg -> public/pwa/maskable-512.png

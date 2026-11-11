@@ -15,7 +15,7 @@ export const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 /** The shortest password an owner may pick at sign-up or reset. (Staff passwords, set by their manager: MIN_PASSWORD.) */
 export const OWNER_MIN_PASSWORD = 8;
 
-/** Where an ended trial's manager can message us. Empty until tapndine's Facebook Page is up; the button hides meanwhile. */
+/** Where an ended trial's manager can message us. Empty until tappetite's Facebook Page is up; the button hides meanwhile. */
 export const MESSENGER_URL = "";
 
 /** SQL, true while the restaurant aliased `b` is on trial (ended or not). */

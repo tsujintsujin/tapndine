@@ -56,8 +56,8 @@ export async function sendCode(email: string): Promise<"ok" | "wait" | "limit" |
     .run();
   const sent = await sendMail({
     to: email,
-    subject: `${code} is your tapndine code`,
-    text: `Your tapndine code is ${code}\n\nType it on the sign-in page within 10 minutes. If you didn't ask for it, you can ignore this email.\n\ntapndine.online`,
+    subject: `${code} is your tappetite code`,
+    text: `Your tappetite code is ${code}\n\nType it on the sign-in page within 10 minutes. If you didn't ask for it, you can ignore this email.\n\ntappetite.click`,
   });
   // Without mail set up (next dev), the code is in the server log; the deployed Worker always has it.
   return sent.delivered || process.env.NODE_ENV === "development" ? "ok" : "mail";

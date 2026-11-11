@@ -6,7 +6,7 @@ import { requireStaff } from "@/lib/staff";
 import MenuApp from "../[visitId]/MenuApp";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Menu preview · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Menu preview · tappetite", robots: { index: false, follow: false } };
 
 /** The home rows the preview can open on. */
 const ROWS = ["row-featured", "row-new"];

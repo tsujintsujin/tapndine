@@ -12,7 +12,7 @@ import { TRIAL_DAYS } from "@/lib/trial";
 import LogOutButton from "./LogOutButton";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Your menu is closed · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Your menu is closed · tappetite", robots: { index: false, follow: false } };
 
 /**
  * Where a restaurant's staff land once its free trial is over, or its plan
@@ -43,7 +43,7 @@ export default async function TrialOverPage() {
             {trialEnded ? "Free trial" : "Your plan"} ended {endedOn}
           </p>
           <h1 className="mt-5 text-balance font-display text-[38px] font-bold leading-[1.05] tracking-tight sm:text-[52px]">
-            {trialEnded ? "Has tapndine helped you?" : "Your menu is closed for now"}
+            {trialEnded ? "Has tappetite helped you?" : "Your menu is closed for now"}
           </h1>
           {manager ? (
             <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-muted">

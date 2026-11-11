@@ -9,7 +9,7 @@ import NameCard from "./NameCard";
 import PaletteCard from "./PaletteCard";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "General · tapndine", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "General · tappetite", robots: { index: false, follow: false } };
 
 export default async function SettingsPage() {
   const me = await requireStaff("manager");
