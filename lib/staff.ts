@@ -6,7 +6,7 @@ import { randomId } from "./ids";
 import { addDays, GRACE_DAYS, today } from "./plans";
 import { ON_TRIAL, PAID_UNTIL, TRIAL_STAFF } from "./trial";
 
-// Waiter and manager logins. Passwords are PBKDF2-SHA256 (Web Crypto, which
+// Owner, manager and waiter logins (and developers'). Passwords are PBKDF2-SHA256 (Web Crypto, which
 // the Worker has; 100k is the most iterations Workers allow). The login
 // cookie holds a random token; the database keeps only its SHA-256.
 
@@ -23,8 +23,9 @@ const LOCK_MS = 5 * 60 * 1000;
 
 export type Role = "developer" | "owner" | "manager" | "waiter";
 /**
- * Someone working in one restaurant. A developer with a restaurant open shows
- * up here as its manager, so every restaurant screen works for them as is.
+ * Someone working in one restaurant. The owner and a developer with a
+ * restaurant open show up here as a manager, so every manager screen works
+ * for them as is; `owner` is what they may do on top of a manager.
  */
 export type Staff = {
   id: string;
@@ -33,6 +34,8 @@ export type Staff = {
   name: string;
   role: "manager" | "waiter";
   developer: boolean;
+  /** The restaurant's owner, or a developer working in it: Subscription, adding and removing logins, the name, logo and colours. */
+  owner: boolean;
   /** A self signed-up restaurant's last paid day, once it bought a plan; null otherwise (see Login). */
   paidUntil: string | null;
   /** In the guide: only look, never change (not even marking orders seen). */
@@ -55,6 +58,8 @@ export type Login = {
   guide: boolean;
   /** Has finished or skipped the guide once. */
   guideSeen: boolean;
+  /** Logs in with a password (not only Google), so the owner can change it. */
+  hasPassword: boolean;
 };
 
 /**
@@ -224,7 +229,7 @@ export async function currentLogin(): Promise<Login | null> {
   const row = await db()
     .prepare(
       `SELECT s.id, COALESCE(x.business_id, s.business_id) AS business_id, s.username, s.name, s.role, b.disabled_at AS off,
-              s.guide_seen_at IS NOT NULL AS guideSeen,
+              s.guide_seen_at IS NOT NULL AS guideSeen, s.password_hash != 'none' AS hasPassword,
               CASE WHEN ${ON_TRIAL} THEN b.trial_ends_at END AS trialEndsAt,
               ${PAID_UNTIL} AS paidUntil
        FROM staff_sessions x JOIN staff s ON s.id = x.staff_id
@@ -232,21 +237,29 @@ export async function currentLogin(): Promise<Login | null> {
        WHERE x.id = ? AND x.expires_at > ? AND s.disabled_at IS NULL`
     )
     .bind(await sha256(token), Date.now())
-    .first<Omit<Login, "guide" | "guideSeen"> & { off: number | null; guideSeen: number }>();
+    .first<Omit<Login, "guide" | "guideSeen" | "hasPassword"> & { off: number | null; guideSeen: number; hasPassword: number }>();
   if (!row || row.off) return null;
   const { off: _, ...login } = row;
   // Waiters have no guide; for everyone else the guide swaps in its restaurant.
   const guide = login.role !== "waiter" && jar.get(GUIDE_COOKIE)?.value === "1";
-  return { ...login, business_id: guide ? GUIDE_BUSINESS : login.business_id, guide, guideSeen: !!login.guideSeen };
+  return {
+    ...login,
+    business_id: guide ? GUIDE_BUSINESS : login.business_id,
+    guide,
+    guideSeen: !!login.guideSeen,
+    hasPassword: !!login.hasPassword,
+  };
 }
+
+/** The restaurant's owner, or a developer working in it: every restaurant page. */
+export const isOwner = (login: Pick<Login, "role">) => login.role === "owner" || login.role === "developer";
 
 /** The login as restaurant staff: null for nobody, or a developer with no restaurant open. */
 function asStaff(login: Login | null): Staff | null {
   if (!login?.business_id) return null;
   const developer = login.role === "developer";
-  // ponytail: an owner works as a manager until owners get their own screens.
   const role = login.role === "waiter" ? "waiter" : "manager";
-  return { ...login, business_id: login.business_id, role, developer };
+  return { ...login, business_id: login.business_id, role, developer, owner: isOwner(login) };
 }
 
 /**
@@ -262,14 +275,15 @@ export async function currentStaff(read = false): Promise<Staff | null> {
 /**
  * For staff pages: the login screen if nobody is logged in; a developer with
  * no restaurant open goes to theirs; staff whose trial is over to the page that says so.
+ * "owner": the owner's own pages (a manager is sent to the Dashboard).
  */
-export async function requireStaff(role?: Staff["role"]): Promise<Staff> {
+export async function requireStaff(role?: Staff["role"] | "owner"): Promise<Staff> {
   const login = await currentLogin();
   if (!login) redirect("/login");
   if (trialOver(login)) redirect("/trial-over");
   const staff = asStaff(login);
   if (!staff) redirect("/admin/dev");
-  if (role && staff.role !== role) redirect("/admin");
+  if (role === "owner" ? !staff.owner : role && staff.role !== role) redirect(staff.role === "manager" ? "/admin/dashboard" : "/admin");
   return staff;
 }
 
@@ -288,15 +302,16 @@ export async function openRestaurant(businessId: string) {
   await db().prepare("UPDATE staff_sessions SET business_id = ? WHERE id = ?").bind(businessId, await sha256(token)).run();
 }
 
-// --- Manager: the people who can log in --------------------------------------
+// --- Owner: the people who can log in ----------------------------------------
 
-export type StaffListing = { id: string; username: string; name: string; role: Role };
+export type StaffListing = { id: string; username: string; name: string; role: "manager" | "waiter" };
 
+/** The restaurant's managers and waiters. Never its owner, who isn't one of the staff. */
 export async function listStaff(businessId: string): Promise<StaffListing[]> {
   const r = await db()
     .prepare(
       `SELECT id, username, name, role FROM staff
-       WHERE business_id = ? AND disabled_at IS NULL ORDER BY role, name`
+       WHERE business_id = ? AND role IN ('manager', 'waiter') AND disabled_at IS NULL ORDER BY role, name`
     )
     .bind(businessId)
     .all<StaffListing>();
@@ -305,7 +320,7 @@ export async function listStaff(businessId: string): Promise<StaffListing[]> {
 
 /**
  * A waiter or manager; loginName is the part after the restaurant's code. Returns the full username,
- * "taken", or "full" when a free trial already has TRIAL_STAFF logins besides its manager.
+ * "taken", or "full" when a free trial already has TRIAL_STAFF logins besides its owner.
  */
 export async function addStaff(
   businessId: string,
@@ -317,14 +332,14 @@ export async function addStaff(
   const biz = await db()
     .prepare(
       `SELECT b.slug, ${ON_TRIAL} AS trial,
-              (SELECT COUNT(*) FROM staff s WHERE s.business_id = b.id AND s.disabled_at IS NULL) AS staff
+              (SELECT COUNT(*) FROM staff s WHERE s.business_id = b.id AND s.role != 'owner' AND s.disabled_at IS NULL) AS staff
        FROM businesses b WHERE b.id = ?`
     )
     .bind(businessId)
     .first<{ slug: string; trial: number; staff: number }>();
   if (!biz) return "taken";
-  // ponytail: count-then-insert, so two adds at the same instant could make it 4; harmless on a trial.
-  if (biz.trial && biz.staff >= 1 + TRIAL_STAFF) return "full";
+  // ponytail: count-then-insert, so two adds at the same instant could make it 3; harmless on a trial.
+  if (biz.trial && biz.staff >= TRIAL_STAFF) return "full";
   const username = restaurantLogin(biz.slug, loginName);
   const taken = await db().prepare("SELECT 1 FROM staff WHERE username = ?").bind(username).first();
   if (taken) return "taken";
@@ -341,28 +356,34 @@ export async function addStaff(
 /**
  * Disables a waiter or manager: hidden from the list, logged out everywhere,
  * and cannot log in. Nothing is deleted, so past orders still name them.
- * Never yourself, and never the restaurant's last manager. Someone already
- * gone (or not in this restaurant) is "ok": a double tap is not an error.
+ * Never the owner (the owner is always there, so a restaurant may have no
+ * manager). Someone already gone (or not in this restaurant) is "ok": a
+ * double tap is not an error.
  */
-export async function disableStaff(businessId: string, staffId: string, me: string): Promise<"ok" | "self" | "last"> {
-  if (staffId === me) return "self";
+export async function disableStaff(businessId: string, staffId: string): Promise<"ok"> {
   const r = await db()
     .prepare(
       `UPDATE staff SET disabled_at = ?
-       WHERE id = ? AND business_id = ? AND disabled_at IS NULL
-         AND (role = 'waiter' OR (role = 'manager' AND (
-           SELECT COUNT(*) FROM staff WHERE business_id = ? AND role = 'manager' AND disabled_at IS NULL) > 1))`
+       WHERE id = ? AND business_id = ? AND role IN ('manager', 'waiter') AND disabled_at IS NULL`
     )
-    .bind(Date.now(), staffId, businessId, businessId)
+    .bind(Date.now(), staffId, businessId)
     .run();
-  if (!r.meta.changes) {
-    // Still here and a manager: the update was refused for being the last one.
-    const kept = await db()
-      .prepare("SELECT 1 FROM staff WHERE id = ? AND business_id = ? AND role = 'manager' AND disabled_at IS NULL")
-      .bind(staffId, businessId)
-      .first();
-    return kept ? "last" : "ok";
-  }
-  await db().prepare("DELETE FROM staff_sessions WHERE staff_id = ?").bind(staffId).run();
+  if (r.meta.changes) await db().prepare("DELETE FROM staff_sessions WHERE staff_id = ?").bind(staffId).run();
+  return "ok";
+}
+
+/**
+ * The owner changes their own password: the current one first (wrong ones
+ * count toward the lock, as at login). Every other browser they are logged
+ * in on is logged out; this one stays in.
+ */
+export async function changePassword(login: Login, current: string, next: string): Promise<"ok" | "wrong" | "locked"> {
+  const checked = await checkPassword(login.id, current);
+  if (checked !== "ok") return checked;
+  const token = (await cookies()).get(COOKIE)?.value ?? "";
+  await db().batch([
+    db().prepare("UPDATE staff SET password_hash = ? WHERE id = ?").bind(await hashPassword(next), login.id),
+    db().prepare("DELETE FROM staff_sessions WHERE staff_id = ? AND id != ?").bind(login.id, await sha256(token)),
+  ]);
   return "ok";
 }

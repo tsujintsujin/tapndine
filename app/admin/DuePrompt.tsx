@@ -13,9 +13,10 @@ const SEEN = "tnd_due_prompt";
  * 3 days or fewer left, or has ended and is in its grace days (Justin,
  * 2026-11-08). Owners and managers only, once a day on each browser, never on
  * the Subscription page itself, in the guide, or while the guide is offered.
+ * Only the owner can pay, so a manager is told to ask them, with no Buy button.
  */
 export default function DuePrompt() {
-  const { due, guide, offerGuide } = useStaffInfo();
+  const { due, guide, offerGuide, owner } = useStaffInfo();
   const path = usePathname();
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -53,8 +54,11 @@ export default function DuePrompt() {
         : due.left === 1
           ? "Your plan ends today"
           : `Your plan ends in ${days(due.left)}`;
-  const text =
-    due.kind === "trial"
+  const text = !owner
+    ? ended && due.kind === "plan"
+      ? `Your menu closes to guests in ${days(due.closesIn)}. Ask the account owner to renew.`
+      : "Ask the account owner to renew, so your menu stays open to guests."
+    : due.kind === "trial"
       ? "Buy a plan to keep your menu, tables and staff open to guests after the trial."
       : ended
         ? `Your menu closes to guests in ${days(due.closesIn)}. Pay for the next month or year to keep it open.`
@@ -77,20 +81,32 @@ export default function DuePrompt() {
         </h2>
         <p className="mt-2 text-[16px] leading-relaxed text-muted">{text}</p>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={close}
-            className="h-12 rounded-xl border border-line px-5 text-[16px] font-semibold text-ink hover:bg-paper"
-          >
-            Later
-          </button>
-          <Link
-            href={due.kind === "trial" ? "/admin/plan" : "/admin/plan?term=month"}
-            onClick={close}
-            className="flex h-12 items-center justify-center rounded-xl bg-forest px-5 text-[16px] font-semibold text-white hover:bg-forest-soft"
-          >
-            {due.kind === "trial" ? "Buy a plan" : "Pay for next month"}
-          </Link>
+          {owner ? (
+            <>
+              <button
+                type="button"
+                onClick={close}
+                className="h-12 rounded-xl border border-line px-5 text-[16px] font-semibold text-ink hover:bg-paper"
+              >
+                Later
+              </button>
+              <Link
+                href={due.kind === "trial" ? "/admin/plan" : "/admin/plan?term=month"}
+                onClick={close}
+                className="flex h-12 items-center justify-center rounded-xl bg-forest px-5 text-[16px] font-semibold text-white hover:bg-forest-soft"
+              >
+                {due.kind === "trial" ? "Buy a plan" : "Pay for next month"}
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={close}
+              className="h-12 rounded-xl bg-forest px-5 text-[16px] font-semibold text-white hover:bg-forest-soft"
+            >
+              OK
+            </button>
+          )}
         </div>
       </div>
     </dialog>

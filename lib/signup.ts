@@ -200,7 +200,7 @@ export type NewRestaurant = {
 };
 
 /**
- * The statements that make a restaurant: the restaurant, its owner's manager
+ * The statements that make a restaurant: the restaurant, its owner's
  * login, its "Menu for show" link and Table 1 with its link. Each runs only
  * while `when` holds (a checkout still pending), so one batch makes all of it or none.
  */
@@ -219,7 +219,7 @@ export function restaurantStatements(r: NewRestaurant, when = { sql: "1", binds:
       r.businessId,
       `${r.slug}-manager`,
       r.name,
-      "manager",
+      "owner",
       r.passwordHash ?? "none",
       now,
       r.email,

@@ -62,8 +62,18 @@ Live at https://tappetite.click. Built by TSUJIN IT Solutions (Justin).
 - **Managers**: plus Dashboard, Menu links (tables and their tag links, capped
   by the plan's table count), Menu (dishes, dish options), Homepage (the hero
   and the Featured and New rows, beside a phone preview at `/m/preview`; a row
-  with more than 3 dishes swipes and goes round), Categories, Staff,
-  Settings (logo, menu colors). Menu Designs B and C are hidden until they are
+  with more than 3 dishes swipes and goes round), Categories, Socials, Support.
+  They see Staff and General (name, logo, menu colors) but can't change them,
+  and have no Subscription; trial and plan reminders tell them to ask the owner.
+- **Owner** (one per restaurant, set 2026-11-12, migration 0029): everything a
+  manager has, plus Subscription, adding and removing manager and waiter logins,
+  and the name, logo and colors. The login made with the restaurant (sign-up or
+  a developer's Add a restaurant). Not on the Staff list. Changes their own
+  password from the sidebar, unless they only use Google. On the Single plan
+  (menu only, 0 tables) the owner can add managers but no waiters. In code the
+  owner is a `Staff` with `role: "manager"` and `owner: true` (a developer with a
+  restaurant open counts as its owner); `requireStaff("owner")` and `ownerOr()`
+  guard the owner's pages and APIs. Menu Designs B and C are hidden until they are
   reworked: no picker in Settings, every guest gets Design A (`lib/menu.ts`),
   whatever a restaurant's `menu_design` says. Their code stays.
   Menu colors: 10 palettes in `lib/palettes.ts` (`menu_palette`, migration

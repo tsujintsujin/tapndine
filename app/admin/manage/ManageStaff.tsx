@@ -2,23 +2,33 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LockIcon } from "@/app/components/Icons";
 import type { StaffListing } from "@/lib/staff";
 import { btn, card, PageHead } from "../kit";
 import Shell from "../Shell";
 import { api, useConfirm } from "../ui";
 
-/** Who can log in, add a waiter or manager, remove one. Inside the manager's dashboard frame. */
+/**
+ * Who can log in (the managers and waiters; never the owner). The owner adds
+ * and removes them; a manager only sees the list.
+ */
 export default function ManageStaff({
   me,
   name,
   slug,
   staff,
+  owner,
+  canAddWaiters,
 }: {
   me: string;
   name: string;
   /** The restaurant's code: every login here starts with it. */
   slug: string;
   staff: StaffListing[];
+  /** The owner (or a developer): may add and remove logins. */
+  owner: boolean;
+  /** The plan has tables, so waiters; false on the Single plan (menu only). */
+  canAddWaiters: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -40,18 +50,31 @@ export default function ManageStaff({
         </p>
       )}
 
-      <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className={`mt-6 grid items-start gap-4 ${owner ? "lg:grid-cols-[minmax(0,1fr)_380px]" : ""}`}>
         <section data-guide="logins" className={card}>
           <h2 className="font-display text-[19px] font-bold">Who can log in</h2>
-          <table className="mt-2 w-full text-[15px]">
+          {!owner && (
+            <p className="mt-1 flex items-center gap-2 text-[14px] text-muted">
+              <LockIcon width={16} height={16} className="shrink-0" />
+              Only the account owner can add or remove logins.
+            </p>
+          )}
+          {staff.length === 0 && (
+            <p className="mt-3 border-t border-line pt-4 text-[15px] text-muted">
+              No staff logins yet. Add your waiters and managers here, and give each their username and password.
+            </p>
+          )}
+          <table className={`mt-2 w-full text-[15px] ${staff.length ? "" : "hidden"}`}>
             <thead className="hidden sm:table-header-group">
               <tr>
                 <th className={th}>Name</th>
                 <th className={th}>Username</th>
                 <th className={th}>Role</th>
-                <th className={th}>
-                  <span className="sr-only">Actions</span>
-                </th>
+                {owner && (
+                  <th className={th}>
+                    <span className="sr-only">Actions</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -77,8 +100,8 @@ export default function ManageStaff({
                       {s.role === "manager" ? "Manager" : "Waiter"}
                     </span>
                   </td>
-                  <td className="py-3 text-right">
-                    {s.id !== me && (s.role === "waiter" || s.role === "manager") && (
+                  {owner && (
+                    <td className="py-3 text-right">
                       <button
                         type="button"
                         disabled={busy}
@@ -104,88 +127,93 @@ export default function ManageStaff({
                       >
                         Remove
                       </button>
-                    )}
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
 
-        <form
-          data-guide="add-login"
-          className={card}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const form = e.currentTarget;
-            const f = new FormData(form);
-            setBusy(true);
-            setError("");
-            try {
-              await api("/api/staff/waiters", {
-                method: "POST",
-                body: { name: f.get("name"), username: f.get("username"), password: f.get("password"), role: f.get("role") },
-              });
-              form.reset();
-              router.refresh();
-            } catch (err) {
-              setError((err as Error).message);
-            }
-            setBusy(false);
-          }}
-        >
-          <h2 className="font-display text-[19px] font-bold">Add a login</h2>
-          <fieldset className="mt-4">
-            <legend className="text-[14px] font-semibold">Role</legend>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
-              {(["waiter", "manager"] as const).map((r) => (
-                <label
-                  key={r}
-                  className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-line bg-white text-[15px] font-semibold has-[:checked]:border-leaf has-[:checked]:bg-leaf-tint has-[:checked]:text-leaf"
-                >
-                  <input type="radio" name="role" value={r} defaultChecked={r === "waiter"} className="sr-only" />
-                  {r === "waiter" ? "Waiter" : "Manager"}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="mt-4 block text-[14px] font-semibold">
-            Name
-            <input name="name" required maxLength={60} autoComplete="off" className={field} />
-          </label>
-          <label className="mt-4 block text-[14px] font-semibold">
-            Username
-            {/* The code is fixed: they log in as <code>-<what is typed>. */}
-            <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
-              {/* A fixed cap: a long code would otherwise widen the page on a phone. */}
-              <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
-                {slug}
+        {owner && (
+          <form
+            data-guide="add-login"
+            className={card}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const f = new FormData(form);
+              setBusy(true);
+              setError("");
+              try {
+                await api("/api/staff/waiters", {
+                  method: "POST",
+                  body: { name: f.get("name"), username: f.get("username"), password: f.get("password"), role: f.get("role") },
+                });
+                form.reset();
+                router.refresh();
+              } catch (err) {
+                setError((err as Error).message);
+              }
+              setBusy(false);
+            }}
+          >
+            <h2 className="font-display text-[19px] font-bold">Add a login</h2>
+            <fieldset className="mt-4">
+              <legend className="text-[14px] font-semibold">Role</legend>
+              <div className={`mt-1.5 grid gap-2 ${canAddWaiters ? "grid-cols-2" : "grid-cols-1"}`}>
+                {(canAddWaiters ? (["waiter", "manager"] as const) : (["manager"] as const)).map((r, i) => (
+                  <label
+                    key={r}
+                    className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-line bg-white text-[15px] font-semibold has-[:checked]:border-leaf has-[:checked]:bg-leaf-tint has-[:checked]:text-leaf"
+                  >
+                    <input type="radio" name="role" value={r} defaultChecked={i === 0} className="sr-only" />
+                    {r === "waiter" ? "Waiter" : "Manager"}
+                  </label>
+                ))}
+              </div>
+              {!canAddWaiters && (
+                <p className="mt-1.5 text-[13px] text-muted">Your plan is menu only, with no table ordering, so it has no waiter logins.</p>
+              )}
+            </fieldset>
+            <label className="mt-4 block text-[14px] font-semibold">
+              Name
+              <input name="name" required maxLength={60} autoComplete="off" className={field} />
+            </label>
+            <label className="mt-4 block text-[14px] font-semibold">
+              Username
+              {/* The code is fixed: they log in as <code>-<what is typed>. */}
+              <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
+                {/* A fixed cap: a long code would otherwise widen the page on a phone. */}
+                <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
+                  {slug}
+                </span>
+                <span className="shrink-0 text-[15px] font-normal text-muted">-</span>
+                <input
+                  name="username"
+                  required
+                  pattern="[a-z0-9._]{2,30}"
+                  title="2 to 30 lower-case letters, numbers, dots or underscores, no dashes"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="h-full w-0 min-w-0 flex-1 rounded-r-xl bg-transparent pr-3.5 text-[15px] font-normal outline-none"
+                  // The box around it shows focus; the page-wide focus outline would draw a second box inside.
+                  style={{ outline: "none" }}
+                />
               </span>
-              <span className="shrink-0 text-[15px] font-normal text-muted">-</span>
-              <input
-                name="username"
-                required
-                pattern="[a-z0-9._]{2,30}"
-                title="2 to 30 lower-case letters, numbers, dots or underscores, no dashes"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                className="h-full w-0 min-w-0 flex-1 rounded-r-xl bg-transparent pr-3.5 text-[15px] font-normal outline-none"
-                // The box around it shows focus; the page-wide focus outline would draw a second box inside.
-                style={{ outline: "none" }}
-              />
-            </span>
-            <span className="mt-1 block text-[13px] font-normal text-muted">Lower case, no dashes, like maria.</span>
-          </label>
-          <label className="mt-4 block text-[14px] font-semibold">
-            Password
-            <input name="password" type="password" required minLength={6} autoComplete="new-password" className={field} />
-            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to them.</span>
-          </label>
-          <button type="submit" disabled={busy} className={`${btn.primary} mt-5 w-full`}>
-            Add login
-          </button>
-        </form>
+              <span className="mt-1 block text-[13px] font-normal text-muted">Lower case, no dashes, like maria.</span>
+            </label>
+            <label className="mt-4 block text-[14px] font-semibold">
+              Password
+              <input name="password" type="password" required minLength={6} autoComplete="new-password" className={field} />
+              <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to them.</span>
+            </label>
+            <button type="submit" disabled={busy} className={`${btn.primary} mt-5 w-full`}>
+              Add login
+            </button>
+          </form>
+        )}
       </div>
       {dialog}
     </Shell>

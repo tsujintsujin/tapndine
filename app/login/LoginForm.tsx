@@ -232,7 +232,7 @@ export default function LoginForm({
               }}
             >
               <h2 className={heading}>Log in</h2>
-              <p className={sub}>Owners use their email. Staff use the username their manager gave them.</p>
+              <p className={sub}>Owners use their email. Staff use the username the owner gave them.</p>
               {google && <GoogleFirst />}
               <label className={`${google ? "" : "mt-7 "}block text-[15px] font-medium`}>
                 Email or username

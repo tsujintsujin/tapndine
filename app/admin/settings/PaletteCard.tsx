@@ -12,9 +12,17 @@ import { api } from "../ui";
  * The colours of the guests' menu. A restaurant that never picked has its
  * design's own colours: cocoa and orange for Design A, ube and calamansi for
  * Design B, navy and coral for Design C. Picking one saves straight away; guests see it the next time the
- * menu loads.
+ * menu loads. `locked`: a manager's, shown but not changed.
  */
-export default function PaletteCard({ palette, design }: { palette: string | null; design: MenuDesign }) {
+export default function PaletteCard({
+  palette,
+  design,
+  locked = false,
+}: {
+  palette: string | null;
+  design: MenuDesign;
+  locked?: boolean;
+}) {
   const router = useRouter();
   const [current, setCurrent] = useState(palette ?? (design === "b" ? "ube" : design === "c" ? "navy" : PALETTES[0].id));
   const [busy, setBusy] = useState(false);
@@ -41,7 +49,7 @@ export default function PaletteCard({ palette, design }: { palette: string | nul
       <h2 id="palette-title" className="font-display text-lg font-bold leading-tight">
         Menu colors
       </h2>
-      <p className="text-[14px] text-muted">The colors guests see on their phones. Pick one; it saves right away.</p>
+      <p className="text-[14px] text-muted">The colors guests see on their phones.{locked ? "" : " Pick one; it saves right away."}</p>
       <div role="radiogroup" aria-labelledby="palette-title" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {PALETTES.map((colors) => {
           const { id, name } = colors;
@@ -52,10 +60,10 @@ export default function PaletteCard({ palette, design }: { palette: string | nul
               type="button"
               role="radio"
               aria-checked={on}
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() => pick(id)}
               className={`rounded-2xl p-2 text-left ring-inset transition-colors ${
-                on ? "bg-leaf-tint ring-2 ring-forest" : "ring-1 ring-line hover:bg-wash"
+                on ? "bg-leaf-tint ring-2 ring-forest" : locked ? "cursor-not-allowed opacity-50 ring-1 ring-line" : "ring-1 ring-line hover:bg-wash"
               }`}
             >
               <Swatch c={colors} />

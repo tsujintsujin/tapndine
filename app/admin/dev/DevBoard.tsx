@@ -33,9 +33,9 @@ export default function DevBoard({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
-  /** The code typed in Add a restaurant: the manager's login starts with it. */
+  /** The code typed in Add a restaurant: the owner's login starts with it. */
   const [slug, setSlug] = useState("");
-  /** The login of the manager just added, to hand over. */
+  /** The login of the owner just added, to hand over. */
   const [added, setAdded] = useState("");
   const { confirm, dialog } = useConfirm();
   /** The restaurant whose Delete dialog is up. */
@@ -210,7 +210,7 @@ export default function DevBoard({
           <h2 className="font-display text-[19px] font-bold">Add a restaurant</h2>
           {added && (
             <p role="status" className="mt-3 rounded-xl bg-leaf-tint px-3.5 py-2.5 text-[14px] text-leaf">
-              Added. Its manager logs in as <span className="font-semibold">{added}</span>.
+              Added. Its owner logs in as <span className="font-semibold">{added}</span>.
             </p>
           )}
           <label className="mt-4 block text-[14px] font-semibold">
@@ -233,14 +233,14 @@ export default function DevBoard({
               Lower case, like hikay or kusina-dos. Every login here starts with it.
             </span>
           </label>
-          <p className="mt-5 text-[14px] font-semibold">Its first manager</p>
+          <p className="mt-5 text-[14px] font-semibold">Its owner</p>
           <label className="mt-3 block text-[14px] font-semibold">
             Name
             <input name="managerName" required maxLength={60} autoComplete="off" className={field} />
           </label>
           <label className="mt-4 block text-[14px] font-semibold">
             Username
-            {/* The code is fixed: the manager logs in as <code>-<what is typed>. */}
+            {/* The code is fixed: the owner logs in as <code>-<what is typed>. */}
             <span className="mt-1.5 flex h-12 items-center rounded-xl border border-line bg-white focus-within:border-leaf focus-within:ring-2 focus-within:ring-leaf/20">
               {/* A fixed cap, not a percentage: a long code would otherwise widen the whole page on a phone. */}
               <span title={slug} className="max-w-[10rem] shrink-0 truncate pl-3.5 text-[15px] font-normal text-muted">
@@ -265,7 +265,7 @@ export default function DevBoard({
           <label className="mt-4 block text-[14px] font-semibold">
             Password
             <input name="password" type="password" required minLength={6} autoComplete="new-password" className={field} />
-            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to the manager.</span>
+            <span className="mt-1 block text-[13px] font-normal text-muted">At least 6 characters. Give it to the owner.</span>
           </label>
           <button type="submit" disabled={busy} className={`${btn.primary} mt-5 w-full`}>
             Add restaurant

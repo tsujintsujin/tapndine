@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Your menu is closed · tappetite", r
 /**
  * Where a restaurant's staff land once its free trial is over, or its plan
  * ran out more than GRACE_DAYS ago: everything else is closed to them
- * (lib/staff.ts). Managers buy a plan right here (QR Ph); waiters are told to ask their manager.
+ * (lib/staff.ts). The owner buys a plan right here (QR Ph); managers and waiters are told to ask them.
  */
 export default async function TrialOverPage() {
   const me = await currentLogin();
@@ -27,7 +27,7 @@ export default async function TrialOverPage() {
   if (!trialEnded && !lapsed) redirect(me.role === "developer" ? "/admin/dev" : "/admin");
   const endedOn = trialEnded ? formatDate(me.trialEndsAt!) : formatDate(Date.parse(`${me.paidUntil}T12:00:00+08:00`));
   const name = (me.business_id && (await restaurantName(me.business_id))) || "Your restaurant";
-  const manager = me.role !== "waiter";
+  const owner = me.role === "owner";
 
   return (
     <div className="theme-green relative min-h-dvh px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] text-ink sm:px-6">
@@ -45,7 +45,7 @@ export default async function TrialOverPage() {
           <h1 className="mt-5 text-balance font-display text-[38px] font-bold leading-[1.05] tracking-tight sm:text-[52px]">
             {trialEnded ? "Has tappetite helped you?" : "Your menu is closed for now"}
           </h1>
-          {manager ? (
+          {owner ? (
             <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-muted">
               {trialEnded ? `${name}'s ${TRIAL_DAYS}-day trial is over` : `${name}'s plan ran out`}, so the menu is closed to
               guests for now. Your dishes, tables and staff are all saved. Buy a plan below and everything opens again, just
@@ -53,13 +53,13 @@ export default async function TrialOverPage() {
             </p>
           ) : (
             <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-muted">
-              {trialEnded ? `${name}'s free trial is over` : `${name}'s plan ran out`}. Ask your manager to buy a plan, and your
-              tables will be back right away.
+              {trialEnded ? `${name}'s free trial is over` : `${name}'s plan ran out`}. Ask the account owner to renew, and
+              everything will be back right away, just as you left it.
             </p>
           )}
         </section>
 
-        {manager && (
+        {owner && (
           <>
             <div className="mt-10 text-left">
               <PlanCards />

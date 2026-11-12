@@ -12,8 +12,8 @@ const MAX = 35;
 const field =
   "block h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[16px] outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 aria-[invalid=true]:border-chili";
 
-/** The restaurant's name at the top of the guests' menu (and on these screens). */
-export default function NameCard({ name }: { name: string }) {
+/** The restaurant's name at the top of the guests' menu (and on these screens). `locked`: a manager's, shown but not changed. */
+export default function NameCard({ name, locked = false }: { name: string; locked?: boolean }) {
   const router = useRouter();
   const [value, setValue] = useState(name);
   const [saved, setSaved] = useState(name);
@@ -65,14 +65,17 @@ export default function NameCard({ name }: { name: string }) {
               setError("");
             }}
             maxLength={MAX}
+            readOnly={locked}
             autoComplete="organization"
             aria-invalid={!!error}
             aria-describedby={error ? "cafe-name-help cafe-name-error" : "cafe-name-help"}
-            className={field}
+            className={`${field} read-only:cursor-default read-only:bg-paper`}
           />
-          <button type="submit" disabled={busy || value.trim() === saved} className={btn.primary}>
-            {busy ? "Saving…" : "Save"}
-          </button>
+          {!locked && (
+            <button type="submit" disabled={busy || value.trim() === saved} className={btn.primary}>
+              {busy ? "Saving…" : "Save"}
+            </button>
+          )}
         </form>
         {error ? (
           <p id="cafe-name-error" role="alert" className="mt-2 text-[14px] text-chili">

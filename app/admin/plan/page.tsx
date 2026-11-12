@@ -21,7 +21,7 @@ const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
  * last paid day). On the free trial, the days it has left.
  */
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ term?: string }> }) {
-  const me = await requireStaff("manager");
+  const me = await requireStaff("owner");
   const { term } = await searchParams;
   const { results: contracts } = await db()
     .prepare("SELECT plan, tables, price_cents, starts_on, ends_on FROM contracts WHERE business_id = ? ORDER BY starts_on")
