@@ -10,9 +10,9 @@ const MAX_PHOTO = 10 * 1024 * 1024; // Cloudinary's free-plan limit per image
 /**
  * The top of the guests' menu as they see it: the restaurant's logo and name.
  * Upload goes straight to Cloudinary (same signed upload as dish photos),
- * then the URL is saved.
+ * then the URL is saved. `locked`: a manager's, shown but not changed.
  */
-export default function LogoCard({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+export default function LogoCard({ name, logoUrl, locked = false }: { name: string; logoUrl: string | null; locked?: boolean }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -86,28 +86,30 @@ export default function LogoCard({ name, logoUrl }: { name: string; logoUrl: str
           </p>
         )}
       </div>
-      <div className="flex gap-2">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) upload(f);
-          }}
-        />
-        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()} className={btn.secondary}>
-          {busy ? "Saving…" : logoUrl ? "Change logo" : "Upload logo"}
-        </button>
-        {logoUrl && (
-          <button type="button" disabled={busy} onClick={remove} className={btn.danger}>
-            Remove
+      {!locked && (
+        <div className="flex gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) upload(f);
+            }}
+          />
+          <button type="button" disabled={busy} onClick={() => fileRef.current?.click()} className={btn.secondary}>
+            {busy ? "Saving…" : logoUrl ? "Change logo" : "Upload logo"}
           </button>
-        )}
-      </div>
+          {logoUrl && (
+            <button type="button" disabled={busy} onClick={remove} className={btn.danger}>
+              Remove
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

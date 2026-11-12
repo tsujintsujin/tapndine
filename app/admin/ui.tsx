@@ -22,10 +22,23 @@ export type StaffInfo = {
   guide: boolean;
   /** Offer the guide: a manager who has never finished or skipped it. */
   offerGuide: boolean;
-  /** How close the restaurant's trial or plan is to ending (managers only; null for waiters and developers). */
+  /** How close the restaurant's trial or plan is to ending (owners and managers only; null for waiters and developers). */
   due: Due | null;
+  /** The restaurant's owner, or a developer: Subscription, adding logins, the name, logo and colours. */
+  owner: boolean;
+  /** An owner who logs in with a password (not only Google): can change it. */
+  canChangePassword: boolean;
 };
-const StaffContext = createContext<StaffInfo>({ developer: false, restaurant: null, trialEndsAt: null, guide: false, offerGuide: false, due: null });
+const StaffContext = createContext<StaffInfo>({
+  developer: false,
+  restaurant: null,
+  trialEndsAt: null,
+  guide: false,
+  offerGuide: false,
+  due: null,
+  owner: false,
+  canChangePassword: false,
+});
 export const useStaffInfo = () => useContext(StaffContext);
 
 /** The restaurant this page was drawn for; api() refuses to act on another. */

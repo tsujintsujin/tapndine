@@ -62,7 +62,7 @@ export const parseName = (v: unknown, max = 60) => {
   return s && s.length <= max ? s : null;
 };
 
-/** A new restaurant, its first manager and its "Menu for show" link, together or not at all. */
+/** A new restaurant, its owner and its "Menu for show" link, together or not at all. */
 export async function addRestaurant(
   name: string,
   slug: string,
@@ -83,7 +83,7 @@ export async function addRestaurant(
       d
         .prepare(
           `INSERT INTO staff (id, business_id, username, name, role, password_hash, created_at)
-           VALUES (?, ?, ?, ?, 'manager', ?, ?)`
+           VALUES (?, ?, ?, ?, 'owner', ?, ?)`
         )
         .bind(randomId(), id, manager.username, manager.name, await hashPassword(manager.password), now),
       // The menu-only link (no table), for guests who just want to look.

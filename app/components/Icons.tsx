@@ -170,6 +170,22 @@ export const EyeIcon = (p: P) => (
   </Svg>
 );
 
+/** A padlock: something only the account owner can change. */
+export const LockIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2" />
+  </Svg>
+);
+
+/** A key: change your password. */
+export const KeyIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="8" cy="15" r="4.5" />
+    <path d="M11.2 11.8 20 3M16.5 6.5l2.5 2.5M14 9l2 2" />
+  </Svg>
+);
+
 /** A tap: a dot sending waves out, for NFC links. */
 /** A receipt: contracts and payments. */
 export const ReceiptIcon = (p: P) => (

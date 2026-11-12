@@ -3,7 +3,7 @@ import { addRestaurant, isSlug, parseName } from "@/lib/dev";
 import { body, developerOr, fail } from "@/lib/manager";
 import { isLoginName, MIN_PASSWORD, restaurantLogin } from "@/lib/staff";
 
-/** A developer adds a restaurant with its first manager. Body: { name, slug, managerName, username, password }; username is the part after the code. */
+/** A developer adds a restaurant with its owner. Body: { name, slug, managerName, username, password }; username is the part after the code. */
 export async function POST(req: Request) {
   const me = await developerOr();
   if (me instanceof NextResponse) return me;
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const password = typeof b?.password === "string" ? b.password : "";
   if (!name) return fail("Name the restaurant (up to 60 characters).");
   if (!isSlug(slug)) return fail("Code: 2 to 31 lower-case letters, numbers or dashes.");
-  if (!managerName) return fail("Enter the manager's name.");
+  if (!managerName) return fail("Enter the owner's name.");
   if (!isLoginName(username)) return fail("Username: 2 to 30 letters, numbers, dots or underscores, no dashes.");
   if (password.length < MIN_PASSWORD || password.length > 200) return fail(`Password: at least ${MIN_PASSWORD} characters.`);
   const login = restaurantLogin(slug, username);

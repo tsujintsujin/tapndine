@@ -13,6 +13,7 @@ import {
   HelpIcon,
   HomeIcon,
   HomepageIcon,
+  KeyIcon,
   LogoutIcon,
   MenuIcon,
   NfcIcon,
@@ -29,6 +30,7 @@ import { useAlerts, useTickets } from "./Alerts";
 import DuePrompt from "./DuePrompt";
 import Guide from "./Guide";
 import { Logo } from "./kit";
+import PasswordDialog from "./PasswordDialog";
 import { api, useStaffInfo } from "./ui";
 
 // The manager's frame, desktop first: a sidebar beside one big content
@@ -98,7 +100,8 @@ const isHere = (href: string, path: string) =>
 function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   const path = usePathname();
   const [busy, setBusy] = useState(false);
-  const { developer, restaurant, trialEndsAt, due } = useStaffInfo();
+  const [password, setPassword] = useState(false);
+  const { developer, restaurant, trialEndsAt, due, owner, canChangePassword } = useStaffInfo();
   const { needYou, support } = useAlerts();
   const { unread: tickets } = useTickets();
   /** The count on a link, and what it counts for a screen reader. */
@@ -112,7 +115,14 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
   // A developer sees their own group, plus the restaurant they have open.
   const groups = [
     ...(developer ? [DEVELOPER] : []),
-    ...(restaurant ? GROUPS.map((g, i) => (i === 0 ? { ...g, label: restaurant.name } : g)) : []),
+    ...(restaurant
+      ? GROUPS.map((g, i) => ({
+          ...g,
+          label: i === 0 ? restaurant.name : g.label,
+          // Subscription is the owner's only.
+          links: owner ? g.links : g.links.filter((l) => l.href !== "/admin/plan"),
+        }))
+      : []),
   ];
   return (
     <div className="flex h-full flex-col">
@@ -157,9 +167,30 @@ function Nav({ name, onGo }: { name: string; onGo?: () => void }) {
           </div>
         ))}
       </nav>
+      {/* A manager has no Subscription link, so the countdown sits here; only the owner can pay. */}
+      {!owner && due && (due.kind === "trial" || due.level) && (
+        <div className="mb-4 rounded-2xl bg-white px-4 py-3">
+          <p className="flex items-center gap-2 text-[14px] font-semibold leading-snug text-ink">
+            {due.level && <DueDot level={due.level} />}
+            {dueSentence(due)}
+          </p>
+          <p className="mt-0.5 text-[13px] text-muted">Ask the account owner to renew.</p>
+        </div>
+      )}
       <div className="border-t border-line pt-4">
-        <p className="px-4 text-[13px] text-muted">Signed in as{developer ? " developer" : ""}</p>
+        <p className="px-4 text-[13px] text-muted">Signed in as {developer ? "developer" : owner ? "owner" : "manager"}</p>
         <p className="truncate px-4 text-[15px] font-semibold">{name}</p>
+        {canChangePassword && (
+          <button
+            type="button"
+            onClick={() => setPassword(true)}
+            className="mt-2 flex h-11 w-full items-center gap-3 rounded-xl px-4 text-[15px] font-medium text-muted hover:bg-white/70 hover:text-ink"
+          >
+            <KeyIcon width={21} height={21} />
+            Change password
+          </button>
+        )}
+        {password && <PasswordDialog onClose={() => setPassword(false)} />}
         <button
           type="button"
           disabled={busy}

@@ -9,6 +9,13 @@ export async function managerOr(): Promise<Staff | NextResponse> {
   return staff;
 }
 
+/** For owner-only API routes (a developer working in the restaurant counts): the owner, or the response to send instead. */
+export async function ownerOr(): Promise<Staff | NextResponse> {
+  const staff = await managerOr();
+  if (staff instanceof NextResponse || staff.owner) return staff;
+  return NextResponse.json({ error: "Only the account owner can change this." }, { status: 403 });
+}
+
 /** For developer-only API routes: the developer, or the response to send instead. */
 export async function developerOr(): Promise<Login | NextResponse> {
   const login = await currentLogin();

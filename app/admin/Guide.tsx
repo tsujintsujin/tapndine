@@ -26,10 +26,11 @@ import { api, useStaffInfo } from "./ui";
 // about (the `target` elements, marked with data-guide on the pages) and
 // darkens the rest.
 
-type Frame = { target: string; title: string; text: string };
+/** owner: shown to the owner only (a manager can't do it). */
+type Frame = { target: string; title: string; text: string; owner?: boolean };
 
 /** One stop per page in the sidebar, in its order. */
-export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; frames: Frame[] }[] = [
+export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; frames: Frame[]; owner?: boolean }[] = [
   {
     href: "/admin/dashboard",
     title: "Dashboard",
@@ -160,12 +161,13 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
       {
         target: '[data-guide="logins"]',
         title: "Who can log in",
-        text: "Everyone on your team with a login. Waiters see only Tables and each table's orders. Managers see every page in this guide.",
+        text: "Your managers and waiters. Waiters see only Tables and each table's orders. Managers see the rest, but can't add logins, buy the plan, or change the name, logo and colors.",
       },
       {
         target: '[data-guide="add-login"]',
         title: "Add a login",
         text: "Make a login for a waiter or a manager. They log in with the username and password you set here.",
+        owner: true,
       },
     ],
   },
@@ -182,7 +184,7 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
       {
         target: '[aria-labelledby="palette-title"]',
         title: "Menu colors",
-        text: "The colors guests see on their phones. Pick one and it saves right away.",
+        text: "The colors guests see on their phones. A new pick saves right away.",
       },
       {
         target: '[aria-labelledby="guide-title"]',
@@ -195,6 +197,7 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
     href: "/admin/plan",
     title: "Subscription",
     Icon: CardIcon,
+    owner: true,
     frames: [
       {
         target: '[data-guide="plan"]',
@@ -205,9 +208,17 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
   },
 ];
 
+type Step = (typeof GUIDE_STEPS)[number];
+
+/** The tour for whoever takes it: a manager skips the steps and frames only the owner can do. */
+function useSteps(): Step[] {
+  const { owner } = useStaffInfo();
+  return owner ? GUIDE_STEPS : GUIDE_STEPS.filter((s) => !s.owner).map((s) => ({ ...s, frames: s.frames.filter((f) => !f.owner) }));
+}
+
 /** The step for this page (a table counts as Tables, a dish as Menu), or -1 for a page the tour skips. */
-const stepAt = (path: string) =>
-  GUIDE_STEPS.findIndex(({ href }) =>
+const stepAt = (path: string, steps: Step[]) =>
+  steps.findIndex(({ href }) =>
     href === "/admin" ? path === "/admin" || path.startsWith("/admin/t/") : path === href || path.startsWith(href + "/")
   );
 /** The last step shown, so a page off the tour can lead back to it. */
@@ -223,6 +234,7 @@ export async function switchGuide(on: boolean) {
 
 /** The first time a manager opens tappetite: take the tour, or not now. */
 function Welcome() {
+  const steps = useSteps();
   const [open, setOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const startRef = useRef<HTMLButtonElement>(null);
@@ -255,7 +267,7 @@ function Welcome() {
           with its menu already filled in. Nothing you click in the tour is saved. It takes about two minutes.
         </p>
         <ol className="mt-5 grid grid-cols-2 gap-x-3 gap-y-2.5">
-          {GUIDE_STEPS.map(({ title, Icon }, i) => (
+          {steps.map(({ title, Icon }, i) => (
             <li key={title} className="flex items-center gap-2.5 text-[15px] font-medium">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-paper text-forest">
                 <Icon width={17} height={17} aria-hidden />
@@ -387,7 +399,8 @@ const CARD =
 /** While the guide is on, on one of its pages: the lit part, what it is for, and the way on. */
 function StepCard({ i }: { i: number }) {
   const router = useRouter();
-  const step = GUIDE_STEPS[i];
+  const steps = useSteps();
+  const step = steps[i];
   const frames = step.frames;
   // Read in the initializer, cleared after (React may run an initializer twice).
   const [f, setF] = useState(() => (enterAtEnd ? frames.length - 1 : 0));
@@ -395,9 +408,9 @@ function StepCard({ i }: { i: number }) {
     enterAtEnd = false;
   }, []);
   const frame = frames[f];
-  const lastPage = i === GUIDE_STEPS.length - 1;
+  const lastPage = i === steps.length - 1;
   const lastFrame = f === frames.length - 1;
-  const next = GUIDE_STEPS[i + 1];
+  const next = steps[i + 1];
   const [busy, setBusy] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const { box, side } = useSpotlight(frame.target, `${i}.${f}`, cardRef);
@@ -410,7 +423,7 @@ function StepCard({ i }: { i: number }) {
   const goBack = () => {
     if (f > 0) return setF(f - 1);
     enterAtEnd = true;
-    router.push(GUIDE_STEPS[i - 1].href);
+    router.push(steps[i - 1].href);
   };
 
   return (
@@ -428,7 +441,7 @@ function StepCard({ i }: { i: number }) {
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-muted">
             <step.Icon width={15} height={15} aria-hidden />
-            {step.title} · {i + 1} of {GUIDE_STEPS.length}
+            {step.title} · {i + 1} of {steps.length}
           </p>
           <button
             type="button"
@@ -442,7 +455,7 @@ function StepCard({ i }: { i: number }) {
         </div>
         {/* One bar per page; this page's fills frame by frame. */}
         <div aria-hidden="true" className="-mt-1 flex gap-1">
-          {GUIDE_STEPS.map(({ href }, n) => (
+          {steps.map(({ href }, n) => (
             <span key={href} className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
               <span
                 className="block h-full rounded-full bg-mango transition-[width] duration-300 motion-reduce:transition-none"
@@ -485,11 +498,12 @@ function StepCard({ i }: { i: number }) {
 
 /** While the guide is on, on a page it doesn't cover (a dish, Support): the way back to it. */
 function OffTour() {
+  const steps = useSteps();
   const [busy, setBusy] = useState(false);
   return (
     <section aria-label="Guide" className={`${CARD} ${SIDE_CLASS.right} flex flex-wrap items-center gap-3`}>
       <p className="min-w-0 flex-1 basis-[200px] text-[15px] text-ink/85">This page isn't part of the tour.</p>
-      <Link href={GUIDE_STEPS[lastStep].href} className={btn.primary}>
+      <Link href={steps[lastStep].href} className={btn.primary}>
         Back to the tour
       </Link>
       <button
@@ -509,10 +523,11 @@ function OffTour() {
 
 export default function Guide() {
   const { guide, offerGuide } = useStaffInfo();
+  const steps = useSteps();
   const path = usePathname();
   if (path.startsWith("/admin/dev")) return null;
   if (!guide) return offerGuide ? <Welcome /> : null;
-  const at = stepAt(path);
+  const at = stepAt(path, steps);
   if (at < 0) return <OffTour />;
   lastStep = at;
   // A new page starts its frames afresh.

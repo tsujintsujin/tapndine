@@ -10,7 +10,7 @@ import { currentLogin } from "@/lib/staff";
 /**
  * A QR Ph code for buying a plan. Body: { plan, term: "year" | "month" }, plus
  * { restaurant, name } for a new owner (else the ticket's own). Two buyers: a
- * restaurant's manager (on the trial, renewing, or closed after its plan ran
+ * restaurant's owner (on the trial, renewing, or closed after its plan ran
  * out), or someone with a sign-up ticket who picked "Buy a plan".
  *
  * Nothing is granted here. Only settle() grants the plan (and makes a new
@@ -34,8 +34,8 @@ export async function POST(req: Request) {
 
   const login = await currentLogin();
   if (login) {
-    if (login.role === "waiter" || login.role === "developer" || !login.business_id) {
-      return fail("Only the restaurant's manager can buy its plan.", 403);
+    if (login.role !== "owner" || !login.business_id) {
+      return fail("Only the account owner can buy the plan.", 403);
     }
     // The guide shows the demo restaurant: nothing is bought for it.
     if (login.guide) return fail("This is the guide, so nothing can be bought. Leave the guide to buy your plan.", 403);
