@@ -35,7 +35,7 @@ const SECTIONS: LegalSection[] = [
       <p>
         Each of your tables gets its own QR code, and restaurants in Davao City, Davao del Sur, Davao del Norte and
         Davao de Oro also get an NFC tag for each table. A guest scans the code or taps the tag with their phone, your
-        menu opens in their browser, and the orders they send go to your waiters&apos; phones. Managers also get sales and busy-hour
+        menu opens in their browser, and the orders they send go to your staff&apos;s phones. Managers also get sales and busy-hour
         statistics. Guests do not install an app or make an account.
       </p>
     ),
@@ -86,7 +86,7 @@ const SECTIONS: LegalSection[] = [
     title: "Your logins",
     body: (
       <p>
-        You get logins for your manager and waiters. Keep the passwords private, and tell us right away if you think one
+        You get logins for your manager and staff. Keep the passwords private, and tell us right away if you think one
         has been shared or stolen. You are responsible for what is done with your logins.
       </p>
     ),
@@ -112,7 +112,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          Guests do not make accounts. When they order, they type a name so your waiter knows whose order is whose. We
+          Guests do not make accounts. When they order, they type a name so your staff know whose order is whose. We
           store that name and their orders for you, to show them to your staff and in your statistics. We do not sell it
           or use it to advertise.
         </p>

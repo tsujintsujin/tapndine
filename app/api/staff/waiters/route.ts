@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   }
   // The Single plan is menu only: no tables, so no ordering and no waiters.
   if (role === "waiter" && (await tableLimit(staff.business_id)) === 0) {
-    return NextResponse.json({ error: "Your plan is menu only, so it has no waiter logins. Add a manager instead." }, { status: 403 });
+    return NextResponse.json({ error: "Your plan is menu only, so it has no staff logins. Add a manager instead." }, { status: 403 });
   }
   const added = await addStaff(staff.business_id, name, username, password, role);
   if (added === "taken") return NextResponse.json({ error: "That username is taken." }, { status: 409 });

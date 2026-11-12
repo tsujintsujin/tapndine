@@ -37,7 +37,7 @@ export default function TablesBoard({
         const active = t.items > 0;
         const flags = [
           ...(t.newOrders > 0 ? [t.newOrders === 1 ? "New order" : `${t.newOrders} new orders`] : []),
-          ...t.calls.map((c) => (c === "bill" ? "Wants the bill" : "Calling waiter")),
+          ...t.calls.map((c) => (c === "bill" ? "Wants the bill" : "Calling staff")),
         ];
         return (
           <li key={t.id} data-guide={flags.length ? "needs-you" : undefined}>

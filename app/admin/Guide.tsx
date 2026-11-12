@@ -49,7 +49,7 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
       {
         target: '[data-guide="when"]',
         title: "When guests order",
-        text: "Sales by day, and the busy hours of a typical week. Plan your waiters around them.",
+        text: "Sales by day, and the busy hours of a typical week. Plan your staff around them.",
       },
       {
         target: '[data-guide="top-dishes"]',
@@ -71,7 +71,7 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
       {
         target: '[data-guide="needs-you"]',
         title: "Tables that need you",
-        text: "A ring means a new order, a call for the waiter or a request for the bill. Open the table to see the orders by guest and key them into your POS. The ring clears once someone opens it.",
+        text: "A ring means a new order, a call for staff or a request for the bill. Open the table to see the orders by guest and key them into your POS. The ring clears once someone opens it.",
       },
     ],
   },
@@ -161,12 +161,12 @@ export const GUIDE_STEPS: { href: string; title: string; Icon: typeof GridIcon; 
       {
         target: '[data-guide="logins"]',
         title: "Who can log in",
-        text: "Your managers and waiters. Waiters see only Tables and each table's orders. Managers see the rest, but can't add logins, buy the plan, or change the name, logo and colors.",
+        text: "Your managers and staff. Staff see only Tables and each table's orders. Managers see the rest, but can't add logins, buy the plan, or change the name, logo and colors.",
       },
       {
         target: '[data-guide="add-login"]',
         title: "Add a login",
-        text: "Make a login for a waiter or a manager. They log in with the username and password you set here.",
+        text: "Make a login for staff or a manager. They log in with the username and password you set here.",
         owner: true,
       },
     ],
@@ -263,7 +263,7 @@ function Welcome() {
           Want a quick tour?
         </h2>
         <p className="mt-2 text-[15px] text-muted">
-          We'll walk you through each page using <span className="font-semibold text-ink">Cove Café</span>, a restaurant
+          We'll walk you through each page using <span className="font-semibold text-ink">Tappetite Cafe</span>, a restaurant
           with its menu already filled in. Nothing you click in the tour is saved. It takes about two minutes.
         </p>
         <ol className="mt-5 grid grid-cols-2 gap-x-3 gap-y-2.5">
@@ -470,7 +470,7 @@ function StepCard({ i }: { i: number }) {
           </h2>
           <p className="mt-1.5 text-[15px] leading-relaxed text-ink/85">{frame.text}</p>
         </div>
-        <p className="mt-3 text-[13px] text-muted">Cove Café is a sample. Nothing you change here is saved.</p>
+        <p className="mt-3 text-[13px] text-muted">Tappetite Cafe is a sample. Nothing you change here is saved.</p>
         <div className="mt-4 flex items-center gap-2.5">
           {i > 0 || f > 0 ? (
             <button type="button" onClick={goBack} className={`${btn.secondary} flex-1 lg:flex-none`}>

@@ -161,7 +161,7 @@ export default function TableView({
   );
   const emptyNote = empty && (
     <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[15px] text-muted">
-      No orders at this table yet. They show up here as soon as a guest taps Send to waiter.
+      No orders at this table yet. They show up here as soon as a guest taps Send to staff.
     </p>
   );
   const additionals = (

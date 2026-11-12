@@ -44,11 +44,11 @@ export const metadata: Metadata = {
 const CONTACT = "mailto:justin.masiga.94@gmail.com?subject=tappetite%20for%20my%20restaurant";
 const shot = (name: string) => `${BASE_PATH}/landing/${name}.webp`;
 // Bump when the stats loop is re-rendered: browsers keep cached video by URL.
-const STATS_V = "3";
+const STATS_V = "4";
 /** Bump when the four phone captures (public/landing/m-*, s-table) are re-shot: cached a week. */
-const STEPS_V = "2";
+const STEPS_V = "3";
 /** Bump when a homepage animation changes: browsers keep play.html for a week (public/_headers). */
-const ANIM_V = "4";
+const ANIM_V = "5";
 
 /** Where restaurants get NFC tags for their tables free (Justin, 2026-10-25). */
 const NFC_AREA = "Davao City, Davao del Sur, Davao del Norte and Davao de Oro";
@@ -171,7 +171,7 @@ const FACTS = [
     ),
   },
   {
-    text: "Call the waiter with a tap",
+    text: "Call staff with a tap",
     icon: (
       <svg viewBox="0 0 24 24" className={ICON} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
@@ -185,17 +185,17 @@ const FACTS = [
 // table waits for, and what it has instead. Only what the product does today.
 const WAITS = [
   { wait: "Waiting for the menu", now: "It opens on their phone with a tap or a scan." },
-  { wait: "Waiting for a waiter to take the order", now: "They send it from the table, when they're ready." },
+  { wait: "Waiting for staff to take the order", now: "They send it from the table, when they're ready." },
   { wait: "Waiting to ask what's in a dish, how spicy, how big", now: "Photo, spice, how many it feeds, sizes and price are on the dish." },
   { wait: "Waiting for the menu again, to order more", now: "The menu stays on their phone. They send another round." },
-  { wait: "Waving for the bill", now: "They tap Ask for the bill, and the waiter sees it." },
+  { wait: "Waving for the bill", now: "They tap Ask for the bill, and the staff see it." },
 ];
 
 const STEPS = [
   { src: "m-home", title: "Tap or scan", text: "The menu opens on the guest's phone, already set to their table.", alt: "A guest's phone with the restaurant's online menu open and greeting her by name, showing today's pick, Kare-Kare, with its price and an Add to order button" },
   { src: "m-menu", title: "Pick dishes", text: "Photos, prices, how many each dish feeds, and what's sold out today.", alt: "The menu on a phone: Filipino dishes with photos, prices and how many people each feeds, under category tabs for Seafood, Chicken, Pork and Beef, one marked not available today" },
-  { src: "m-sent", title: "Send to waiter", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to the waiter, waiting for the waiter to see them, and the total so far" },
-  { src: "s-table", title: "Waiter confirms", text: "Orders arrive by guest. The waiter reads them back and serves.", alt: "The waiter's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
+  { src: "m-sent", title: "Send to staff", text: "Everyone at the table orders from their own phone, in rounds.", alt: "A guest's order screen: three dishes sent to staff, waiting for staff to see them, and the total so far" },
+  { src: "s-table", title: "Staff confirm", text: "Orders arrive by guest. Staff read them back and serve.", alt: "The staff's phone: Table 1's orders grouped by guest and batch, with the table total and a Clear table button" },
 ];
 
 const PLAN_LIST = PLANS.map((p) => `${p.name} ${peso(p.monthly)} a month or ${peso(p.price)} a year (${p.tables ? `${p.tables} tables with ordering` : "menu only, no ordering"})`).join(", ");
@@ -205,11 +205,11 @@ const PAY_WITH = METHODS.filter((m) => m !== "Other").join(", ").replace(/, ([^,
 const FAQ = [
   {
     q: "What is tappetite?",
-    a: "tappetite is an online menu and table ordering system for restaurants and cafes, and it ends the idle waiting at the table. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your waiter. Nobody waits for a menu, a waiter or an answer.",
+    a: "tappetite is an online menu with table ordering system for restaurants and cafes, and it ends the idle waiting at the table. Guests scan or tap their table, see every dish on their own phone with its photo, price, spice and how many it feeds, and send their order straight to your staff. Nobody waits for a menu, for staff or for an answer.",
   },
   {
-    q: "Will guests still talk to my waiters?",
-    a: "Only as much as they want to. The waiter greets the table, confirms the order and brings the food. Nobody has to flag a waiter down for a menu, a question about a dish or another round, and guests can call the waiter from the menu whenever they need one.",
+    q: "Will guests still talk to my staff?",
+    a: "Only as much as they want to. Your staff greet the table, confirm the order and bring the food. Nobody has to flag anyone down for a menu, a question about a dish or another round, and guests can call staff from the menu whenever they need them.",
   },
   {
     q: "How do I put my restaurant's menu online?",
@@ -217,15 +217,15 @@ const FAQ = [
   },
   {
     q: "How is it different from a QR code menu?",
-    a: `A QR menu only shows the menu. With tappetite, guests also order from it: each order goes to your waiter's phone, sorted by guest, and counts toward your sales statistics. The menu opens already set to their table. Guests scan the table's QR code, and restaurants in ${NFC_AREA} also get NFC tags free, so guests can just tap.`,
+    a: `A QR menu only shows the menu. With tappetite, guests also order from it: each order goes to your staff's phone, sorted by guest, and counts toward your sales statistics. The menu opens already set to their table. Guests scan the table's QR code, and restaurants in ${NFC_AREA} also get NFC tags free, so guests can just tap.`,
   },
   {
     q: "Do guests need to download an app?",
-    a: "No. The menu opens in the phone's browser, on iPhone and Android. Guests do not make an account; they type a name so the waiter knows whose order is whose.",
+    a: "No. The menu opens in the phone's browser, on iPhone and Android. Guests do not make an account; they type a name so your staff know whose order is whose.",
   },
   {
     q: "What if a guest's phone can't tap NFC?",
-    a: "Every table has a QR code, so any phone with a camera can open the menu. Where there is an NFC tag, most phones from the last few years can tap it; on some Android phones NFC has to be switched on in settings. A guest without a phone can order on a friend's phone at the same table, or tell the waiter, who adds the dishes to the table's order from their own phone.",
+    a: "Every table has a QR code, so any phone with a camera can open the menu. Where there is an NFC tag, most phones from the last few years can tap it; on some Android phones NFC has to be switched on in settings. A guest without a phone can order on a friend's phone at the same table, or tell the staff, who add the dishes to the table's order from their own phone.",
   },
   {
     q: "Can someone order from outside the restaurant?",
@@ -237,15 +237,15 @@ const FAQ = [
   },
   {
     q: "What does it cost?",
-    a: `Pay by the month or save by paying for the year: ${PLAN_LIST}. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, waiter and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Buy again each month or year to keep your menu online.`,
+    a: `Pay by the month or save by paying for the year: ${PLAN_LIST}. Extra tables on ${PLANS[1].name} or ${PLANS[2].name} are ${peso(EXTRA_TABLE / 12)} per table a month (${peso(EXTRA_TABLE)} a year). Plans with tables include a QR code for each table, staff and manager logins, and sales statistics. Restaurants in ${NFC_AREA} also get an NFC tag for each table, free. Buy again each month or year to keep your menu online.`,
   },
   {
     q: "Can I try it before I pay?",
-    a: `Yes. Sign up with your email or Google account and you get 7 days free with every feature on 1 table: your menu online, orders to your waiter's phone, and the statistics. Print the table's QR code from your manager login and put it on the table. When the week is up, pick a plan to keep going; your menu and settings stay as you left them. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
+    a: `Yes. Sign up with your email or Google account and you get 7 days free with every feature on 1 table: your menu online, orders to your staff's phone, and the statistics. Print the table's QR code from your manager login and put it on the table. When the week is up, pick a plan to keep going; your menu and settings stay as you left them. For restaurants in ${NFC_AREA}, the free NFC tags come with a paid plan.`,
   },
   {
     q: "Does tappetite replace my POS?",
-    a: "No. tappetite sits on top of what you already use. Guests' orders arrive on your waiter's phone, and your waiter enters them into your POS as usual, so your POS stays your till and your sales record. If you want a POS or another system built for your restaurant, ask us.",
+    a: "No. tappetite sits on top of what you already use. Guests' orders arrive on your staff's phone, and your staff enter them into your POS as usual, so your POS stays your till and your sales record. If you want a POS or another system built for your restaurant, ask us.",
   },
   {
     q: "How do I pay?",
@@ -337,7 +337,7 @@ export default async function Home() {
             </h1>
             <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
               Guests tap or scan the table and your online menu opens on their phone: photos, prices, spice, sizes, how
-              many each dish feeds. They order when they&apos;re ready, and it goes straight to your waiter.
+              many each dish feeds. They order when they&apos;re ready, and it goes straight to your staff.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pricing" className={`${PILL} bg-home-orange hover:brightness-95`}>
@@ -358,7 +358,7 @@ export default async function Home() {
               canvas={[1080, 1080]}
               box={[0, 0, 1080, 1080]}
               eager
-              label="A couple at a table: he taps the table stand, the Pork Sisig card shows its photo, spice, how many it feeds and price, the order goes to the waiter, and the food arrives."
+              label="A couple at a table: he taps the table stand, the Pork Sisig card shows its photo, spice, how many it feeds and price, the order goes to the staff, and the food arrives."
             />
             <div className="absolute -left-2 top-0 grid h-24 w-24 rotate-[-8deg] place-items-center rounded-full bg-home-butter text-center shadow-lg sm:h-28 sm:w-28">
               <p className="text-xs font-semibold leading-tight">
@@ -388,7 +388,7 @@ export default async function Home() {
         <div className="md:order-2">
           <h2 className={H2}>Same table. Same kitchen.</h2>
           <p className="mt-5 max-w-md text-lg font-medium leading-relaxed text-home-cocoa/75">
-            One table waits for a menu, a waiter and answers about the dish. The other is already eating.
+            One table waits for a menu, for staff and for answers about the dish. The other is already eating.
           </p>
           <p className="mt-4 max-w-md font-medium leading-relaxed text-home-cocoa/75">
             The kitchen is just as fast for both. With tappetite the order simply gets there sooner, because nobody at the
@@ -401,7 +401,7 @@ export default async function Home() {
               name="wait-race"
               canvas={[1080, 1080]}
               box={[0, 0, 1080, 1080]}
-              label="The same couple at two tables. Without tappetite they wait for a waiter, the menu and answers, and are still waiting at 13 minutes. With tappetite they tap the table, send their order, the waiter reads it back, and they are eating."
+              label="The same couple at two tables. Without tappetite they wait for staff, the menu and answers, and are still waiting at 13 minutes. With tappetite they tap the table, send their order, staff read it back, and they are eating."
             />
           </div>
           <figcaption className="mx-auto mt-3 max-w-[600px] text-center text-sm font-medium text-home-cocoa/60">
@@ -415,7 +415,7 @@ export default async function Home() {
         <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6 md:py-24">
           <h2 className={`${H2} text-center`}>Every wait, gone.</h2>
           <p className="mx-auto mt-4 max-w-lg text-center font-medium leading-relaxed text-home-cocoa/75">
-            Five times a table sits and waits for a waiter, and what tappetite puts there instead.
+            Five times a table sits and waits for staff, and what tappetite puts there instead.
           </p>
           <ul className="mt-12 divide-y divide-home-cream overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_-24px_rgb(59_46_37/0.35)]">
             {WAITS.map((w) => (
@@ -483,19 +483,19 @@ export default async function Home() {
                 name="table-waiter"
                 canvas={[1080, 1080]}
                 box={[0, 0, 1080, 1080]}
-                label="Paolo, Bea and Mia each send their order from their phone; each lands on the waiter's screen as its own row, sorted by guest, and the total adds up. The waiter goes to key it into the POS."
+                label="Paolo, Bea and Mia each send their order from their phone; each lands on the staff's screen as its own row, sorted by guest, and the total adds up. Staff go to key it into the POS."
               />
             </div>
           </div>
           <div className="md:order-1">
-            <h2 className={H2}>Your waiters stop answering and start serving.</h2>
+            <h2 className={H2}>Your staff stop answering and start serving.</h2>
             <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-              Each guest&apos;s order arrives on the waiter&apos;s phone under the name they chose, sorted by guest.
-              Your waiter reads it back, keys it into your POS and brings the food, instead of walking back and forth
+              Each guest&apos;s order arrives on the staff&apos;s phone under the name they chose, sorted by guest.
+              Your staff read it back, key it into your POS and bring the food, instead of walking back and forth
               for menus and questions.
             </p>
             <ul className="mt-6 flex flex-wrap gap-2">
-              {["Guest names", "Order rounds", "Read-back fixes", "Waiter-added items", "Table totals", "Clear table", "Waiter logins"].map((t) => (
+              {["Guest names", "Order rounds", "Read-back fixes", "Staff-added items", "Table totals", "Clear table", "Staff logins"].map((t) => (
                 <li key={t} className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold ring-1 ring-home-cream">
                   {t}
                 </li>
@@ -533,10 +533,11 @@ export default async function Home() {
           />
         </div>
         <div>
-          <h2 className={H2}>A bonus: see what sells, and when you&apos;re busy.</h2>
+          <h2 className={H2}>Your dashboard knows what sells, and when it gets busy.</h2>
           <p className="mt-5 max-w-md font-medium leading-relaxed text-home-cocoa/75">
-            On top of the orders, every one is counted, so the manager can see sales by day, the busiest hours of the week, which dishes
-            lead and which nobody orders, how long groups stay, and which tables earn the most.
+            Every order lands in your management dashboard and gets counted. So the manager sees sales by day, the busiest hours of the
+            week, which dishes lead and which nobody touches, how long groups linger, which tables earn the most. And it&apos;s where
+            you set up your menu, then change it whenever you like.
           </p>
           <ul className="mt-6 space-y-3 text-sm font-semibold">
             {["Today, 7 days or 30 days", "Busy hours by weekday", "Dish ranking, best to never ordered", "One table at a time, or all of them"].map((t) => (
@@ -562,7 +563,7 @@ export default async function Home() {
             From sitting down to ordering, in four steps.
           </h2>
           <p className="mx-auto mt-5 max-w-xl font-medium leading-relaxed text-home-cocoa/80">
-            Put each table&apos;s QR code on it. Guests do the rest from their own phones, and your waiters see every
+            Put each table&apos;s QR code on it. Guests do the rest from their own phones, and your staff see every
             order the moment it&apos;s sent.
           </p>
           <ol className="mt-16 grid grid-cols-2 gap-x-5 gap-y-12 text-left lg:grid-cols-4">
@@ -614,7 +615,7 @@ export default async function Home() {
             <mark className="rounded-md bg-home-butter px-1.5 text-home-cocoa [box-decoration-break:clone]">
               order when they&apos;re ready
             </mark>
-            , not when a waiter is free. Your staff spend the shift bringing food out instead of writing it down.
+            , not when staff are free. Your staff spend the shift bringing food out instead of writing it down.
           </p>
         </div>
       </section>

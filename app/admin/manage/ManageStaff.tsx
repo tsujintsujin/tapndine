@@ -42,7 +42,7 @@ export default function ManageStaff({
 
   return (
     <Shell name={name}>
-      <PageHead title="Staff" sub={`${staff.length} ${staff.length === 1 ? "login" : "logins"}, ${waiters} ${waiters === 1 ? "waiter" : "waiters"}`} />
+      <PageHead title="Staff" sub={`${staff.length} ${staff.length === 1 ? "login" : "logins"}, ${waiters} staff`} />
 
       {error && (
         <p role="alert" className="mt-4 rounded-2xl bg-chili/10 px-4 py-3 text-[15px] text-chili">
@@ -61,7 +61,7 @@ export default function ManageStaff({
           )}
           {staff.length === 0 && (
             <p className="mt-3 border-t border-line pt-4 text-[15px] text-muted">
-              No staff logins yet. Add your waiters and managers here, and give each their username and password.
+              No staff logins yet. Add your staff and managers here, and give each their username and password.
             </p>
           )}
           <table className={`mt-2 w-full text-[15px] ${staff.length ? "" : "hidden"}`}>
@@ -87,7 +87,7 @@ export default function ManageStaff({
                     </span>
                     {/* On phones the other columns fold under the name. */}
                     <span className="block text-[13px] text-muted sm:hidden">
-                      {s.username}, {s.role === "manager" ? "Manager" : "Waiter"}
+                      {s.username}, {s.role === "manager" ? "Manager" : "Staff"}
                     </span>
                   </td>
                   <td className="hidden py-3 pr-3 text-muted sm:table-cell">{s.username}</td>
@@ -97,7 +97,7 @@ export default function ManageStaff({
                         s.role === "manager" ? "bg-mango-soft text-ink" : "bg-leaf-tint text-leaf"
                       }`}
                     >
-                      {s.role === "manager" ? "Manager" : "Waiter"}
+                      {s.role === "manager" ? "Manager" : "Staff"}
                     </span>
                   </td>
                   {owner && (
@@ -168,12 +168,12 @@ export default function ManageStaff({
                     className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-line bg-white text-[15px] font-semibold has-[:checked]:border-leaf has-[:checked]:bg-leaf-tint has-[:checked]:text-leaf"
                   >
                     <input type="radio" name="role" value={r} defaultChecked={i === 0} className="sr-only" />
-                    {r === "waiter" ? "Waiter" : "Manager"}
+                    {r === "waiter" ? "Staff" : "Manager"}
                   </label>
                 ))}
               </div>
               {!canAddWaiters && (
-                <p className="mt-1.5 text-[13px] text-muted">Your plan is menu only, with no table ordering, so it has no waiter logins.</p>
+                <p className="mt-1.5 text-[13px] text-muted">Your plan is menu only, with no table ordering, so it has no staff logins.</p>
               )}
             </fieldset>
             <label className="mt-4 block text-[14px] font-semibold">
