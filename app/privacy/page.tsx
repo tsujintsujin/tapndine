@@ -39,7 +39,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>Guests do not make an account. When a guest taps the tag on a table and orders, we store:</p>
         <ul className="list-disc space-y-2 pl-5">
-          <li>the name the guest types, so the waiter knows whose order is whose;</li>
+          <li>the name the guest types, so the staff know whose order is whose;</li>
           <li>what they ordered, the table, and the time;</li>
           <li>
             a random number kept in a cookie on their phone, so that tapping the tag again from the same phone opens the
@@ -59,7 +59,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>For each restaurant using tappetite, we store:</p>
         <ul className="list-disc space-y-2 pl-5">
-          <li>the names and usernames of its manager and waiters, and their passwords in scrambled (hashed) form only;</li>
+          <li>the names and usernames of its manager and staff, and their passwords in scrambled (hashed) form only;</li>
           <li>its menu, prices and dish photos;</li>
           <li>its orders and the statistics made from them;</li>
           <li>its plan, contract and payment records.</li>
@@ -99,7 +99,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          Only to run tappetite: to show the menu, pass orders to the waiters, show the restaurant its statistics, keep
+          Only to run tappetite: to show the menu, pass orders to the staff, show the restaurant its statistics, keep
           logins secure, sign restaurants up for the free trial, and answer demo requests.
         </p>
         <p>We do not sell personal information, use it for advertising, or share it with other restaurants.</p>

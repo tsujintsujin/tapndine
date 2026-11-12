@@ -356,7 +356,7 @@ function TopBar({
             <button
               type="button"
               onClick={onCall}
-              aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
+              aria-label={calling ? "Call staff, a call is waiting" : "Call staff or ask for the bill"}
               className={`relative ${round}`}
             >
               <BellIcon width={20} height={20} />
@@ -1132,7 +1132,7 @@ function OrderSheet({
                             Sending as <span className="font-semibold text-ink">{nickname}</span>
                           </>
                         ) : (
-                          "No name: your waiter sees a guest number"
+                          "No name: staff see a guest number"
                         )}
                       </span>
                       {onNickname && (
@@ -1147,7 +1147,7 @@ function OrderSheet({
                       disabled={sending}
                       className="mt-3 flex h-14 w-full items-center justify-center rounded-full bg-mango text-[17px] font-bold text-ink active:brightness-95 disabled:opacity-60"
                     >
-                      {sending ? "Sending…" : "Send to waiter"}
+                      {sending ? "Sending…" : "Send to staff"}
                     </button>
                     {sendError && (
                       <p role="alert" className="mt-2 text-center text-sm text-chili">
@@ -1157,12 +1157,12 @@ function OrderSheet({
                   </>
                 ) : demo ? (
                   <p className="mt-2 text-sm text-muted">
-                    This is a demo menu. In a restaurant with tappetite, Send to waiter goes right here and your order lands
-                    on the waiter&apos;s phone.
+                    This is a demo menu. In a restaurant with tappetite, Send to staff goes right here and your order lands
+                    on the staff&apos;s phone.
                   </p>
                 ) : (
                   <p className="mt-2 text-sm text-muted">
-                    This list stays on your phone. Show it to your waiter when you&apos;re ready to order.
+                    This list stays on your phone. Show it to the staff when you&apos;re ready to order.
                   </p>
                 )}
               </>
@@ -1199,7 +1199,7 @@ function Note({ id, note, onNote }: { id: string; note: string; onNote: (t: stri
   return (
     <div className="mt-2">
       <label htmlFor={id} className="block text-[13px] font-semibold text-muted">
-        Note for your waiter
+        Note for the staff
       </label>
       <input
         id={id}
@@ -1220,9 +1220,9 @@ function Note({ id, note, onNote }: { id: string; note: string; onNote: (t: stri
 /** What this phone already sent, one stop per send, each marked once the waiter has seen it. */
 function SentTimeline({ sent }: { sent: GuestOrders }) {
   return (
-    <section aria-label="Sent to your waiter" className="px-5 pb-5 pt-5">
+    <section aria-label="Sent to staff" className="px-5 pb-5 pt-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-[22px] font-semibold">Sent to your waiter</h3>
+        <h3 className="font-display text-[22px] font-semibold">Sent to staff</h3>
         <span className="shrink-0 rounded-full bg-wash px-2.5 py-0.5 text-[13px] font-semibold text-forest">{sent.nickname ?? `Guest ${sent.number}`}</span>
       </div>
       <ol className="ml-2 mt-4 border-l-2 border-line">
@@ -1239,10 +1239,10 @@ function SentTimeline({ sent }: { sent: GuestOrders }) {
               {b.seenAt ? (
                 <>
                   <CheckIcon width={15} height={15} />
-                  Your waiter has it
+                  The staff have it
                 </>
               ) : (
-                "Waiting for your waiter to see it"
+                "Waiting for staff to see it"
               )}
             </p>
             <ul className="mt-1.5">

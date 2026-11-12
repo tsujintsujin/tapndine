@@ -418,7 +418,7 @@ function Corrections({ r }: { r: Report }) {
   const c = r.corrections;
   return (
     <section className={`${card} sm:col-span-2 xl:col-span-1`}>
-      <CardHead title="Corrections" sub="Fixed by the waiter at read-back" />
+      <CardHead title="Corrections" sub="Fixed by staff at read-back" />
       {r.tables.served === 0 ? (
         <Empty>No tables have ordered in this period yet.</Empty>
       ) : (

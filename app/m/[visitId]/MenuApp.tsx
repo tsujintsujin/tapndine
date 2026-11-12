@@ -57,7 +57,7 @@ import { DishImage, DishPhotos, photoUrl, SpiceMeter } from "./parts";
 const MENU_WIDTH = "max-w-3xl md:max-w-5xl lg:max-w-[1400px]";
 
 // ---------------------------------------------------------------------------
-// The list being built lives on this phone until Send to waiter; then it is a
+// The list being built lives on this phone until Send to staff; then it is a
 // batch on the server and the list starts empty again.
 
 /** Line key (lib/options.ts lineKey: the dish plus its picks) to how many. */
@@ -425,7 +425,7 @@ export default function MenuApp({
       setSent(j.sent ?? null);
       clear();
       suggested.current = false;
-      setToast({ key: Date.now(), title: "Sent to your waiter", detail: `${itemCount} ${itemCount === 1 ? "item" : "items"}` });
+      setToast({ key: Date.now(), title: "Sent to staff", detail: `${itemCount} ${itemCount === 1 ? "item" : "items"}` });
     } catch (e) {
       setSendError(e instanceof TypeError ? "No connection. Check your signal and try again." : (e as Error).message);
     } finally {
@@ -433,7 +433,7 @@ export default function MenuApp({
     }
   };
   /**
-   * Send to waiter: first, if the order has nothing from a category holding a
+   * Send to staff: first, if the order has nothing from a category holding a
    * dish the manager wants suggested and this guest never sent one, offer those (once).
    * Then, first time on this phone, ask what to call them, then send.
    */
@@ -466,7 +466,7 @@ export default function MenuApp({
       });
       if (r.status === 410) return expire();
       const j = (await r.json().catch(() => ({}))) as { calls?: OpenCall[]; error?: string };
-      if (!r.ok) throw new Error(j.error ?? "Could not reach your waiter. Try again.");
+      if (!r.ok) throw new Error(j.error ?? "Could not reach the staff. Try again.");
       setCalls(j.calls ?? []);
     } catch (e) {
       setCallError(e instanceof TypeError ? "No connection. Check your signal and try again." : (e as Error).message);
@@ -721,7 +721,7 @@ function unordered(menu: Menu, lines: OrderLine[], sent: GuestOrders | null): Ca
  * "What should we call you?" A small native dialog over the menu. Skip keeps
  * whatever name the phone had, or none: the waiter then sees Guest #.
  * Closing it (×, Esc, the phone's Back) changes nothing and, on the way to
- * Send to waiter, sends nothing: the guest is back at their order.
+ * Send to staff, sends nothing: the guest is back at their order.
  */
 function NicknamePrompt({
   open,
@@ -732,7 +732,7 @@ function NicknamePrompt({
 }: {
   open: boolean;
   initial: string;
-  /** Asked on the way to Send to waiter: the buttons say so. */
+  /** Asked on the way to Send to staff: the buttons say so. */
   sending: boolean;
   onDone: (v: string) => void;
   onCancel: () => void;
@@ -781,7 +781,7 @@ function NicknamePrompt({
             <CloseIcon width={20} height={20} />
           </button>
         </div>
-        <p className="mt-1.5 text-[15px] text-muted">Your waiter sees this name on your orders, so they know whose food is whose.</p>
+        <p className="mt-1.5 text-[15px] text-muted">Staff see this name on your orders, so they know whose food is whose.</p>
         <label className="mt-4 block text-[15px] font-medium">
           Nickname
           <input
@@ -799,7 +799,7 @@ function NicknamePrompt({
           disabled={!value.trim()}
           className="mt-4 h-[52px] w-full rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:opacity-50"
         >
-          {sending ? "Send to waiter" : "Continue"}
+          {sending ? "Send to staff" : "Continue"}
         </button>
         <button
           type="button"
@@ -843,7 +843,7 @@ function CallPrompt({
   }, [open]);
 
   const options: { kind: CallKind; label: string; waiting: string; Icon: typeof BellIcon }[] = [
-    { kind: "waiter", label: "Call waiter", waiting: "Waiter called", Icon: BellIcon },
+    { kind: "waiter", label: "Call staff", waiting: "Staff called", Icon: BellIcon },
     { kind: "bill", label: "Bill, please", waiting: "Bill asked for", Icon: ReceiptIcon },
   ];
 
@@ -861,13 +861,13 @@ function CallPrompt({
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <h2 id="call-title" className="pt-1 font-display text-[24px] font-bold leading-tight">
-            Need your waiter?
+            Need the staff?
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-wash active:bg-line">
             <CloseIcon width={20} height={20} />
           </button>
         </div>
-        <p className="mt-1 text-[15px] text-muted">It shows on your waiter&apos;s phone right away.</p>
+        <p className="mt-1 text-[15px] text-muted">It shows on the staff&apos;s phone right away.</p>
         <ul className="mt-4 space-y-2.5">
           {options.map(({ kind, label, waiting, Icon }) => {
             const open = calls.find((c) => c.kind === kind);
@@ -886,7 +886,7 @@ function CallPrompt({
                   </span>
                   <span className="min-w-0 leading-tight">
                     <span className="block text-[17px] font-semibold">{open ? waiting : calling === kind ? "Calling…" : label}</span>
-                    {open && <span className="block text-[13px] text-forest/70">At {formatTime(open.createdAt)}. Your waiter sees it on their phone.</span>}
+                    {open && <span className="block text-[13px] text-forest/70">At {formatTime(open.createdAt)}. Staff see it on their phone.</span>}
                   </span>
                 </button>
               </li>
@@ -1008,11 +1008,11 @@ function Header({
             <button
               type="button"
               onClick={onCall}
-              aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
+              aria-label={calling ? "Call staff, a call is waiting" : "Call staff or ask for the bill"}
               className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-white/15 pl-2.5 pr-3.5 text-[15px] font-semibold text-white hover:bg-white/25 active:bg-white/25"
             >
               <BellIcon width={22} height={22} />
-              Waiter
+              Staff
               {calling && <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-mango ring-2 ring-forest" aria-hidden />}
             </button>
           ) : (
@@ -1673,7 +1673,7 @@ function MenuSoon({ name }: { name: string }) {
           The menu is on its way
         </h1>
         <p className="mt-2 max-w-md text-[16px] leading-snug text-white/80">
-          Dishes show up here as soon as {name} adds them. Your waiter can tell you what&apos;s cooking today.
+          Dishes show up here as soon as {name} adds them. The staff can tell you what&apos;s cooking today.
         </p>
       </section>
       <section aria-hidden="true" className="mt-10 px-4 md:px-0">
@@ -2406,7 +2406,7 @@ function OrderList({
                             Sending as <span className="font-semibold text-ink">{nickname}</span>
                           </>
                         ) : (
-                          "No nickname: your waiter sees a guest number"
+                          "No nickname: staff see a guest number"
                         )}
                       </span>
                       <button type="button" onClick={onNickname} className="-my-2 h-10 shrink-0 rounded-lg px-2 font-semibold text-leaf active:bg-leaf-tint">
@@ -2419,7 +2419,7 @@ function OrderList({
                       disabled={sending}
                       className="mt-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark disabled:opacity-60"
                     >
-                      {sending ? "Sending…" : "Send to waiter"}
+                      {sending ? "Sending…" : "Send to staff"}
                     </button>
                     {sendError && (
                       <p role="alert" className="mt-2 text-center text-sm text-chili">
@@ -2429,12 +2429,12 @@ function OrderList({
                   </>
                 ) : demo ? (
                   <p className="mt-2 text-sm text-muted">
-                    This is a demo menu. In a restaurant with tappetite, Send to waiter goes right here and your order lands
-                    on the waiter&apos;s phone.
+                    This is a demo menu. In a restaurant with tappetite, Send to staff goes right here and your order lands
+                    on the staff&apos;s phone.
                   </p>
                 ) : (
                   <p className="mt-2 text-sm text-muted">
-                    This list stays on your phone. Show it to your waiter when you&apos;re ready to order.
+                    This list stays on your phone. Show it to the staff when you&apos;re ready to order.
                   </p>
                 )}
               </>
@@ -2475,7 +2475,7 @@ function NoteField({ id, note, onNote }: { id: string; note: string; onNote: (t:
   return (
     <div className="ml-[68px] mt-2">
       <label htmlFor={id} className="block text-[13px] font-semibold text-muted">
-        Note for your waiter
+        Note for the staff
       </label>
       <input
         id={id}
@@ -2496,9 +2496,9 @@ function NoteField({ id, note, onNote }: { id: string; note: string; onNote: (t:
 /** What this phone already sent, batch by batch, and whether the waiter has seen each. Read-only: the waiter has it. */
 function SentOrders({ sent }: { sent: GuestOrders }) {
   return (
-    <section aria-label="Sent to waiter" className="pb-4 pt-4">
+    <section aria-label="Sent to staff" className="pb-4 pt-4">
       <div className="flex items-baseline justify-between gap-3 px-4">
-        <h3 className="font-display text-lg font-bold">Sent to waiter</h3>
+        <h3 className="font-display text-lg font-bold">Sent to staff</h3>
         <span className="rounded-full bg-mango-soft px-2.5 py-0.5 text-[13px] font-semibold text-forest">{sent.nickname ?? `Guest ${sent.number}`}</span>
       </div>
       {sent.batches.map((b, i) => (
@@ -2513,12 +2513,12 @@ function SentOrders({ sent }: { sent: GuestOrders }) {
             {b.seenAt ? (
               <>
                 <CheckIcon width={16} height={16} />
-                Your waiter has it
+                The staff have it
               </>
             ) : (
               <>
                 <span className="h-2 w-2 animate-pulse rounded-full bg-mango motion-reduce:animate-none" aria-hidden />
-                Waiting for your waiter to see it
+                Waiting for staff to see it
               </>
             )}
           </p>
@@ -2608,7 +2608,7 @@ function BottomNav({
 // ---------------------------------------------------------------------------
 
 /**
- * "Added to order" notice after every add, and "Sent to your waiter". It lives in the browser's top
+ * "Added to order" notice after every add, and "Sent to staff". It lives in the browser's top
  * layer (popover), so it still shows above an open dish sheet, which is
  * itself a top-layer <dialog>. Sits just above the bottom bar.
  */

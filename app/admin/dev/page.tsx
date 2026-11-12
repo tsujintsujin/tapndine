@@ -91,7 +91,7 @@ export default async function DevPage({ searchParams }: { searchParams: Promise<
       />
 
       <p className="mt-6 max-w-2xl text-[13px] text-muted">
-        Orders sent are what guests and waiters sent, not money collected, the same count as each restaurant&apos;s own
+        Orders sent are what guests and staff sent, not money collected, the same count as each restaurant&apos;s own
         dashboard.
       </p>
     </Shell>

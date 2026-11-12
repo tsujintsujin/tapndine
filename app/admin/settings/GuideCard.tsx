@@ -14,7 +14,7 @@ export default function GuideCard() {
         <h2 id="guide-title" className="font-display text-lg font-bold leading-tight">
           Guide
         </h2>
-        <p className="text-[14px] text-muted">A walk through every page, shown on Cove Café. Nothing in it is saved.</p>
+        <p className="text-[14px] text-muted">A walk through every page, shown on Tappetite Cafe. Nothing in it is saved.</p>
         {error && (
           <p role="alert" className="mt-1 text-[14px] text-chili">
             {error}

@@ -224,11 +224,11 @@ export default function MenuC({
               <button
                 type="button"
                 onClick={onCall}
-                aria-label={calling ? "Call your waiter, a call is waiting" : "Call your waiter or ask for the bill"}
+                aria-label={calling ? "Call staff, a call is waiting" : "Call staff or ask for the bill"}
                 className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-mango px-3 text-[15px] font-bold text-ink active:brightness-95"
               >
                 <BellIcon width={18} height={18} />
-                Waiter
+                Staff
                 {calling && <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-white ring-2 ring-forest" aria-hidden />}
               </button>
             )}
@@ -713,9 +713,9 @@ function OrderSheet({
             )}
 
             {hasSent && (
-              <section aria-label="Sent to your waiter" className="py-4">
+              <section aria-label="Sent to staff" className="py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-[15px] font-bold">Sent to your waiter</h3>
+                  <h3 className="text-[15px] font-bold">Sent to staff</h3>
                   <span className="rounded bg-wash px-2 py-0.5 text-[12px] font-bold text-forest">{sent!.nickname ?? `Guest ${sent!.number}`}</span>
                 </div>
                 {sent!.batches.map((b) => (
@@ -725,10 +725,10 @@ function OrderSheet({
                       {b.seenAt ? (
                         <span className="flex items-center gap-1 text-forest">
                           <CheckIcon width={14} height={14} />
-                          Your waiter has it
+                          The staff have it
                         </span>
                       ) : (
-                        <span className="text-muted">Waiting for your waiter</span>
+                        <span className="text-muted">Waiting for staff</span>
                       )}
                     </p>
                     <ul className="mt-1">
@@ -769,7 +769,7 @@ function OrderSheet({
                             Sending as <span className="font-semibold text-ink">{nickname}</span>
                           </>
                         ) : (
-                          "No name: your waiter sees a guest number"
+                          "No name: staff see a guest number"
                         )}
                       </span>
                       {onNickname && (
@@ -784,7 +784,7 @@ function OrderSheet({
                       disabled={sending}
                       className="mt-2.5 flex h-12 w-full items-center justify-center rounded-lg bg-mango text-[16px] font-extrabold text-ink active:brightness-95 disabled:opacity-60"
                     >
-                      {sending ? "Sending…" : "Send to waiter"}
+                      {sending ? "Sending…" : "Send to staff"}
                     </button>
                     {sendError && (
                       <p role="alert" className="mt-2 text-center text-sm text-chili">
@@ -794,12 +794,12 @@ function OrderSheet({
                   </>
                 ) : demo ? (
                   <p className="mt-2 text-sm text-muted">
-                    This is a demo menu. In a restaurant with tappetite, Send to waiter goes right here and your order lands
-                    on the waiter&apos;s phone.
+                    This is a demo menu. In a restaurant with tappetite, Send to staff goes right here and your order lands
+                    on the staff&apos;s phone.
                   </p>
                 ) : (
                   <p className="mt-2 text-sm text-muted">
-                    This list stays on your phone. Show it to your waiter when you&apos;re ready to order.
+                    This list stays on your phone. Show it to the staff when you&apos;re ready to order.
                   </p>
                 )}
               </>
@@ -833,7 +833,7 @@ function Note({ id, note, onNote }: { id: string; note: string; onNote: (t: stri
   return (
     <span className="min-w-0 flex-1">
       <label htmlFor={id} className="sr-only">
-        Note for your waiter
+        Note for the staff
       </label>
       <input
         id={id}

@@ -41,7 +41,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   // Only a self signed-up restaurant closes when its plan runs out; one a developer added is kept in Billing.
   const closes = me.paidUntil !== null;
   const known = plan ? planByName(plan.plan) : undefined;
-  const includes = known?.includes ?? (plan?.tables ? ["Online menu", "Full customizable menu", `${plan.tables} tables`, "Ordering", "Waiter accounts", "Manager accounts"] : ["Online menu", "Full customizable menu", "Manager account"]);
+  const includes = known?.includes ?? (plan?.tables ? ["Online menu", "Full customizable menu", `${plan.tables} tables`, "Ordering", "Staff accounts", "Manager accounts"] : ["Online menu", "Full customizable menu", "Manager account"]);
 
   const sub =
     trialLeft !== null
