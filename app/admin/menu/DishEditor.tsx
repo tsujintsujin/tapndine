@@ -460,7 +460,7 @@ export default function DishEditor({
           </section>
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-6">
+        <div className="space-y-4">
           <section
             className={`${card} ${dragOver ? "ring-2 ring-leaf" : ""}`}
             onDragOver={(e) => {
