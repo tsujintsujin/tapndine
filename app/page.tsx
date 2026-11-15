@@ -249,7 +249,7 @@ const FAQ = [
   },
   {
     q: "How do I pay?",
-    a: `Once a year, by ${PAY_WITH}.`,
+    a: `By the month, or by the year for less, with ${PAY_WITH}.`,
   },
   {
     q: "Does tappetite take payment from guests?",
