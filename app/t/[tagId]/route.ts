@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { BASE_PATH } from "@/lib/base";
 import { randomId } from "@/lib/ids";
 import { isPhoneId, startVisit } from "@/lib/visits";
+import { SOURCE_COOKIE, SOURCE_MAX_AGE, sourceFromParams } from "@/lib/source-tags";
 
 const PHONE_COOKIE = "tnd_phone";
 
@@ -25,13 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tagI
   });
   // A cached redirect would hand every tap the same visit.
   res.headers.set("Cache-Control", "no-store");
-  res.cookies.set(PHONE_COOKIE, phoneId, {
-    httpOnly: true,
-    sameSite: "lax",
-    // Secure only over https: a phone testing against next dev on Wi-Fi is on http.
-    secure: req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https",
-    path: BASE_PATH || "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  // Secure only over https: a phone testing against next dev on Wi-Fi is on http.
+  const secure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+  res.cookies.set(PHONE_COOKIE, phoneId, { httpOnly: true, sameSite: "lax", secure, path: BASE_PATH || "/", maxAge: 60 * 60 * 24 * 365 });
+  // The redirect drops the link's utm tags, so remember them here (first touch wins).
+  const src = sourceFromParams(req.nextUrl.searchParams);
+  if (src && !req.cookies.get(SOURCE_COOKIE)) {
+    res.cookies.set(SOURCE_COOKIE, src, { sameSite: "lax", secure, path: BASE_PATH || "/", maxAge: SOURCE_MAX_AGE });
+  }
   return res;
 }

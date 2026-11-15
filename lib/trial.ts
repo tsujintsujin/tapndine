@@ -15,8 +15,8 @@ export const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 /** The shortest password an owner may pick at sign-up or reset. (Staff passwords, set by their manager: MIN_PASSWORD.) */
 export const OWNER_MIN_PASSWORD = 8;
 
-/** Where an ended trial's manager can message us. Empty until tappetite's Facebook Page is up; the button hides meanwhile. */
-export const MESSENGER_URL = "";
+/** Where an ended trial's manager can message us: the tappetite Facebook Page's Messenger. Empty hides the button. */
+export const MESSENGER_URL = "https://m.me/tappetite.click";
 
 /** SQL, true while the restaurant aliased `b` is on trial (ended or not). */
 export const ON_TRIAL = `(b.trial_ends_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM contracts c WHERE c.business_id = b.id))`;

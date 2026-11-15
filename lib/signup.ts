@@ -6,6 +6,7 @@ import { randomId } from "./ids";
 import { sendMail } from "./mail";
 import { cookieOptions, sha256, startSession } from "./staff";
 import { newTagId } from "./tables";
+import { signupSource } from "./source";
 import { TRIAL_MS } from "./trial";
 
 // Owners signing up: with an email and a password (the email proven once with
@@ -197,6 +198,8 @@ export type NewRestaurant = {
   trialEndsAt: number | null;
   /** Table 1 with its link. A menu-only plan (no tables) gets none. */
   firstTable: boolean;
+  /** Where the sign-up came from ("facebook/social/album1"), from the first link's utm tags. */
+  source?: string | null;
 };
 
 /**
@@ -213,7 +216,7 @@ export function restaurantStatements(r: NewRestaurant, when = { sql: "1", binds:
       .bind(...vals, ...when.binds);
   const tableId = randomId();
   return [
-    ins("businesses", "id, slug, name, created_at, trial_ends_at", [r.businessId, r.slug, r.restaurant, now, r.trialEndsAt]),
+    ins("businesses", "id, slug, name, created_at, trial_ends_at, source", [r.businessId, r.slug, r.restaurant, now, r.trialEndsAt, r.source ?? null]),
     ins("staff", "id, business_id, username, name, role, password_hash, created_at, email, google_sub", [
       r.staffId,
       r.businessId,
@@ -240,6 +243,7 @@ export async function createTrial(restaurant: string, managerName: string, secur
   const t = await ticket();
   if (!t) return "expired";
   const base = slugFor(restaurant);
+  const source = await signupSource();
   for (let attempt = 0; attempt < 4; attempt++) {
     const r: NewRestaurant = {
       businessId: "biz_" + randomId(),
@@ -252,6 +256,7 @@ export async function createTrial(restaurant: string, managerName: string, secur
       passwordHash: t.password_hash,
       trialEndsAt: Date.now() + TRIAL_MS,
       firstTable: true,
+      source,
     };
     try {
       await db().batch(restaurantStatements(r));

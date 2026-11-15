@@ -171,8 +171,13 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 - A trial: every feature, 1 table (QR, no NFC), 2 staff logins besides the
   manager, 7 days (`businesses.trial_ends_at`). The menu starts empty, with
   placeholder rows on the manager's Menu/Categories and on the guest menu.
-- When it ends: staff see `/trial-over` (plans + Book a call, + Messenger once
-  `MESSENGER_URL` in `lib/trial.ts` is set) and every staff API refuses;
+- Where a sign-up came from: the first link's utm tags (Facebook posts and the
+  demo-menu comment carry them) are kept 30 days in the `tp_src` cookie
+  (`app/SourceCookie.tsx`, and `/t/[tagId]`, whose redirect drops them) and saved
+  as `businesses.source` ("facebook/social/album1") when a trial starts.
+  Paid sign-ups made by the payment webhook record none.
+- When it ends: staff see `/trial-over` (plans + Book a call + "message us on
+  Messenger", `MESSENGER_URL` in `lib/trial.ts`, m.me/tappetite.click) and every staff API refuses;
   guests' tags go to "Menu not available". Adding a contract in Billing ends
   the trial for good and everything opens again.
 - Restaurants a developer adds keep working as before (no trial date).
