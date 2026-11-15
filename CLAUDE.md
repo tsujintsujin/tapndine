@@ -127,8 +127,8 @@ Live at https://tappetite.click. Built by TSUJIN IT Solutions (Justin).
   Their "Forgot password?" still emails Justin.
 - There is no email-code login any more (only sign-up and reset use codes).
 - **Paying**: QR Ph through PayMongo, the same account and code shape as
-  TheJobStash. A plan bought on the site runs a year plus 7 days and becomes a
-  contract with a "QR Ph" payment. Plans charge their real prices since
+  TheJobStash. A plan bought on the site runs a year plus 7 days (`BONUS_DAYS`)
+  or a month, and becomes a contract with a "QR Ph" payment. Plans charge their real prices since
   2026-11-07 (after a ₱1 test; `CHARGE_PESOS` in lib/plans.ts sets a test
   price). Webhook: `/api/billing/webhook`.
   Any manager buys from Subscription (`/admin/plan`) or `/trial-over`, a month
@@ -165,9 +165,9 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
 
 ## Free trial (self sign-up, built 2026-11-01)
 
-- Restaurants sign themselves up at `/start` with Google or a 6-digit code
-  emailed through Brevo; the same page logs a trial manager back in (they have
-  no password). Code in `lib/signup.ts`, limits in `lib/trial.ts`.
+- Restaurants sign themselves up at `/start` (see "Accounts and buying a plan":
+  email + password, the email proven by a 6-digit code sent through Brevo, or
+  Google). Code in `lib/signup.ts`, limits in `lib/trial.ts`.
 - A trial: every feature, 1 table (QR, no NFC), 2 staff logins besides the
   manager, 7 days (`businesses.trial_ends_at`). The menu starts empty, with
   placeholder rows on the manager's Menu/Categories and on the guest menu.
@@ -189,7 +189,7 @@ a self sign-up trial gets 1 and one a developer added the biggest plan's count.
   its two-year support date.)
 - Local DB: `npm run db:reset` (migrate + seed into `.localdb`). Seed restaurant
   is Hikay, which exists only locally (Justin, 2026-11-08); the live demo
-  restaurant is Cove Café. The homepage's "Try the menu" opens demo tag
+  restaurant is Tappetite Cafe (was Cove Café). The homepage's "Try the menu" opens demo tag
   `b3744013e9f6` (set 2026-11-07).
 - Dev server: port 3300 may be taken by another app. Start one in its own
   window, e.g. `npx next dev -p 3390`, and use `localhost`, not `127.0.0.1`.
