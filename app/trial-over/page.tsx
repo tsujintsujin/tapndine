@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format";
 import { currentLogin } from "@/lib/staff";
 import PlanCards from "@/app/components/PlanCards";
 import { addDays, GRACE_DAYS, today } from "@/lib/plans";
-import { TRIAL_DAYS } from "@/lib/trial";
+import { MESSENGER_URL, TRIAL_DAYS } from "@/lib/trial";
 import LogOutButton from "./LogOutButton";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +67,19 @@ export default async function TrialOverPage() {
             <div className="mt-6 text-center text-[15px] text-muted">
               Questions first?{" "}
               <BookDemoButton className="rounded font-semibold text-leaf underline-offset-4 hover:underline">Book a call</BookDemoButton>
+              {MESSENGER_URL && (
+                <>
+                  {" "}or{" "}
+                  <a
+                    href={MESSENGER_URL}
+                    target="_blank"
+                    rel="noopener"
+                    className="rounded font-semibold text-leaf underline-offset-4 hover:underline"
+                  >
+                    message us on Messenger
+                  </a>
+                </>
+              )}
             </div>
           </>
         )}

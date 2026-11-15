@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
+import { SourceCookie } from "./SourceCookie";
 
 // Dish and section names only; body text stays on the system font so the
 // menu renders immediately on a weak connection.
@@ -28,7 +29,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={display.variable}>
-      <body className="min-h-dvh bg-paper text-ink antialiased">{children}</body>
+      <body className="min-h-dvh bg-paper text-ink antialiased">
+        {children}
+        <SourceCookie />
+      </body>
     </html>
   );
 }
