@@ -5,6 +5,15 @@ Guests tap an NFC tag (or scan a QR code) on their table, the menu opens in the
 phone's browser, and their order goes to the waiter's phone, sorted by guest.
 Live at https://tappetite.click. Built by TSUJIN IT Solutions (Justin).
 
+## Marketing, the Facebook Page, leads and the dashboard
+
+Not in this repo. Before touching any of it, read
+`D:\AIO Freelance\Socials\tappetite-Facebook\PLAYBOOK.md`: who runs the Page
+(Claude, without asking; money and Justin's own profile stay his), where every
+file is, the copy rules, and the local dashboard (`D:\AIO Freelance\tappetite-dashboard`,
+http://localhost:3470) with live sign-ups, Facebook, Search Console and Google Maps leads.
+Sign-ups record their source (`businesses.source`, from the first link's utm tags).
+
 ## The name: tappetite since 2026-11-11
 
 - Renamed from tapndine by Justin 2026-11-11. Logo: "tappetite." in Montserrat
