@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BASE_PATH } from "@/lib/base";
 import type { LinksPage, TableLinks } from "@/lib/tables";
-import { CheckIcon, CopyIcon, PencilIcon, PlusIcon, QrIcon, TrashIcon } from "@/app/components/Icons";
+import { CheckIcon, CopyIcon, EyeIcon, PencilIcon, PlusIcon, QrIcon, TrashIcon } from "@/app/components/Icons";
 import { btn, card, PageHead } from "../kit";
 import { api, useConfirm, useStaffInfo } from "../ui";
 
@@ -185,7 +185,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-2.5">
                   {t.tags.map((tag) => (
-                    <LinkRow key={tag} url={link(tag)} name={t.label} />
+                    <LinkRow key={tag} url={link(tag)} name={t.label} open={`${BASE_PATH}/m/preview?table=${t.id}`} />
                   ))}
                   <button type="button" disabled={busy} onClick={() => replace(t)} className={`${btn.danger} h-10`}>
                     New link
@@ -203,7 +203,7 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
           <p className="mt-1 text-[14px] text-muted">These open your menu just to look at. Guests can&apos;t send orders from them.</p>
           <div className="mt-3 grid gap-2.5">
             {unplaced.map((tag) => (
-              <LinkRow key={tag} url={link(tag)} name="Menu for show" />
+              <LinkRow key={tag} url={link(tag)} name="Menu for show" open={`${BASE_PATH}/m/preview`} />
             ))}
           </div>
         </section>
@@ -216,8 +216,12 @@ export default function LinksBoard({ tables, unplaced, limit }: LinksPage) {
 const pill =
   "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[14px] font-semibold text-forest shadow-[0_1px_2px_rgb(16_52_42/0.08)] hover:bg-leaf-tint";
 
-/** The link, selectable, with Copy and QR buttons. */
-function LinkRow({ url, name }: { url: string; name: string }) {
+/**
+ * The link, selectable, with Open, Copy and QR buttons. Open goes to a
+ * preview of the same menu, not the link itself: opening the link would
+ * start a real visit and seat the table on the staff's Tables screen.
+ */
+function LinkRow({ url, name, open }: { url: string; name: string; open: string }) {
   const [qr, setQr] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   useEffect(() => {
@@ -230,6 +234,10 @@ function LinkRow({ url, name }: { url: string; name: string }) {
     <div className="flex min-w-0 flex-1 basis-72 flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-wash py-1 pl-3.5 pr-1">
       <code className="min-w-0 flex-1 basis-48 select-all break-all py-2 text-[14px] text-ink">{url}</code>
       <div className="flex gap-2">
+        <a href={open} target="_blank" rel="noopener" aria-label={`Open the menu for ${name}`} className={pill}>
+          <EyeIcon width={16} height={16} />
+          Open
+        </a>
         <button
           type="button"
           onClick={() =>

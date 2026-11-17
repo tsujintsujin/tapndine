@@ -120,8 +120,13 @@ went live 2026-10-21 that way.
 
 ## The sit-down flow when staff have no phones (discussed 2026-11-17)
 
-Agreed with Justin in a flow-critique discussion. Nothing here is built yet.
-A separate session is redesigning the app for it; check what it built first.
+Agreed with Justin in a flow-critique discussion. Designed on the canvas
+"tappetite at the table settings" (https://claude.ai/artifact/RZbcrMWPGJv2ZSkeXW1cDH),
+approved 2026-11-17, and built on branch `claude/sitdown-settings` (PR, not
+live): Settings > General > At the table (lib/atTable.ts, migration 0031),
+Show to staff, the location and hours guard on sending and calls, auto table
+reset (lib/visits.ts closeIdleSittings), and Open on menu links. Going live
+needs migration 0031 on live D1 first.
 
 ### The real situation
 
