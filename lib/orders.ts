@@ -1,4 +1,5 @@
 import { db } from "./cf";
+import { AT_TABLE_COLUMNS, toAtTable, type AtTable, type AtTableRow } from "./atTable";
 import { randomId } from "./ids";
 import { CHOICE_ON_MENU, toOption, type OptionRow } from "./menu";
 import { extraCents, optionsLabel, resolvePicks, type DishOption } from "./options";
@@ -626,4 +627,10 @@ export async function dishList(businessId: string) {
   const byId = new Map(list.map((x) => [x.id, x]));
   for (const o of options.results as OptionRow[]) byId.get(o.dish_id)?.options.push(toOption(o));
   return list;
+}
+
+/** A restaurant's "At the table" settings (lib/atTable.ts). */
+export async function loadAtTable(businessId: string): Promise<AtTable> {
+  const row = await db().prepare(`SELECT ${AT_TABLE_COLUMNS} FROM businesses WHERE id = ?`).bind(businessId).first<AtTableRow>();
+  return row ? toAtTable(row) : { send: false, call: false, bill: false, opensAt: null, closesAt: null, geo: null };
 }

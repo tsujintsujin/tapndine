@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { isOpen, type Fix, type SendCheck } from "@/lib/atTable";
 import { BASE_PATH } from "@/lib/base";
 import type { Category, Dish, Menu, SubCategory } from "@/lib/menu";
 import type { CallKind, GuestOrders } from "@/lib/orders";
@@ -394,7 +395,61 @@ export default function MenuApp({
   }, [order]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
-  const send = async (nickname: string | null = nick || null) => {
+
+  // "At the table" (lib/atTable.ts): what the restaurant lets guests do here.
+  const at = menu.atTable;
+  /** This phone sends its order; otherwise, at a table, the guest shows it to staff. */
+  const sends = canSend && at.send;
+  const callKinds: CallKind[] = canSend ? [...(at.call ? (["waiter"] as const) : []), ...(at.bill ? (["bill"] as const) : [])] : [];
+  const [showOpen, setShowOpen] = useState(false);
+
+  // Sending (and calling) only from the restaurant, while it is open. The
+  // location is asked for with a word why first, once per visit; after that
+  // the phone answers without asking. The server checks again (403 blocked).
+  const [place, setPlace] = useState<PlaceSheetKind | null>(null);
+  const [locating, setLocating] = useState(false);
+  const pending = useRef<((loc: Fix | null) => void) | null>(null);
+  const askedKey = `tap-place-${visitId}`;
+  const locate = () => {
+    setPlace(null);
+    if (!navigator.geolocation) return setPlace("denied");
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        pending.current?.({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy });
+      },
+      (e) => {
+        setLocating(false);
+        setPlace(e.code === e.PERMISSION_DENIED ? "denied" : "vague");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  };
+  /** Runs `action` once this phone may send from here, with its location where the restaurant set one. */
+  const atRestaurant = (action: (loc: Fix | null) => void) => {
+    if (!at.send) return action(null);
+    if (!isOpen(at)) return setPlace("closed");
+    if (!at.geo) return action(null);
+    pending.current = action;
+    let asked = false;
+    try {
+      asked = sessionStorage.getItem(askedKey) === "1";
+    } catch {}
+    if (asked) locate();
+    else setPlace("ask");
+  };
+  /** The server said no (403): say why, and keep the action for Try again. */
+  const blocked = async (r: Response) => {
+    const j = (await r.json().catch(() => ({}))) as { blocked?: SendCheck };
+    if (j.blocked === "off") {
+      // The restaurant changed how it takes orders since this page loaded.
+      router.refresh();
+      throw new Error("This restaurant takes orders at the table now. Show your list to the staff.");
+    }
+    setPlace(j.blocked === "closed" ? "closed" : j.blocked === "far" ? "far" : "vague");
+  };
+  const send = async (nickname: string | null, loc: Fix | null) => {
     sendKey.current ??= randomId();
     setSending(true);
     setSendError("");
@@ -411,9 +466,11 @@ export default function MenuApp({
             note: notes[l.key] ?? "",
           })),
           nickname,
+          loc,
         }),
       });
       if (r.status === 410) return expire();
+      if (r.status === 403) return blocked(r);
       if (r.status === 422) {
         // The menu changed since this page loaded (a dish sold out, a choice
         // removed): load it again, which takes out what can't be ordered.
@@ -438,6 +495,8 @@ export default function MenuApp({
    * Then, first time on this phone, ask what to call them, then send.
    */
   const trySend = () => {
+    // Closed: say so before the suggestions and the nickname, not after.
+    if (sends && !isOpen(at)) return setPlace("closed");
     if (!suggested.current) {
       const offer = unordered(menu, lines, sent);
       if (offer.length) {
@@ -450,21 +509,24 @@ export default function MenuApp({
     if (nick === null) {
       setSendAfterNick(true);
       setNickOpen(true);
-    } else send();
+    } else sendNow(nick || null);
   };
+  const sendNow = (nickname: string | null) => atRestaurant((loc) => send(nickname, loc));
 
   const [calling, setCalling] = useState<CallKind | null>(null);
   const [callError, setCallError] = useState("");
-  const call = async (kind: CallKind) => {
+  const call = (kind: CallKind) => atRestaurant((loc) => callNow(kind, loc));
+  const callNow = async (kind: CallKind, loc: Fix | null) => {
     setCalling(kind);
     setCallError("");
     try {
       const r = await fetch(`${BASE_PATH}/api/visits/${visitId}/call`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, nickname: nick || null }),
+        body: JSON.stringify({ kind, nickname: nick || null, loc }),
       });
       if (r.status === 410) return expire();
+      if (r.status === 403) return blocked(r);
       const j = (await r.json().catch(() => ({}))) as { calls?: OpenCall[]; error?: string };
       if (!r.ok) throw new Error(j.error ?? "Could not reach the staff. Try again.");
       setCalls(j.calls ?? []);
@@ -523,7 +585,7 @@ export default function MenuApp({
           setNickOpen(false);
           if (sendAfterNick) {
             setSendAfterNick(false);
-            send(v || null);
+            sendNow(v || null);
           }
         }}
         onCancel={() => {
@@ -543,6 +605,7 @@ export default function MenuApp({
       />
       <CallPrompt
         open={callOpen}
+        kinds={callKinds}
         calls={calls}
         calling={calling}
         error={callError}
@@ -552,6 +615,26 @@ export default function MenuApp({
           setCallError("");
         }}
       />
+      <PlaceSheet
+        kind={place}
+        businessName={menu.businessName}
+        opensAt={at.opensAt}
+        onAsk={() => {
+          try {
+            sessionStorage.setItem(askedKey, "1");
+          } catch {}
+          locate();
+        }}
+        onRetry={locate}
+        onShow={() => {
+          setPlace(null);
+          setShowOpen(true);
+        }}
+        onClose={() => setPlace(null)}
+      />
+      <Sheet open={showOpen} onClose={() => setShowOpen(false)} from="bottom" label="Order for staff">
+        <ShowToStaff lines={lines} notes={notes} tableLabel={menu.tableLabel} onClose={() => setShowOpen(false)} />
+      </Sheet>
     </>
   );
 
@@ -560,7 +643,7 @@ export default function MenuApp({
       <MenuB
         menu={menu}
         nickname={shownNick}
-        canSend={canSend}
+        canSend={sends}
         demo={demo}
         lines={lines}
         notes={notes}
@@ -578,7 +661,7 @@ export default function MenuApp({
         onOrder={openOrder}
         onCloseOrder={() => closeParam("o")}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
-        onCall={canSend ? () => setCallOpen(true) : undefined}
+        onCall={callKinds.length ? () => setCallOpen(true) : undefined}
         sending={sending}
         sendError={sendError}
         onSend={trySend}
@@ -593,7 +676,7 @@ export default function MenuApp({
       <MenuC
         menu={menu}
         nickname={shownNick}
-        canSend={canSend}
+        canSend={sends}
         demo={demo}
         lines={lines}
         notes={notes}
@@ -610,7 +693,7 @@ export default function MenuApp({
         onOrder={openOrder}
         onCloseOrder={() => closeParam("o")}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
-        onCall={canSend ? () => setCallOpen(true) : undefined}
+        onCall={callKinds.length ? () => setCallOpen(true) : undefined}
         sending={sending}
         sendError={sendError}
         onSend={trySend}
@@ -631,7 +714,7 @@ export default function MenuApp({
         itemCount={itemCount}
         calling={calls.length > 0}
         onNickname={canSend ? () => setNickOpen(true) : undefined}
-        onCall={canSend ? () => setCallOpen(true) : undefined}
+        onCall={callKinds.length ? () => setCallOpen(true) : undefined}
         onOrder={openOrder}
         view={view}
         orderTotal={orderTotal}
@@ -688,11 +771,13 @@ export default function MenuApp({
           notes={notes}
           setNote={setNote}
           sent={sent}
-          canSend={canSend}
+          canSend={sends}
           demo={demo}
-          sending={sending}
+          sending={sending || locating}
           sendError={sendError}
           onSend={trySend}
+          onShow={canSend && !at.send ? () => setShowOpen(true) : undefined}
+          onCall={canSend && !at.send && at.call ? () => setCallOpen(true) : undefined}
           nickname={shownNick}
           onNickname={() => setNickOpen(true)}
           onClose={() => closeParam("o")}
@@ -821,6 +906,7 @@ function NicknamePrompt({
  */
 function CallPrompt({
   open,
+  kinds,
   calls,
   calling,
   error,
@@ -828,6 +914,8 @@ function CallPrompt({
   onClose,
 }: {
   open: boolean;
+  /** The buttons the restaurant switched on. */
+  kinds: CallKind[];
   calls: { kind: CallKind; createdAt: number }[];
   calling: CallKind | null;
   error: string;
@@ -846,6 +934,7 @@ function CallPrompt({
     { kind: "waiter", label: "Call staff", waiting: "Staff called", Icon: BellIcon },
     { kind: "bill", label: "Bill, please", waiting: "Bill asked for", Icon: ReceiptIcon },
   ];
+  const shown = options.filter((o) => kinds.includes(o.kind));
 
   return (
     <dialog
@@ -867,9 +956,9 @@ function CallPrompt({
             <CloseIcon width={20} height={20} />
           </button>
         </div>
-        <p className="mt-1 text-[15px] text-muted">It shows on the staff&apos;s phone right away.</p>
+        <p className="mt-1 text-[15px] text-muted">It shows on the staff&apos;s screen right away.</p>
         <ul className="mt-4 space-y-2.5">
-          {options.map(({ kind, label, waiting, Icon }) => {
+          {shown.map(({ kind, label, waiting, Icon }) => {
             const open = calls.find((c) => c.kind === kind);
             return (
               <li key={kind}>
@@ -886,7 +975,7 @@ function CallPrompt({
                   </span>
                   <span className="min-w-0 leading-tight">
                     <span className="block text-[17px] font-semibold">{open ? waiting : calling === kind ? "Calling…" : label}</span>
-                    {open && <span className="block text-[13px] text-forest/70">At {formatTime(open.createdAt)}. Staff see it on their phone.</span>}
+                    {open && <span className="block text-[13px] text-forest/70">At {formatTime(open.createdAt)}. Staff see it on their screen.</span>}
                   </span>
                 </button>
               </li>
@@ -2286,6 +2375,8 @@ function OrderList({
   sending,
   sendError,
   onSend,
+  onShow,
+  onCall,
   nickname,
   onNickname,
   onClose,
@@ -2300,6 +2391,10 @@ function OrderList({
   sending: boolean;
   sendError: string;
   onSend: () => void;
+  /** At a table where guests don't send (Send orders off): opens the list for staff. */
+  onShow?: () => void;
+  /** With onShow, when the restaurant has the Call staff button on. */
+  onCall?: () => void;
   /** "" when the guest skipped it. */
   nickname: string;
   onNickname: () => void;
@@ -2380,7 +2475,7 @@ function OrderList({
                           </button>
                         </div>
                       </div>
-                      {canSend && <NoteField id={`note-${i}`} note={notes[key] ?? ""} onNote={(t) => setNote(key, t)} />}
+                      {(canSend || onShow) && <NoteField id={`note-${i}`} note={notes[key] ?? ""} onNote={(t) => setNote(key, t)} />}
                     </li>
                   ))}
                 </ul>
@@ -2394,7 +2489,7 @@ function OrderList({
             {lines.length > 0 ? (
               <>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[17px] font-medium">{hasSent ? "To send" : "Total"}</span>
+                  <span className="text-[17px] font-medium">{hasSent && canSend ? "To send" : "Total"}</span>
                   <span className="font-display text-2xl font-bold">{formatPrice(total)}</span>
                 </div>
                 {canSend ? (
@@ -2425,6 +2520,28 @@ function OrderList({
                       <p role="alert" className="mt-2 text-center text-sm text-chili">
                         {sendError}
                       </p>
+                    )}
+                  </>
+                ) : onShow ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted">This list stays on your phone. When staff come to your table, show it to them.</p>
+                    <button
+                      type="button"
+                      onClick={onShow}
+                      className="mt-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark"
+                    >
+                      <PhoneIcon />
+                      Show to staff
+                    </button>
+                    {onCall && (
+                      <button
+                        type="button"
+                        onClick={onCall}
+                        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-leaf text-[16px] font-semibold text-leaf active:bg-leaf-tint"
+                      >
+                        <BellIcon width={18} height={18} />
+                        Call staff
+                      </button>
                     )}
                   </>
                 ) : demo ? (
@@ -2494,6 +2611,144 @@ function NoteField({ id, note, onNote }: { id: string; note: string; onNote: (t:
 }
 
 /** What this phone already sent, batch by batch, and whether the waiter has seen each. Read-only: the waiter has it. */
+const PhoneIcon = () => (
+  <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="6" y="2" width="12" height="20" rx="2" />
+    <path d="M10 18h4" />
+  </svg>
+);
+
+/**
+ * The order in big type, for a guest to hold up to the staff where guests
+ * don't send (Send orders off). Staff read it at arm's length and key it into
+ * the POS. Designed on the canvas "tappetite at the table settings".
+ */
+function ShowToStaff({ lines, notes, tableLabel, onClose }: { lines: OrderLine[]; notes: Notes; tableLabel: string | null; onClose: () => void }) {
+  const total = lines.reduce((sum, l) => sum + l.unitCents * l.qty, 0);
+  return (
+    <div className="flex h-full flex-col bg-white text-ink">
+      <div className="shrink-0 border-b-2 border-ink px-5 pb-4 pt-[calc(20px+env(safe-area-inset-top))]">
+        <p className="text-[15px] text-muted">Order for staff</p>
+        <h2 className="font-display text-[40px] font-bold leading-[1.05]">{tableLabel ?? "My order"}</h2>
+      </div>
+      <ol className="flex-1 overflow-y-auto overscroll-contain px-5 py-1">
+        {lines.map((l) => (
+          <li key={l.key} className="flex gap-3.5 border-b border-line py-3.5">
+            <span className="min-w-11 font-display text-[28px] font-bold leading-[1.1] tabular-nums">{l.qty}×</span>
+            <span className="min-w-0">
+              <span className="block text-[24px] font-semibold leading-tight">{l.dish.name}</span>
+              {(l.label || notes[l.key]) && (
+                <span className="mt-0.5 block text-[18px] leading-snug">{[l.label, notes[l.key] && `Note: ${notes[l.key]}`].filter(Boolean).join(". ")}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="shrink-0 border-t-2 border-ink px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[18px] font-medium">Total</span>
+          <span className="font-display text-[28px] font-bold">{formatPrice(total)}</span>
+        </div>
+        <button type="button" onClick={onClose} className="mt-3.5 flex h-[52px] w-full items-center justify-center rounded-xl border border-ink text-[17px] font-semibold active:bg-wash">
+          Back to my order
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** What the location sheet says: asking first, or why a send can't go through. */
+type PlaceSheetKind = "ask" | "far" | "vague" | "denied" | "closed";
+
+/** 10:00 → "10:00 AM". */
+const clock = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+
+/**
+ * Before the first send where the restaurant set its location: a word on why
+ * the phone is about to ask. Then, when a send can't go through, why and what
+ * to do. Designed on the canvas "tappetite at the table settings".
+ */
+function PlaceSheet({
+  kind,
+  businessName,
+  opensAt,
+  onAsk,
+  onRetry,
+  onShow,
+  onClose,
+}: {
+  kind: PlaceSheetKind | null;
+  businessName: string;
+  opensAt: string | null;
+  onAsk: () => void;
+  onRetry: () => void;
+  onShow: () => void;
+  onClose: () => void;
+}) {
+  const text: Record<PlaceSheetKind, { title: string; body: string; primary: string; act: () => void }> = {
+    ask: {
+      title: `Check you're at ${businessName}`,
+      body: "Your phone will ask to share your location. We check it so orders only come from the tables.",
+      primary: "Share location and send",
+      act: onAsk,
+    },
+    far: {
+      title: `You're not at ${businessName}`,
+      body: "Orders only go through from inside the restaurant. You can keep building your list and send it when you're here.",
+      primary: "Try again",
+      act: onRetry,
+    },
+    vague: {
+      title: "Couldn't tell where you are",
+      body: "Your phone's location is too rough right now. Turn on Wi-Fi or step near a window, then try again.",
+      primary: "Try again",
+      act: onRetry,
+    },
+    denied: {
+      title: "Location is off",
+      body: "Without it, this menu can't send your order. Show your list to the staff instead.",
+      primary: "Show to staff",
+      act: onShow,
+    },
+    closed: {
+      title: `${businessName} is closed now`,
+      body: opensAt ? `Orders open at ${clock(opensAt)}. You can still look through the menu.` : "You can still look through the menu.",
+      primary: "OK",
+      act: onClose,
+    },
+  };
+  const t = kind ? text[kind] : null;
+  return (
+    <Sheet open={!!kind} onClose={onClose} from="bottom" half label={t?.title ?? "Location"}>
+      {t && (
+        <div className="flex flex-col gap-3 bg-paper px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-6 text-ink">
+          {kind === "ask" && (
+            <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-leaf-tint" aria-hidden>
+              <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+                <circle cx="12" cy="9.5" r="2.5" />
+              </svg>
+            </span>
+          )}
+          <h2 className="font-display text-[24px] font-bold leading-tight">{t.title}</h2>
+          <p className="text-[16px] leading-relaxed">{t.body}</p>
+          <button type="button" onClick={t.act} className="mt-1.5 h-[52px] rounded-xl bg-leaf text-[17px] font-semibold text-white active:bg-leaf-dark">
+            {t.primary}
+          </button>
+          {kind !== "closed" && (
+            <button type="button" onClick={onClose} className="h-12 rounded-xl text-[16px] font-semibold text-leaf underline underline-offset-[3px] active:bg-leaf-tint">
+              {kind === "ask" ? "Not now" : "Back to my order"}
+            </button>
+          )}
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 function SentOrders({ sent }: { sent: GuestOrders }) {
   return (
     <section aria-label="Sent to staff" className="pb-4 pt-4">

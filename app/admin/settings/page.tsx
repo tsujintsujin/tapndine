@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { LockIcon } from "@/app/components/Icons";
+import { AT_TABLE_COLUMNS, toAtTable, type AtTableRow } from "@/lib/atTable";
+import { db } from "@/lib/cf";
 import { restaurantLogo, restaurantName, restaurantPalette } from "@/lib/dev";
 import { requireStaff } from "@/lib/staff";
 import { PageHead } from "../kit";
 import Shell from "../Shell";
+import AtTableCard, { type AtTableSettings } from "./AtTableCard";
 import GuideCard from "./GuideCard";
 import LogoCard from "./LogoCard";
 import NameCard from "./NameCard";
@@ -15,11 +18,25 @@ export const metadata: Metadata = { title: "General · tappetite", robots: { ind
 /** The name, logo and colours guests see. A manager sees them but only the owner changes them. */
 export default async function SettingsPage() {
   const me = await requireStaff("manager");
-  const [name, logoUrl, palette] = await Promise.all([
+  const [name, logoUrl, palette, atRow] = await Promise.all([
     restaurantName(me.business_id),
     restaurantLogo(me.business_id),
     restaurantPalette(me.business_id),
+    db()
+      .prepare(`SELECT ${AT_TABLE_COLUMNS}, geo_set_at, geo_accuracy FROM businesses WHERE id = ?`)
+      .bind(me.business_id)
+      .first<AtTableRow & { geo_set_at: number | null; geo_accuracy: number | null }>(),
   ]);
+  const at = atRow && toAtTable(atRow);
+  const atTable: AtTableSettings | null = at && {
+    send: at.send,
+    call: at.call,
+    bill: at.bill,
+    opensAt: at.opensAt,
+    closesAt: at.closesAt,
+    radius: atRow.geo_radius,
+    pin: at.geo && atRow.geo_set_at ? { setAt: atRow.geo_set_at, accuracy: atRow.geo_accuracy ?? 0 } : null,
+  };
   const locked = !me.owner;
   return (
     <Shell name={me.name}>
@@ -34,6 +51,7 @@ export default async function SettingsPage() {
       <LogoCard name={name ?? ""} logoUrl={logoUrl} locked={locked} />
       {/* DesignCard is hidden until Designs B and C are reworked; guests all get A (lib/menu.ts). */}
       <PaletteCard palette={palette} design="a" locked={locked} />
+      {atTable && <AtTableCard initial={atTable} />}
       <GuideCard />
     </Shell>
   );
