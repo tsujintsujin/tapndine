@@ -117,3 +117,84 @@ went live 2026-10-21 that way.
 
 - #9 Filipino: **English only.** No language toggle, no Filipino dish names.
 - #3 Status: the waiter marks **each item** served, one by one (not the whole round).
+
+## The sit-down flow when staff have no phones (discussed 2026-11-17)
+
+Agreed with Justin in a flow-critique discussion. Nothing here is built yet.
+A separate session is redesigning the app for it; check what it built first.
+
+### The real situation
+
+- In most restaurants **staff may not carry phones**, and the restaurant won't
+  buy them devices (that runs against what tappetite is for). Staff with phones
+  or tablets is the rare case. **Both must work.**
+- tappetite stays **a layer on top of the POS**: no new POS to pay for, no
+  retraining staff. Its job: remove the guests' idle time with the menu booklet,
+  and promote dishes. Someone still keys the order into the POS.
+- **Who it's for:** sit-down restaurants and cafes. Not carinderias. Coffee
+  shops get the **Single** menu (menu only), which they can also share on their
+  socials so people browse before they come.
+- The Single plan has no ordering, so it has no dashboard data. That's expected.
+- The menu side is fine for now. The focus is the sit-down itself.
+
+### The flow, no staff phones
+
+1. **Seated, scan the table's own QR.** Every table has its own link, so a call
+   or order always says which table it came from. Never one QR for all tables.
+2. **Each guest builds a list on their own phone** (one name per phone).
+   **Per guest stays:** students, co-workers and siblings pay for their own
+   orders. A family where one person orders just uses one phone.
+3. **Order:**
+   - *With a central tablet or computer at the counter* running the table view:
+     the guest sends; orders, calls and bill requests all land on that one
+     screen, and the cashier keys the order into the POS.
+   - *With none:* guests wave staff over and show the list on their phone. It
+     still saves time: nobody forgets the order after calling, and the ingredient
+     questions are answered on the menu.
+4. **Bill:** each phone shows its own running total. With a central screen,
+   staff can split per guest easily (Stage 1 Build 4).
+5. **Leaving:** the table resets **automatically**, and a **manual "clear
+   table"** stays available.
+
+### Sold out
+
+Better than the booklet: one tap on "sold out" instead of staff saying
+"ay di available" over and over all night.
+
+### Photos of the QR (ordering from home)
+
+- Each scan opens a fresh 2-hour visit, so a photo of a table QR keeps working
+  anywhere. **A device ban can't be done on the web:** the only handle is a
+  cookie, and incognito or another browser gets past it.
+- Rejected: staff must "open" a table first (adds staff work, the opposite of
+  the goal).
+- Agreed: **geo-lock on send.** The phone's location must be at the restaurant.
+  Use the accuracy the phone reports (e.g. "±30 m"): send if the restaurant is
+  within that reach, block if clearly far, ask to retry if the reading is too
+  vague (e.g. ±200 m). Base circle about 50 m, adjustable per restaurant
+  (tighter for a standalone shop, wider in a mall). If location is refused, the
+  guest can still build the list and show it to staff. Test the default on real
+  phones inside a real restaurant before trusting any number.
+- Plus **opening hours**: orders only go through while the restaurant is open.
+- Both apply only when sending orders is on.
+
+### New settings per restaurant
+
+- **Send orders:** on (central screen or staff devices) / off (guests show their phone).
+- **Call staff button:** on / off.
+- **Ask for bill button:** on / off (e.g. small pop-up cafes).
+- Restaurant location pin and geo-lock radius; opening hours.
+
+### Manager's NFC links page
+
+- Add an **Open** button next to Copy and QR that opens the table's menu in a
+  new window. It must open in a **preview** that does not start a visit or open
+  a sitting, or the manager's click shows up on the staff table list.
+
+### Open questions
+
+- Auto-reset timing: one fixed rule, unless a kind of place needs longer
+  (e.g. unlimited-time samgyup).
+- Stage 1 builds that assume staff hold a device (#3 mark served per item,
+  #5 waiter sections, #6 move/merge tables) only help the rare place with
+  staff devices; weigh that before building them.
