@@ -122,11 +122,11 @@ went live 2026-10-21 that way.
 
 Agreed with Justin in a flow-critique discussion. Designed on the canvas
 "tappetite at the table settings" (https://claude.ai/artifact/RZbcrMWPGJv2ZSkeXW1cDH),
-approved 2026-11-17, and built on branch `claude/sitdown-settings` (PR, not
-live): Settings > General > At the table (lib/atTable.ts, migration 0031),
+approved 2026-11-17, and live 2026-11-17 (PR #108, migration 0031 applied
+to live D1 first): Settings > General > At the table (lib/atTable.ts, migration 0031),
 Show to staff, the location and hours guard on sending and calls, auto table
-reset (lib/visits.ts closeIdleSittings), and Open on menu links. Going live
-needs migration 0031 on live D1 first.
+reset (lib/visits.ts closeIdleSittings), and Open on menu links. Not yet
+checked on live: the settings card and a real table (need a staff login).
 
 ### The real situation
 
