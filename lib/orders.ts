@@ -2,7 +2,7 @@ import { db } from "./cf";
 import { randomId } from "./ids";
 import { CHOICE_ON_MENU, toOption, type OptionRow } from "./menu";
 import { extraCents, optionsLabel, resolvePicks, type DishOption } from "./options";
-import { isVisitId, type Visit } from "./visits";
+import { closeIdleSittings, isVisitId, type Visit } from "./visits";
 
 // Orders as the waiter sees them: a table's open sitting, its guests, and
 // each guest's batches. See migrations/0002 for how the tables fit together.
@@ -289,6 +289,7 @@ export const isCallKind = (v: unknown): v is CallKind => v === "waiter" || v ===
 
 /** Every table, with what its open sitting has ordered so far. */
 export async function tablesOverview(businessId: string): Promise<TableSummary[]> {
+  await closeIdleSittings(businessId);
   const r = await db()
     .prepare(
       `SELECT t.id, t.label,

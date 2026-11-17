@@ -35,8 +35,32 @@ export const isVisitId = (id: string) => /^[A-Za-z0-9_-]{22}$/.test(id);
 /** Phone ids come from our own cookie, which has the same shape as a visit id. */
 export const isPhoneId = isVisitId;
 
+/**
+ * Clear table, done by itself: a sitting closes once nothing has happened on
+ * it for VISIT_MS. That is: every menu link on it has died (links live VISIT_MS
+ * from the scan), and no order, staff addition or call came in that long. So
+ * the next group at the table starts fresh even when nobody tapped Clear.
+ * Run before anything reads open sittings (a new scan, the Tables screen).
+ * Kept off while the testing switch keeps links alive.
+ */
+export async function closeIdleSittings(businessId: string, now = Date.now()): Promise<void> {
+  if (neverExpire()) return;
+  const cutoff = now - VISIT_MS;
+  await db()
+    .prepare(
+      `UPDATE sittings SET closed_at = ?1
+       WHERE business_id = ?2 AND closed_at IS NULL AND opened_at < ?3
+         AND NOT EXISTS (SELECT 1 FROM visits v WHERE v.sitting_id = sittings.id AND v.expires_at > ?1)
+         AND NOT EXISTS (SELECT 1 FROM batches b WHERE b.sitting_id = sittings.id AND b.sent_at >= ?3)
+         AND NOT EXISTS (SELECT 1 FROM calls c WHERE c.sitting_id = sittings.id AND c.created_at >= ?3)`
+    )
+    .bind(now, businessId, cutoff)
+    .run();
+}
+
 /** The table's open sitting, opening one if the table has none. */
 async function openSitting(businessId: string, tableId: string, now: number): Promise<string> {
+  await closeIdleSittings(businessId, now);
   const d = db();
   // The unique index on open sittings makes a second, simultaneous insert a no-op.
   const [, found] = await d.batch([
